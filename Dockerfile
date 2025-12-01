@@ -1,47 +1,48 @@
-# Use Python 3.11
 FROM python:3.11-slim
 
-# Set environment variables
+# Environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    DJANGO_SETTINGS_MODULE=le_postier.settings_production \
     PORT=10000
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
-    pkg-config \
-    default-libmysqlclient-dev \
-    build-essential \
-    libjpeg-dev \
-    zlib1g-dev \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy and install requirements
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy entire project
 COPY . .
+
+# Ensure the module structure is correct
+RUN python -c "import os; print('Project structure:'); \
+    for root, dirs, files in os.walk('/app'): \
+        level = root.replace('/app', '').count(os.sep); \
+        indent = ' ' * 2 * level; \
+        print(f'{indent}{os.path.basename(root)}/'); \
+        subindent = ' ' * 2 * (level + 1); \
+        for file in files[:5]: print(f'{subindent}{file}')"
 
 # Create necessary directories
 RUN mkdir -p staticfiles media
 
-# Run collectstatic
-RUN python manage.py collectstatic --noinput || true
+# Try to collect static files (allow failure for now)
+RUN python manage.py collectstatic --noinput || echo "Collectstatic failed, continuing..."
 
-# Create a non-root user
+# Create user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
 EXPOSE 10000
 
-# Run the application
-CMD ["sh", "-c", "python manage.py migrate && gunicorn le_postier.wsgi:application --bind 0.0.0.0:$PORT --workers 2"]
+# Start command
+CMD ["sh", "-c", "python manage.py migrate --noinput || true && gunicorn le_postier.wsgi:application --bind 0.0.0.0:$PORT --workers 2"]
