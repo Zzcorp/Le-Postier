@@ -5,28 +5,11 @@ set -o errexit
 echo "Starting build process..."
 echo "Python version: $(python --version)"
 
-# Install system dependencies for Pillow
-apt-get update -y
-apt-get install -y \
-    libjpeg-dev \
-    zlib1g-dev \
-    libpng-dev \
-    libfreetype6-dev \
-    liblcms2-dev \
-    libtiff5-dev \
-    libwebp-dev \
-    libharfbuzz-dev \
-    libfribidi-dev \
-    libxcb1-dev \
-    build-essential
-
 # Upgrade pip and install wheel
 python -m pip install --upgrade pip wheel setuptools
 
-# Install Pillow with no binary to compile from source if needed
-python -m pip install --no-cache-dir Pillow==10.4.0
-
-# Install other dependencies
+# Install dependencies
+echo "Installing Python dependencies..."
 python -m pip install -r requirements.txt
 
 # Collect static files
