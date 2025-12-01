@@ -69,12 +69,10 @@ def intro_view(request):
 
 
 def home(request):
-    """Home page view"""
-    # Check if intro is needed
-    if check_intro_needed(request):
-        return redirect('intro')
+    # Temporarily disable intro redirect to avoid loops
+    # if check_intro_needed(request):
+    #     return redirect('intro')
 
-    log_page_view(request, 'Accueil')
     return render(request, 'home.html')
 
 
