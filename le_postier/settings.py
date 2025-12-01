@@ -31,6 +31,7 @@ ALLOWED_HOSTS = [
     'le-postier-1.onrender.com',
     'collections.samathey.fr',
     '.onrender.com',
+    'https://le-postier-1.onrender.com/'
 ]
 
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
