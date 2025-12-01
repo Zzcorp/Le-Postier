@@ -16,6 +16,13 @@ from .models import (
 )
 from .forms import ContactForm, SimpleRegistrationForm
 from django.http import JsonResponse
+from django.contrib.auth import logout
+
+
+def logout_view(request):
+    """Logout view"""
+    logout(request)
+    return redirect('home')
 
 def health_check(request):
     """Health check endpoint for Render"""
@@ -25,36 +32,27 @@ def health_check(request):
         'timestamp': timezone.now().isoformat()
     })
 
+
 def check_intro_needed(request):
     """Check if intro animation should be shown"""
-    session_key = request.session.session_key
-    if not session_key:
-        request.session.create()
-        session_key = request.session.session_key
-
-    today = timezone.now().date()
-
-    # Check if user has seen intro today
-    if request.user.is_authenticated:
-        if request.user.last_visit_date != today:
-            request.user.last_visit_date = today
-            request.user.save(update_fields=['last_visit_date'])
-            return True
-    else:
-        # Check session-based intro tracking
-        intro_seen = IntroSeen.objects.filter(
-            session_key=session_key,
-            date_seen=today
-        ).exists()
-
-        if not intro_seen:
-            IntroSeen.objects.update_or_create(
-                session_key=session_key,
-                defaults={'date_seen': today}
-            )
-            return True
-
+    # Disable for now to avoid redirect loops
     return False
+
+    # Original code (re-enable later):
+    # session_key = request.session.session_key
+    # if not session_key:
+    #     request.session.create()
+    #     session_key = request.session.session_key
+    #
+    # today = timezone.now().date()
+    #
+    # if request.user.is_authenticated:
+    #     if hasattr(request.user, 'last_visit_date') and request.user.last_visit_date != today:
+    #         request.user.last_visit_date = today
+    #         request.user.save(update_fields=['last_visit_date'])
+    #         return True
+    #
+    # return False
 
 
 def intro_view(request):
