@@ -9,9 +9,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for Pillow and PostgreSQL
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    pkg-config \
+    default-libmysqlclient-dev \
+    build-essential \
     libjpeg-dev \
     zlib1g-dev \
     libpq-dev \
@@ -27,7 +30,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy project files
 COPY . .
 
-# Create staticfiles directory
+# Create necessary directories
 RUN mkdir -p staticfiles media
 
 # Run collectstatic
