@@ -84,7 +84,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'le_postier.wsgi.application'
 
 # Database - PostgreSQL for Render
-DATABASE_URL = config('DATABASE_URL', default='')
+DATABASE_URL = config('DATABASE_URL', default='postgresql://zzcorp:fmh3PWJY625Dlt3gizh2v1jMwAavxHhJ@dpg-d4m741chg0os73blg3sg-a.frankfurt-postgres.render.com/z_data_db_zyx')
 
 if DATABASE_URL:
     DATABASES = {
@@ -138,26 +138,6 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-# AWS S3 Settings for media files (optional but recommended)
-USE_S3 = config('USE_S3', default=False, cast=bool)
-
-if USE_S3:
-    # AWS Settings
-    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='eu-west-3')
-    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-    AWS_S3_OBJECT_PARAMETERS = {
-        'CacheControl': 'max-age=86400',
-    }
-    AWS_DEFAULT_ACL = 'public-read'
-
-    # S3 Static and Media files settings
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
