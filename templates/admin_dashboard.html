@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/admin_dashboard.css' %}">
+{% endblock %}
+
+{% block page_title %}Tableau de Bord Admin{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="water-particles"></div>
+    
+    <div class="admin-header">
+        <h1>Tableau de Bord Administrateur</h1>
+        <p>Bienvenue, {{ user.username }}</p>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <img src="{% static 'images/users_icon.png' %}" alt="Utilisateurs">
+            </div>
+            <div class="stat-content">
+                <h3>Utilisateurs</h3>
+                <p class="stat-number">{{ total_users }}</p>
+                <p class="stat-detail">
+                    <span class="stat-badge verified">{{ verified_users }} vérifiés</span>
+                    <span class="stat-badge unverified">{{ unverified_users }} non-vérifiés</span>
+                </p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <img src="{% static 'images/postcards_icon.png' %}" alt="Cartes">
+            </div>
+            <div class="stat-content">
+                <h3>Cartes Postales</h3>
+                <p class="stat-number">{{ total_postcards }}</p>
+                <p class="stat-detail">
+                    <span class="stat-badge">{{ common_postcards }} communes</span>
+                    <span class="stat-badge rare">{{ rare_postcards }} rares</span>
+                    <span class="stat-badge very-rare">{{ very_rare_postcards }} très rares</span>
+                </p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <img src="{% static 'images/views_icon.png' %}" alt="Vues">
+            </div>
+            <div class="stat-content">
+                <h3>Vues Aujourd'hui</h3>
+                <p class="stat-number">{{ today_views }}</p>
+                <p class="stat-detail">{{ unique_visitors }} visiteurs uniques</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <img src="{% static 'images/search_icon.png' %}" alt="Recherches">
+            </div>
+            <div class="stat-content">
+                <h3>Recherches</h3>
+                <p class="stat-number">{{ total_searches }}</p>
+                <p class="stat-detail">Top: "{{ top_search }}"</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Management -->
+    <div class="admin-section">
+        <h2>Gestion des Utilisateurs</h2>
+        <div class="table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Nom d'utilisateur</th>
+                        <th>Email</th>
+                        <th>Catégorie</th>
+                        <th>Dernière activité</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in recent_users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <select class="category-select" data-user-id="{{ user.id }}">
+                                {% for value, label in user_categories %}
+                                <option value="{{ value }}" {% if user.category == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>{{ user.last_activity|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <button class="btn-action btn-save" onclick="updateUserCategory({{ user.id }})">
+                                Sauvegarder
+                            </button>
+                            {% if not user.is_staff %}
+                            <button class="btn-action btn-delete" onclick="deleteUser({{ user.id }})">
+                                Supprimer
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Activity Chart -->
+    <div class="admin-section">
+        <h2>Activité de la Semaine</h2>
+        <canvas id="activityChart"></canvas>
+    </div>
+    
+    <!-- Recent Searches -->
+    <div class="admin-section">
+        <h2>Recherches Récentes</h2>
+        <div class="searches-list">
+            {% for search in recent_searches %}
+            <div class="search-item">
+                <span class="search-keyword">{{ search.keyword }}</span>
+                <span class="search-meta">
+                    {{ search.results_count }} résultats - 
+                    {{ search.created_at|date:"d/m H:i" }}
+                    {% if search.user %} - {{ search.user.username }}{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- System Logs -->
+    <div class="admin-section">
+        <h2>Logs Système</h2>
+        <div class="logs-container">
+            {% for log in system_logs %}
+            <div class="log-item log-{{ log.level|lower }}">
+                <span class="log-level">{{ log.get_level_display }}</span>
+                <span class="log-message">{{ log.message }}</span>
+                <span class="log-time">{{ log.timestamp|date:"d/m H:i:s" }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="admin-actions">
+        <a href="/admin/" class="btn btn-primary">Django Admin</a>
+        <button class="btn btn-success" onclick="exportData()">Exporter les données</button>
+        <button class="btn btn-warning" onclick="clearCache()">Vider le cache</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Activity Chart
+    const ctx = document.getElementById('activityChart').getContext('2d');
+    const activityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels|safe }},
+            datasets: [{
+                label: 'Vues de pages',
+                data: {{ chart_data|safe }},
+                borderColor: '#b5600b',
+                backgroundColor: 'rgba(181, 96, 11, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'white'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: 'white'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: 'white'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Update user category
+    async function updateUserCategory(userId) {
+        const select = document.querySelector(`select[data-user-id="${userId}"]`);
+        const category = select.value;
+        
+        try {
+            const response = await fetch(`/admin/update-user/${userId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ category })
+            });
+            
+            if (response.ok) {
+                showNotification('Catégorie mise à jour avec succès', 'success');
+            }
+        } catch (error) {
+            showNotification('Erreur lors de la mise à jour', 'error');
+        }
+    }
+    
+    // Delete user
+    async function deleteUser(userId) {
+        if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur?')) return;
+        
+        try {
+            const response = await fetch(`/admin/delete-user/${userId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            showNotification('Erreur lors de la suppression', 'error');
+        }
+    }
+    
+    // Show notification
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => notification.remove(), 3000);
+    }
+</script>
+{% endblock %}

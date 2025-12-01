@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/browse.css' %}">
+{% endblock %}
+
+{% block page_title %}Parcourir{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div id="page_top" class="page_top">
+        <div id="research_input" class="research_input">
+            <form id="researchForm" class="research_form" method="get">
+                <label id="research_input_title" class="research_input_title">Rechercher : </label>
+                <input type="text" name="keywords_input" id="keywords_input" class="keywords_input" 
+                       value="{{ query }}" placeholder="" autofocus>
+                <button type="submit" class="research_form_submit">
+                    <img src="{% static 'images/Loupe_icone.png' %}" alt="Rechercher">
+                </button>
+            </form>
+        </div>
+        
+        {% if query %}
+        <div id="submit_txt_output" class="submit_txt_output">
+            <p id="submit_txt_output">{{ total_count }} résultat{{ total_count|pluralize }} pour "{{ query }}"</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <hr id="top_hr" class="top_hr">
+
+    <!-- Slideshow Cinema Mode -->
+    <div id="fade" class="black_overlay" onclick="closeAllPopups()"></div>
+    <div id="slider" class="slider">
+        {% for postcard in slideshow_postcards %}
+        <div class="slide {% if forloop.first %}active{% endif %}">
+            <img class="cp_cinema" src="{{ postcard.grande_image.url }}" alt="{{ postcard.title }}">
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Postcard Detail Popup -->
+    <div id="popup_detail" class="popup_detail">
+        <img id="reverse_cp" class="reverse_cp" src="{% static 'images/Verso.png' %}" 
+             onclick="togglePostcardSide();" title="Voir le verso">
+        <a class="popup_close" href="#" onclick="closeAllPopups();">
+            <img class="close_icon" src="{% static 'images/close_icon.png' %}">
+        </a>
+        <img id="lat_arrow_0" class="lat_arrow" src="{% static 'images/fleche-laterale-1.png' %}" 
+             onclick="previousImage();">
+        <img id="img_popup_detail" class="img_popup_detail" src="#">
+        <img id="lat_arrow_1" class="lat_arrow" src="{% static 'images/fleche-laterale.png' %}" 
+             onclick="nextImage();">
+        <div id="cp_popup_detail" class="cp_popup_detail">
+            <p id="p_cp_popup_detail" class="p_cp_popup_detail"></p>
+            <p id="p_nb_cp_popup_detail" class="p_nb_cp_popup_detail"></p>
+        </div>
+    </div>
+    
+    <!-- Zoom Popup -->
+    <div id="popup_zoom" class="popup_zoom">
+        <div id="popup_zoom_container" class="popup_zoom_container">
+            <img id="img_popup_zoom" class="img_popup_zoom" src="#">
+            {% if not user.is_authenticated or not user.can_view_very_rare %}
+            <button id="login_popup_zoom" class="login_popup_zoom">
+                Veuillez-vous connecter pour zoomer
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Member Card Popup -->
+    <div id="popup_non_membre" class="popup_non_membre">
+        <a class="popup_close" href="#" onclick="closeAllPopups();">
+            <img class="close_icon" src="{% static 'images/close_icon.png' %}">
+        </a>
+        <img id="img_popup_membre" class="img_popup_membre" src="{% static 'images/Carte_Membre_4.jpg' %}">
+    </div>
+
+    <!-- Theme Keywords -->
+    <div id="glowing-words" class="glowing-words">
+        {% for theme in themes %}
+        <p class="glowing-word" onclick="searchTheme('{{ theme.display_name }}');">
+            {{ theme.display_name }}
+        </p>
+        {% endfor %}
+    </div>
+
+    <!-- Results Grid -->
+    <div id="cp_result_area" class="cp_result_area">
+        <table id="cp_result_area" class="cp_result_area">
+            <tr>
+                {% for postcard in postcards %}
+                {% if forloop.counter0|divisibleby:4 and forloop.counter0 > 0 %}
+            </tr><tr>
+                {% endif %}
+                <td class="cp_result" id="cp_result_{{ postcard.id }}">
+                    <div class="cp_result">
+                        <img class="cp_result" src="{{ postcard.vignette_image.url }}" alt="{{ postcard.title }}">
+                        <div class="cp_details" id="cp_details_{{ postcard.id }}">
+                            <div class="cp_detail" onclick="showDetail({{ postcard.id }});" title="Détails">
+                                <img class="detail" src="{% static 'images/Eye_icon.png' %}">
+                            </div>
+                            <div class="cp_zoom" onclick="showZoom({{ postcard.id }});" title="Zoomer">
+                                <img class="zoom" src="{% static 'images/Loupe_icone.png' %}">
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                {% empty %}
+                <td colspan="4">
+                    <p style="text-align: center; color: white; padding: 50px;">
+                        Aucune carte postale trouvée.
+                    </p>
+                </td>
+                {% endfor %}
+            </tr>
+        </table>
+    </div>
+
+    {% if slideshow_postcards %}
+    <div style="text-align: center; margin-top: 20px;">
+        <img id="cinema-clape" src="{% static 'images/cinema-clape.png' %}" 
+             onclick="cinemaMode();" title="Mode cinéma">
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Store postcard data for navigation
+    const postcardsData = [
+        {% for postcard in postcards %}
+        {
+            id: {{ postcard.id }},
+            number: "{{ postcard.number }}",
+            title: "{{ postcard.title|escapejs }}",
+            grande_image: "{{ postcard.grande_image.url }}",
+            dos_image: "{{ postcard.dos_image.url }}",
+            zoom_image: "{% if postcard.zoom_image %}{{ postcard.zoom_image.url }}{% else %}{{ postcard.grande_image.url }}{% endif %}",
+            rarity: "{{ postcard.rarity }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    let currentIndex = 0;
+    let currentView = 'front';
+    
+    function showDetail(postcardId) {
+        const postcard = postcardsData.find(p => p.id === postcardId);
+        currentIndex = postcardsData.findIndex(p => p.id === postcardId);
+        currentView = 'front';
+        
+        document.getElementById('img_popup_detail').src = postcard.grande_image;
+        document.getElementById('p_cp_popup_detail').textContent = postcard.title.replace(/\\/g, '"');
+        document.getElementById('p_nb_cp_popup_detail').textContent = postcard.number;
+        
+        document.getElementById('fade').style.display = 'block';
+        document.getElementById('popup_detail').style.display = 'block';
+        
+        updateNavigationArrows();
+    }
+    
+    function togglePostcardSide() {
+        const postcard = postcardsData[currentIndex];
+        const img = document.getElementById('img_popup_detail');
+        
+        if (currentView === 'front') {
+            img.src = postcard.dos_image;
+            currentView = 'back';
+        } else {
+            img.src = postcard.grande_image;
+            currentView = 'front';
+        }
+    }
+    
+    function showZoom(postcardId) {
+        const postcard = postcardsData.find(p => p.id === postcardId);
+        
+        {% if user.is_authenticated and user.can_view_very_rare %}
+            document.getElementById('img_popup_zoom').src = postcard.zoom_image;
+            document.getElementById('fade').style.display = 'block';
+            document.getElementById('popup_zoom').style.display = 'block';
+            addZoomEffect();
+        {% else %}
+            if (postcard.rarity === 'very_rare') {
+                document.getElementById('fade').style.display = 'block';
+                document.getElementById('popup_non_membre').style.display = 'block';
+            } else {
+                document.getElementById('img_popup_zoom').src = postcard.zoom_image;
+                document.getElementById('fade').style.display = 'block';
+                document.getElementById('popup_zoom').style.display = 'block';
+            }
+        {% endif %}
+    }
+    
+    function previousImage() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            updateDetailImage();
+        }
+    }
+    
+    function nextImage() {
+        if (currentIndex < postcardsData.length - 1) {
+            currentIndex++;
+            updateDetailImage();
+        }
+    }
+    
+    function updateDetailImage() {
+        const postcard = postcardsData[currentIndex];
+        currentView = 'front';
+        document.getElementById('img_popup_detail').src = postcard.grande_image;
+        document.getElementById('p_cp_popup_detail').textContent = postcard.title.replace(/\\/g, '"');
+        document.getElementById('p_nb_cp_popup_detail').textContent = postcard.number;
+        updateNavigationArrows();
+    }
+    
+    function updateNavigationArrows() {
+        document.getElementById('lat_arrow_0').style.display = currentIndex > 0 ? 'block' : 'none';
+        document.getElementById('lat_arrow_1').style.display = currentIndex < postcardsData.length - 1 ? 'block' : 'none';
+    }
+    
+    function closeAllPopups() {
+        document.getElementById('fade').style.display = 'none';
+        document.getElementById('popup_detail').style.display = 'none';
+        document.getElementById('popup_zoom').style.display = 'none';
+        document.getElementById('popup_non_membre').style.display = 'none';
+        
+        if (typeof slideInterval !== 'undefined') {
+            clearInterval(slideInterval);
+        }
+    }
+    
+    function searchTheme(theme) {
+        document.getElementById('keywords_input').value = theme;
+        document.getElementById('researchForm').submit();
+    }
+    
+    function addZoomEffect() {
+        const img = document.getElementById('img_popup_zoom');
+        let isZoomed = false;
+        
+        img.onclick = function() {
+            if (isZoomed) {
+                img.style.transform = 'scale(1)';
+                img.style.cursor = 'zoom-in';
+            } else {
+                img.style.transform = 'scale(2)';
+                img.style.cursor = 'zoom-out';
+            }
+            isZoomed = !isZoomed;
+        };
+        
+        img.onmousemove = function(e) {
+            if (isZoomed) {
+                const rect = img.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                img.style.transformOrigin = `${x}% ${y}%`;
+            }
+        };
+    }
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/browse.js' %}"></script>
+{% endblock %}

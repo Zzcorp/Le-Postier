@@ -1,0 +1,116 @@
+{% load static %}
+
+<div id="conn_wrapper" class="conn_wrapper">
+    <div id="triangle" class="triangle"></div>
+    <table id="conn_table" class="conn_table">
+        {% if user.is_authenticated %}
+        <tr>
+            <td class="conn_td">
+                <span style="color: white;">{{ user.username }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td class="conn_td">
+                <a class="conn_link" href="{% url 'logout' %}">Se déconnecter</a>
+            </td>
+        </tr>
+        {% if user.is_staff %}
+        <tr>
+            <td class="conn_td">
+                <a class="conn_link" href="{% url 'admin_dashboard' %}">Tableau de bord</a>
+            </td>
+        </tr>
+        {% endif %}
+        {% else %}
+        <tr>
+            <td class="conn_td">
+                <a class="conn_link" href="{% url 'register' %}">S'inscrire</a>
+            </td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+<div id="menu_wrapper" class="menu_wrapper">
+    <div id="triangle_1" class="triangle_1"></div>
+    <table id="menu_table" class="menu_table">
+        <tr>
+            <td class="menu_1"><a class="menu_1" href="{% url 'home' %}">Accueil</a></td>
+        </tr>
+        <tr>
+            <td class="menu_1"><a class="menu_1" href="{% url 'browse' %}">Parcourir</a></td>
+        </tr>
+        <tr>
+            <td class="menu_1"><a class="menu_1" href="{% url 'gallery' %}">La Galerie</a></td>
+        </tr>
+        <tr>
+            <td class="menu_1"><a class="menu_1" href="{% url 'presentation' %}">Présentation</a></td>
+        </tr>
+        <tr>
+            <td class="menu_1"><a class="menu_1" href="{% url 'contact' %}">Contact</a></td>
+        </tr>
+        {% if user.is_staff %}
+        <tr>
+            <td class="menu_1"><a class="menu_1" href="{% url 'admin_dashboard' %}">Admin</a></td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+<header>
+    <div class="menu" id="menu">
+        <p class="menu" id="page-title-text">{% block page_title %}Bienvenu dans la Collection{% endblock %}</p>
+        <ul id="menu-list" class="menu">
+            <!-- Menu will be populated by JavaScript -->
+        </ul>
+    </div>
+</header>
+
+<script>
+function updateMenu() {
+    const menuList = document.getElementById('menu-list');
+    const pageTitle = document.getElementById('page-title-text').innerText;
+    
+    if (window.innerWidth > 960) {
+        // Desktop menu - all items visible
+        menuList.innerHTML = `
+            <li class="menu"><a class="menu" href="{% url 'home' %}">Accueil</a></li>
+            <li class="menu"><a class="menu" href="{% url 'browse' %}"><img class="research" src="{% static 'images/Loupe_icone.png' %}" title="Parcourir"></a></li>
+            <li class="menu"><a class="menu" href="{% url 'gallery' %}"><img class="contact" src="{% static 'images/tableau_icon.png' %}" alt="La Galerie" title="La Galerie"></a></li>
+            <li class="menu"><a class="menu" href="{% url 'presentation' %}"><img class="contact" src="{% static 'images/bloc_note_icon.png' %}" alt="Présentation" title="Présentation"></a></li>
+            <li class="menu"><a class="menu" href="{% url 'contact' %}"><img class="contact" src="{% static 'images/Carte_postale.png' %}" alt="contact" title="Contact"></a></li>
+            <li class="menu"><a class="menu"><img id="subscribe_link" class="subscribe" src="{% static 'images/Connect_Icone.png' %}" alt="subscribe" title="{% if user.is_authenticated %}Profil{% else %}Inscription{% endif %}" onclick="loginSubPopup();"></a></li>
+        `;
+    } else {
+        // Mobile menu - burger icon and connection icon
+        menuList.innerHTML = `
+            <li class="menu"><img id="burger_menu" class="burger_menu" src="{% static 'images/burger_icon.svg' %}" onclick="burgerMenuToggle();"></li>
+            <li class="menu"><a class="menu"><img id="subscribe_link" class="subscribe" src="{% static 'images/Connect_Icone.png' %}" alt="subscribe" title="{% if user.is_authenticated %}Profil{% else %}Inscription{% endif %}" onclick="loginSubPopup();"></a></li>
+        `;
+        
+        // Adjust burger menu and subscribe icon positions for mobile
+        const burgerMenu = document.getElementById('burger_menu');
+        const subscribeLink = document.getElementById('subscribe_link');
+        
+        if (burgerMenu) {
+            burgerMenu.style.position = 'fixed';
+            burgerMenu.style.top = '13px';
+            burgerMenu.style.right = '45px';
+        }
+        
+        if (subscribeLink) {
+            subscribeLink.style.position = 'fixed';
+            subscribeLink.style.top = '13px';
+            subscribeLink.style.right = '10px';
+        }
+    }
+}
+
+// Call updateMenu on load
+window.addEventListener('load', updateMenu);
+// Call updateMenu on resize
+window.addEventListener('resize', updateMenu);
+
+// Initialize menu immediately
+document.addEventListener('DOMContentLoaded', updateMenu);
+</script>

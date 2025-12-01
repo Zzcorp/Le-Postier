@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<header>
+    <video autoplay muted loop id="bg_cp_video" class="bg_cp_video">
+        <source src="{% static 'video/Annimate_CPA_optimized_inf.mp4' %}" type="video/mp4">
+    </video>
+    <div id="welcome_bg" class="welcome_bg">
+        <h1 id="welcome_title" class="welcome_title">« Embarquez pour la belle époque ! »</h1>
+        <h4 id="welcome_title" class="welcome_title"><br><br>La navigation fluviale en cartes postales anciennes</h4>
+    </div>
+</header>
+
+<div id="welcome_detail" class="welcome_detail">
+    <p id="welcome_p" class="welcome_p">
+        Cette collection de cartes postales anciennes a été mise en ligne pour vous permettre de naviguer et de vous promener le long des berges à la « Belle Époque », cette période (1873-1914) pleine d'insouciance et d'optimisme, grâce notamment aux extraordinaires progrès techniques, médicaux et sociaux.
+        <br><br>
+        Vous pourrez découvrir des métiers et des bateaux aujourd'hui disparus, reconnaître certains détours ou boucles de la Seine et d'autres cours d'eau. Vous revisiterez des écluses ou des ponts toujours présents aujourd'hui, grâce à la qualité de construction de cette époque, et bien d'autres surprises encore.
+        <br><br>
+        Bonne visite à tous !
+    </p>
+    <a href="{% url 'browse' %}" class="browse-button">
+        <img src="{% static 'images/Loupe_icone.png' %}" alt="Parcourir">
+        Parcourir
+    </a>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/contact.css' %}">
+{% endblock %}
+
+{% block page_title %}Contact{% endblock %}
+
+{% block content %}
+<div id="page_content" class="page_content">
+    <div class="water-particles"></div>
+    
+    <div id="page_contact_area" class="page_contact_area">
+        <img id="cp_contact" class="cp_contact" src="{% static 'images/Cpa_Vierge.jpg' %}">
+        
+        <form id="contact_form" class="contact_form" method="post">
+            {% csrf_token %}
+            
+            <img id="timbre_1_colle" class="timbre_1_colle" src="{% static 'images/Timbre_10c.png' %}">
+            <img id="contact_recipient" class="contact_recipient" src="{% static 'images/Samathey.png' %}">
+            
+            {{ form.message }}
+            
+            <p id="contact_p" class="contact_p">
+                Veuillez affranchir au tarif en vigueur de 10 centimes puis inscrivez le nom du destinataire en cliquant sur « Samathey »
+            </p>
+            
+            <div id="timbres_signa_wrapper" class="timbres_signa_wrapper">
+                <img id="timbre_0" class="timbre" src="{% static 'images/Timbre_5c.png' %}">
+                <img id="timbre_1" class="timbre" src="{% static 'images/Timbre_10c.png' %}" 
+                     onclick="applyStamp();">
+                <img id="signature_sm" class="signature_sm" src="{% static 'images/Samathey_blanc.png' %}" 
+                     onclick="applySignature();">
+                <input id="contact_form_submit" class="contact_form_submit" 
+                       name="contact_form_submit" value="Poster la carte" type="submit">
+            </div>
+        </form>
+    </div>
+    
+    <div class="contact-success" id="contact-success">
+        <h2>Carte envoyée avec succès!</h2>
+        <p>Votre message a bien été transmis.</p>
+    </div>
+</div>
+
+<!-- Envelope sound effect -->
+<audio id="envelope-sound" preload="auto">
+    <source src="{% static 'sounds/envelope.mp3' %}" type="audio/mpeg">
+</audio>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let stampApplied = false;
+    let signatureApplied = false;
+    
+    function applyStamp() {
+        const stamp = document.getElementById('timbre_1_colle');
+        stamp.classList.add('active');
+        stampApplied = true;
+        checkFormReady();
+    }
+    
+    function applySignature() {
+        const signature = document.getElementById('contact_recipient');
+        signature.classList.add('active');
+        signatureApplied = true;
+        checkFormReady();
+    }
+    
+    function checkFormReady() {
+        if (stampApplied && signatureApplied) {
+            const submitBtn = document.getElementById('contact_form_submit');
+            submitBtn.classList.add('active');
+        }
+    }
+    
+    // Form submission with animation
+    document.getElementById('contact_form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Create envelope animation
+        const envelope = document.createElement('div');
+        envelope.className = 'envelope-animation';
+        envelope.innerHTML = '<img src="{% static "images/envelope.png" %}" style="width: 100px;">';
+        document.body.appendChild(envelope);
+        
+        // Play sound
+        const sound = document.getElementById('envelope-sound');
+        if (sound) sound.play();
+        
+        // Animate envelope
+        envelope.style.animation = 'fly-away 1s ease-out forwards';
+        
+        // Submit form after animation
+        setTimeout(() => {
+            this.submit();
+        }, 500);
+    });
+    
+    // Capitalize first letter
+    function capitalizeFirstLetter(input) {
+        if (input.value.length === 1) {
+            input.value = input.value.charAt(0).toUpperCase();
+        }
+    }
+    
+    document.getElementById('contact_text').addEventListener('input', function() {
+        capitalizeFirstLetter(this);
+    });
+</script>
+{% endblock %}

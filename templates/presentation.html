@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/presentation.css' %}">
+<style>
+    /* Override white background */
+    body {
+        background-color: #202020 !important;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}Présentation{% endblock %}
+
+{% block content %}
+<div class="presentation-container">
+    <div class="presentation-header">
+        <h1 class="presentation-title">Présentation</h1>
+        <p class="presentation-date">1873 - 1914</p>
+    </div>
+    
+    <div class="presentation-content">
+        <div class="presentation-section">
+            <div class="section-icon">
+                <img src="{% static 'images/boat_icon.png' %}" alt="Navigation">
+            </div>
+            <h2 class="section-title">La Navigation Fluviale</h2>
+            <p class="section-text">
+                La période de la Belle Époque a vu l'apogée de la navigation fluviale en France. 
+                Les bateaux à vapeur sillonnaient la Seine et les autres cours d'eau, transportant 
+                passagers et marchandises dans une atmosphère d'insouciance et d'optimisme.
+            </p>
+        </div>
+        
+        <div class="presentation-section">
+            <div class="section-icon">
+                <img src="{% static 'images/postcard_icon.png' %}" alt="Collection">
+            </div>
+            <h2 class="section-title">Notre Collection</h2>
+            <p class="section-text">
+                Avec plus de 1860 cartes postales anciennes numérisées et cataloguées, notre collection 
+                offre un voyage unique dans le temps. Chaque carte raconte une histoire, capture un moment 
+                de vie au bord de l'eau, témoigne des progrès techniques extraordinaires de l'époque.
+            </p>
+        </div>
+        
+        <div class="presentation-section">
+            <div class="section-icon">
+                <img src="{% static 'images/history_icon.png' %}" alt="Histoire">
+            </div>
+            <h2 class="section-title">Un Patrimoine Préservé</h2>
+            <p class="section-text">
+                Ces cartes postales constituent un témoignage précieux de notre patrimoine fluvial. 
+                Elles nous permettent de redécouvrir des métiers disparus, des bateaux aujourd'hui 
+                oubliés, et des paysages transformés par plus d'un siècle d'évolution.
+            </p>
+        </div>
+    </div>
+    
+    <div class="highlight-box">
+        <p>
+            "Ces images d'une époque révolue nous rappellent l'importance de préserver notre mémoire 
+            collective et de transmettre aux générations futures la richesse de notre patrimoine fluvial."
+        </p>
+    </div>
+    
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="timeline-date">1873</div>
+            <div class="timeline-content">
+                Début de la période couverte par notre collection, marquée par le développement 
+                de la navigation à vapeur.
+            </div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">1889</div>
+            <div class="timeline-content">
+                L'Exposition Universelle de Paris met en lumière les progrès techniques, 
+                notamment dans la navigation fluviale.
+            </div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">1900</div>
+            <div class="timeline-content">
+                Apogée de la Belle Époque, multiplication des cartes postales illustrées 
+                et démocratisation de la correspondance.
+            </div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">1914</div>
+            <div class="timeline-content">
+                Fin de la Belle Époque avec le début de la Première Guerre mondiale, 
+                marquant la fin d'une époque d'insouciance.
+            </div>
+        </div>
+    </div>
+    
+    <center>
+        <a href="{% url 'browse' %}" class="discover-btn">
+            Parcourir la collection
+        </a>
+    </center>
+</div>
+{% endblock %}

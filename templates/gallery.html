@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/gallery.css' %}">
+<style>
+    /* Override white background */
+    body {
+        background-color: #202020 !important;
+    }
+    .gallery-container {
+        background-color: transparent;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}La Galerie{% endblock %}
+
+{% block content %}
+<div class="gallery-container">
+    <div class="gallery-header">
+        <h1 class="gallery-title">La Galerie</h1>
+        <p class="gallery-subtitle">Découvrez notre collection de cartes postales anciennes</p>
+    </div>
+    
+    <div class="gallery-filters">
+        <button class="filter-btn active" data-filter="all">Toutes</button>
+        <button class="filter-btn" data-filter="common">Communes</button>
+        <button class="filter-btn" data-filter="rare">Rares</button>
+        {% if user.is_authenticated and user.can_view_very_rare %}
+        <button class="filter-btn" data-filter="very_rare">Très Rares</button>
+        {% endif %}
+    </div>
+    
+    <div class="gallery-grid">
+        {% for postcard in postcards %}
+        <div class="gallery-item" data-rarity="{{ postcard.rarity }}">
+            <img src="{{ postcard.front_image.url }}" alt="{{ postcard.title }}">
+            <div class="gallery-overlay">
+                <div class="gallery-info">
+                    <span class="gallery-number">{{ postcard.number }}</span>
+                    <p class="gallery-title-item">{{ postcard.title|truncatechars:50 }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="gallery-lightbox" id="lightbox">
+    <div class="lightbox-content">
+        <div class="lightbox-close" onclick="closeLightbox()"></div>
+        <img class="lightbox-img" id="lightbox-img" src="" alt="">
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Gallery filtering
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+            
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter items
+            document.querySelectorAll('.gallery-item').forEach(item => {
+                if (filter === 'all' || item.dataset.rarity === filter) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+    
+    // Lightbox
+    document.querySelectorAll('.gallery-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const img = this.querySelector('img');
+            document.getElementById('lightbox-img').src = img.src;
+            document.getElementById('lightbox').classList.add('active');
+        });
+    });
+    
+    function closeLightbox() {
+        document.getElementById('lightbox').classList.remove('active');
+    }
+</script>
+{% endblock %}
