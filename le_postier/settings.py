@@ -28,10 +28,7 @@ SECRET_KEY = 'django-insecure-8d0)r5bhf(r85cg*u_vbk-@k&i1bv%lvjah^34!siis!o1dekn
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = [
-    'le-postier-1.onrender.com',
-    'collections.samathey.fr',
-    '.onrender.com',
-    'https://le-postier-1.onrender.com/'
+    '*'
 ]
 
 # Application definition
