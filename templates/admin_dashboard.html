@@ -1,110 +1,109 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/admin_dashboard.css' %}">
-{% endblock %}
-
 {% block page_title %}Tableau de Bord Admin{% endblock %}
 
 {% block content %}
 <div class="admin-container">
-    <div class="water-particles"></div>
-    
+    <!-- Header -->
     <div class="admin-header">
-        <h1>Tableau de Bord Administrateur</h1>
-        <p>Bienvenue, {{ user.username }}</p>
+        <h1>🎛️ Tableau de Bord</h1>
+        <p>Bienvenue, <strong>{{ user.username }}</strong></p>
     </div>
-    
+
+    <!-- Stats Cards -->
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-icon">
-                <img src="{% static 'images/users_icon.png' %}" alt="Utilisateurs">
-            </div>
-            <div class="stat-content">
-                <h3>Utilisateurs</h3>
-                <p class="stat-number">{{ total_users }}</p>
-                <p class="stat-detail">
-                    <span class="stat-badge verified">{{ verified_users }} vérifiés</span>
-                    <span class="stat-badge unverified">{{ unverified_users }} non-vérifiés</span>
-                </p>
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+                <h3>{{ total_users }}</h3>
+                <p>Utilisateurs</p>
             </div>
         </div>
-        
         <div class="stat-card">
-            <div class="stat-icon">
-                <img src="{% static 'images/postcards_icon.png' %}" alt="Cartes">
-            </div>
-            <div class="stat-content">
-                <h3>Cartes Postales</h3>
-                <p class="stat-number">{{ total_postcards }}</p>
-                <p class="stat-detail">
-                    <span class="stat-badge">{{ common_postcards }} communes</span>
-                    <span class="stat-badge rare">{{ rare_postcards }} rares</span>
-                    <span class="stat-badge very-rare">{{ very_rare_postcards }} très rares</span>
-                </p>
+            <div class="stat-icon">🖼️</div>
+            <div class="stat-info">
+                <h3>{{ total_postcards }}</h3>
+                <p>Cartes Postales</p>
             </div>
         </div>
-        
         <div class="stat-card">
-            <div class="stat-icon">
-                <img src="{% static 'images/views_icon.png' %}" alt="Vues">
-            </div>
-            <div class="stat-content">
-                <h3>Vues Aujourd'hui</h3>
-                <p class="stat-number">{{ today_views }}</p>
-                <p class="stat-detail">{{ unique_visitors }} visiteurs uniques</p>
+            <div class="stat-icon">📷</div>
+            <div class="stat-info">
+                <h3>{{ postcards_with_images }}</h3>
+                <p>Avec Images</p>
             </div>
         </div>
-        
         <div class="stat-card">
-            <div class="stat-icon">
-                <img src="{% static 'images/search_icon.png' %}" alt="Recherches">
+            <div class="stat-icon">🔍</div>
+            <div class="stat-info">
+                <h3>{{ total_searches }}</h3>
+                <p>Recherches</p>
             </div>
-            <div class="stat-content">
-                <h3>Recherches</h3>
-                <p class="stat-number">{{ total_searches }}</p>
-                <p class="stat-detail">Top: "{{ top_search }}"</p>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">💬</div>
+            <div class="stat-info">
+                <h3>{{ unread_messages }}</h3>
+                <p>Messages Non Lus</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🏷️</div>
+            <div class="stat-info">
+                <h3>{{ total_themes }}</h3>
+                <p>Thèmes</p>
             </div>
         </div>
     </div>
-    
-    <!-- User Management -->
-    <div class="admin-section">
-        <h2>Gestion des Utilisateurs</h2>
+
+    <!-- Main Content Tabs -->
+    <div class="admin-tabs">
+        <button class="tab-btn active" onclick="showTab('users')">👥 Utilisateurs</button>
+        <button class="tab-btn" onclick="showTab('postcards')">🖼️ Cartes Postales</button>
+        <button class="tab-btn" onclick="showTab('searches')">🔍 Recherches</button>
+        <button class="tab-btn" onclick="showTab('messages')">💬 Messages</button>
+    </div>
+
+    <!-- Users Tab -->
+    <div id="users-tab" class="tab-content active">
+        <div class="section-header">
+            <h2>Gestion des Utilisateurs</h2>
+        </div>
         <div class="table-container">
-            <table class="admin-table">
+            <table class="admin-table" id="users-table">
                 <thead>
                     <tr>
                         <th>Nom d'utilisateur</th>
                         <th>Email</th>
                         <th>Catégorie</th>
-                        <th>Dernière activité</th>
+                        <th>Staff</th>
+                        <th>Inscrit le</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for user in recent_users %}
-                    <tr>
-                        <td>{{ user.username }}</td>
-                        <td>{{ user.email }}</td>
+                    {% for u in recent_users %}
+                    <tr data-user-id="{{ u.id }}">
+                        <td>{{ u.username }}</td>
+                        <td>{{ u.email }}</td>
                         <td>
-                            <select class="category-select" data-user-id="{{ user.id }}">
+                            <select class="category-select" onchange="updateUserCategory({{ u.id }}, this.value)">
                                 {% for value, label in user_categories %}
-                                <option value="{{ value }}" {% if user.category == value %}selected{% endif %}>
-                                    {{ label }}
-                                </option>
+                                <option value="{{ value }}" {% if u.category == value %}selected{% endif %}>{{ label }}</option>
                                 {% endfor %}
                             </select>
                         </td>
-                        <td>{{ user.last_activity|date:"d/m/Y H:i" }}</td>
                         <td>
-                            <button class="btn-action btn-save" onclick="updateUserCategory({{ user.id }})">
-                                Sauvegarder
-                            </button>
-                            {% if not user.is_staff %}
-                            <button class="btn-action btn-delete" onclick="deleteUser({{ user.id }})">
-                                Supprimer
+                            <span class="badge {% if u.is_staff %}badge-success{% else %}badge-secondary{% endif %}">
+                                {{ u.is_staff|yesno:"Oui,Non" }}
+                            </span>
+                        </td>
+                        <td>{{ u.date_joined|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if not u.is_superuser %}
+                            <button class="btn-danger btn-sm" onclick="deleteUser({{ u.id }}, '{{ u.username }}')">
+                                🗑️
                             </button>
                             {% endif %}
                         </td>
@@ -113,151 +112,807 @@
                 </tbody>
             </table>
         </div>
+        <button class="btn-primary" onclick="loadAllUsers()">Charger tous les utilisateurs</button>
     </div>
-    
-    <!-- Activity Chart -->
-    <div class="admin-section">
-        <h2>Activité de la Semaine</h2>
-        <canvas id="activityChart"></canvas>
+
+    <!-- Postcards Tab -->
+    <div id="postcards-tab" class="tab-content">
+        <div class="section-header">
+            <h2>Gestion des Cartes Postales</h2>
+            <button class="btn-primary" onclick="showAddPostcardModal()">➕ Ajouter</button>
+        </div>
+        <div class="table-container">
+            <table class="admin-table" id="postcards-table">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Titre</th>
+                        <th>Rareté</th>
+                        <th>Vues</th>
+                        <th>Images</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="postcards-tbody">
+                    <!-- Loaded via JS -->
+                </tbody>
+            </table>
+        </div>
+        <button class="btn-primary" onclick="loadPostcards()">Charger les cartes</button>
     </div>
-    
-    <!-- Recent Searches -->
-    <div class="admin-section">
-        <h2>Recherches Récentes</h2>
+
+    <!-- Searches Tab -->
+    <div id="searches-tab" class="tab-content">
+        <div class="section-header">
+            <h2>Historique des Recherches</h2>
+        </div>
         <div class="searches-list">
             {% for search in recent_searches %}
             <div class="search-item">
                 <span class="search-keyword">{{ search.keyword }}</span>
-                <span class="search-meta">
-                    {{ search.results_count }} résultats - 
-                    {{ search.created_at|date:"d/m H:i" }}
-                    {% if search.user %} - {{ search.user.username }}{% endif %}
-                </span>
+                <span class="search-results">{{ search.results_count }} résultats</span>
+                <span class="search-date">{{ search.created_at|date:"d/m/Y H:i" }}</span>
             </div>
+            {% empty %}
+            <p>Aucune recherche enregistrée.</p>
             {% endfor %}
         </div>
     </div>
-    
-    <!-- System Logs -->
-    <div class="admin-section">
-        <h2>Logs Système</h2>
-        <div class="logs-container">
-            {% for log in system_logs %}
-            <div class="log-item log-{{ log.level|lower }}">
-                <span class="log-level">{{ log.get_level_display }}</span>
-                <span class="log-message">{{ log.message }}</span>
-                <span class="log-time">{{ log.timestamp|date:"d/m H:i:s" }}</span>
+
+    <!-- Messages Tab -->
+    <div id="messages-tab" class="tab-content">
+        <div class="section-header">
+            <h2>Messages de Contact</h2>
+        </div>
+        <div class="messages-list">
+            {% for msg in recent_messages %}
+            <div class="message-item {% if not msg.is_read %}unread{% endif %}">
+                <div class="message-header">
+                    <span class="message-user">{{ msg.user.username|default:"Anonyme" }}</span>
+                    <span class="message-date">{{ msg.created_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                <p class="message-content">{{ msg.message|truncatechars:200 }}</p>
             </div>
+            {% empty %}
+            <p>Aucun message.</p>
             {% endfor %}
         </div>
     </div>
-    
-    <!-- Quick Actions -->
-    <div class="admin-actions">
-        <a href="/admin/" class="btn btn-primary">Django Admin</a>
-        <button class="btn btn-success" onclick="exportData()">Exporter les données</button>
-        <button class="btn btn-warning" onclick="clearCache()">Vider le cache</button>
+
+    <!-- Top Postcards -->
+    <div class="section">
+        <h2>🏆 Cartes les plus vues</h2>
+        <div class="top-postcards">
+            {% for p in top_postcards %}
+            <div class="top-postcard-item">
+                {% if p.vignette_url %}
+                <img src="{{ p.vignette_url }}" alt="{{ p.title }}">
+                {% endif %}
+                <div class="top-postcard-info">
+                    <span class="top-postcard-number">N° {{ p.number }}</span>
+                    <span class="top-postcard-views">{{ p.views_count }} vues</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Add/Edit Postcard Modal -->
+<div id="postcard-modal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">Ajouter une Carte Postale</h2>
+        <form id="postcard-form" onsubmit="savePostcard(event)">
+            <input type="hidden" id="postcard-id">
+            <div class="form-group">
+                <label>Numéro *</label>
+                <input type="text" id="postcard-number" required>
+            </div>
+            <div class="form-group">
+                <label>Titre *</label>
+                <input type="text" id="postcard-title" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="postcard-description"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Mots-clés (séparés par virgules)</label>
+                <input type="text" id="postcard-keywords">
+            </div>
+            <div class="form-group">
+                <label>Rareté</label>
+                <select id="postcard-rarity">
+                    <option value="common">Commune</option>
+                    <option value="rare">Rare</option>
+                    <option value="very_rare">Très Rare</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>URL Vignette</label>
+                <input type="url" id="postcard-vignette-url">
+            </div>
+            <div class="form-group">
+                <label>URL Grande</label>
+                <input type="url" id="postcard-grande-url">
+            </div>
+            <div class="form-group">
+                <label>URL Dos</label>
+                <input type="url" id="postcard-dos-url">
+            </div>
+            <div class="form-group">
+                <label>URL Zoom</label>
+                <input type="url" id="postcard-zoom-url">
+            </div>
+            <button type="submit" class="btn-primary">Sauvegarder</button>
+        </form>
+    </div>
+</div>
+
 <script>
-    // Activity Chart
-    const ctx = document.getElementById('activityChart').getContext('2d');
-    const activityChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: {{ chart_labels|safe }},
-            datasets: [{
-                label: 'Vues de pages',
-                data: {{ chart_data|safe }},
-                borderColor: '#b5600b',
-                backgroundColor: 'rgba(181, 96, 11, 0.1)',
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: 'white'
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        color: 'white'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: 'white'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                }
-            }
-        }
+const csrfToken = '{{ csrf_token }}';
+
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
     });
     
-    // Update user category
-    async function updateUserCategory(userId) {
-        const select = document.querySelector(`select[data-user-id="${userId}"]`);
-        const category = select.value;
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.add('active');
+    event.target.classList.add('active');
+}
+
+async function loadAllUsers() {
+    try {
+        const response = await fetch('/api/admin/users/');
+        const data = await response.json();
         
-        try {
-            const response = await fetch(`/admin/update-user/${userId}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ category })
-            });
-            
-            if (response.ok) {
-                showNotification('Catégorie mise à jour avec succès', 'success');
-            }
-        } catch (error) {
-            showNotification('Erreur lors de la mise à jour', 'error');
+        const tbody = document.querySelector('#users-table tbody');
+        tbody.innerHTML = '';
+        
+        data.users.forEach(u => {
+            tbody.innerHTML += `
+                <tr data-user-id="${u.id}">
+                    <td>${u.username}</td>
+                    <td>${u.email}</td>
+                    <td>
+                        <select class="category-select" onchange="updateUserCategory(${u.id}, this.value)">
+                            <option value="subscribed_unverified" ${u.category === 'subscribed_unverified' ? 'selected' : ''}>Inscrit - Non vérifié</option>
+                            <option value="subscribed_verified" ${u.category === 'subscribed_verified' ? 'selected' : ''}>Inscrit - Vérifié</option>
+                            <option value="postman" ${u.category === 'postman' ? 'selected' : ''}>Facteur</option>
+                            <option value="viewer" ${u.category === 'viewer' ? 'selected' : ''}>Visiteur privilégié</option>
+                        </select>
+                    </td>
+                    <td><span class="badge ${u.is_staff ? 'badge-success' : 'badge-secondary'}">${u.is_staff ? 'Oui' : 'Non'}</span></td>
+                    <td>${u.date_joined}</td>
+                    <td>
+                        <button class="btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        alert('Erreur: ' + error.message);
+    }
+}
+
+async function updateUserCategory(userId, category) {
+    try {
+        const response = await fetch(`/api/admin/user/${userId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ category })
+        });
+        
+        if (response.ok) {
+            showNotification('Catégorie mise à jour!', 'success');
+        } else {
+            throw new Error('Erreur serveur');
         }
+    } catch (error) {
+        alert('Erreur: ' + error.message);
     }
+}
+
+async function deleteUser(userId, username) {
+    if (!confirm(`Supprimer l'utilisateur "${username}" ?`)) return;
     
-    // Delete user
-    async function deleteUser(userId) {
-        if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur?')) return;
-        
-        try {
-            const response = await fetch(`/admin/delete-user/${userId}/`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
-            });
-            
-            if (response.ok) {
-                location.reload();
+    try {
+        const response = await fetch(`/api/admin/user/${userId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken
             }
-        } catch (error) {
-            showNotification('Erreur lors de la suppression', 'error');
-        }
-    }
-    
-    // Show notification
-    function showNotification(message, type) {
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
+        });
         
-        setTimeout(() => notification.remove(), 3000);
+        if (response.ok) {
+            document.querySelector(`tr[data-user-id="${userId}"]`).remove();
+            showNotification('Utilisateur supprimé!', 'success');
+        } else {
+            throw new Error('Erreur serveur');
+        }
+    } catch (error) {
+        alert('Erreur: ' + error.message);
     }
+}
+
+async function loadPostcards() {
+    try {
+        const response = await fetch('/api/admin/postcards/');
+        const data = await response.json();
+        
+        const tbody = document.getElementById('postcards-tbody');
+        tbody.innerHTML = '';
+        
+        data.postcards.forEach(p => {
+            const images = [
+                p.has_vignette ? '🖼️' : '',
+                p.has_grande ? '📷' : '',
+                p.has_dos ? '🔄' : '',
+                p.has_zoom ? '🔍' : ''
+            ].filter(Boolean).join(' ');
+            
+            tbody.innerHTML += `
+                <tr data-postcard-id="${p.id}">
+                    <td>${p.number}</td>
+                    <td>${p.title}</td>
+                    <td><span class="rarity-badge rarity-${p.rarity}">${p.rarity}</span></td>
+                    <td>${p.views_count}</td>
+                    <td>${images || '❌'}</td>
+                    <td>
+                        <button class="btn-primary btn-sm" onclick="editPostcard(${p.id})">✏️</button>
+                        <button class="btn-danger btn-sm" onclick="deletePostcard(${p.id})">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        showNotification(`${data.total} cartes chargées`, 'success');
+    } catch (error) {
+        alert('Erreur: ' + error.message);
+    }
+}
+
+function showAddPostcardModal() {
+    document.getElementById('modal-title').textContent = 'Ajouter une Carte Postale';
+    document.getElementById('postcard-form').reset();
+    document.getElementById('postcard-id').value = '';
+    document.getElementById('postcard-modal').style.display = 'flex';
+}
+
+async function editPostcard(id) {
+    try {
+        const response = await fetch(`/api/admin/postcard/${id}/`);
+        const p = await response.json();
+        
+        document.getElementById('modal-title').textContent = 'Modifier la Carte N° ' + p.number;
+        document.getElementById('postcard-id').value = p.id;
+        document.getElementById('postcard-number').value = p.number;
+        document.getElementById('postcard-title').value = p.title;
+        document.getElementById('postcard-description').value = p.description;
+        document.getElementById('postcard-keywords').value = p.keywords;
+        document.getElementById('postcard-rarity').value = p.rarity;
+        document.getElementById('postcard-vignette-url').value = p.vignette_url || '';
+        document.getElementById('postcard-grande-url').value = p.grande_url || '';
+        document.getElementById('postcard-dos-url').value = p.dos_url || '';
+        document.getElementById('postcard-zoom-url').value = p.zoom_url || '';
+        
+        document.getElementById('postcard-modal').style.display = 'flex';
+    } catch (error) {
+        alert('Erreur: ' + error.message);
+    }
+}
+
+async function savePostcard(event) {
+    event.preventDefault();
+    
+    const id = document.getElementById('postcard-id').value;
+    const data = {
+        number: document.getElementById('postcard-number').value,
+        title: document.getElementById('postcard-title').value,
+        description: document.getElementById('postcard-description').value,
+        keywords: document.getElementById('postcard-keywords').value,
+        rarity: document.getElementById('postcard-rarity').value,
+        vignette_url: document.getElementById('postcard-vignette-url').value,
+        grande_url: document.getElementById('postcard-grande-url').value,
+        dos_url: document.getElementById('postcard-dos-url').value,
+        zoom_url: document.getElementById('postcard-zoom-url').value,
+    };
+    
+    try {
+        const url = id ? `/api/admin/postcard/${id}/` : '/api/admin/postcards/';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            closeModal();
+            loadPostcards();
+            showNotification('Carte sauvegardée!', 'success');
+        } else {
+            throw new Error('Erreur serveur');
+        }
+    } catch (error) {
+        alert('Erreur: ' + error.message);
+    }
+}
+
+async function deletePostcard(id) {
+    if (!confirm('Supprimer cette carte postale ?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/postcard/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        if (response.ok) {
+            document.querySelector(`tr[data-postcard-id="${id}"]`).remove();
+            showNotification('Carte supprimée!', 'success');
+        } else {
+            throw new Error('Erreur serveur');
+        }
+    } catch (error) {
+        alert('Erreur: ' + error.message);
+    }
+}
+
+function closeModal() {
+    document.getElementById('postcard-modal').style.display = 'none';
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.remove(), 3000);
+}
+
+// Close modal on outside click
+document.getElementById('postcard-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
 </script>
+
+<style>
+/* Admin Dashboard Styles */
+.admin-container {
+    padding: 80px 20px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.admin-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.admin-header h1 {
+    font-size: 2.5em;
+    color: white;
+    margin-bottom: 10px;
+}
+
+.admin-header p {
+    color: #b5600b;
+    font-size: 1.2em;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.2), rgba(181, 96, 11, 0.1));
+    border: 1px solid rgba(181, 96, 11, 0.3);
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(181, 96, 11, 0.3);
+}
+
+.stat-icon {
+    font-size: 2em;
+}
+
+.stat-info h3 {
+    font-size: 1.8em;
+    color: white;
+    margin: 0;
+}
+
+.stat-info p {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    font-size: 0.9em;
+}
+
+/* Tabs */
+.admin-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.tab-btn:hover, .tab-btn.active {
+    background: #b5600b;
+    border-color: #b5600b;
+}
+
+.tab-content {
+    display: none;
+    background: rgba(32, 32, 32, 0.8);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Section Header */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-header h2 {
+    color: #b5600b;
+    margin: 0;
+}
+
+/* Tables */
+.table-container {
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th, .admin-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-table th {
+    background: rgba(181, 96, 11, 0.2);
+    color: #b5600b;
+}
+
+.admin-table td {
+    color: white;
+}
+
+.admin-table tr:hover {
+    background: rgba(181, 96, 11, 0.1);
+}
+
+/* Selects and Inputs */
+.category-select {
+    background: rgba(32, 32, 32, 0.8);
+    color: white;
+    border: 1px solid #b5600b;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+/* Badges */
+.badge {
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
+}
+
+.badge-success {
+    background: rgba(40, 167, 69, 0.3);
+    color: #28a745;
+}
+
+.badge-secondary {
+    background: rgba(108, 117, 125, 0.3);
+    color: #6c757d;
+}
+
+.rarity-badge {
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
+}
+
+.rarity-common { background: rgba(108, 117, 125, 0.3); color: #aaa; }
+.rarity-rare { background: rgba(181, 96, 11, 0.3); color: #b5600b; }
+.rarity-very_rare { background: rgba(255, 215, 0, 0.3); color: gold; }
+
+/* Buttons */
+.btn-primary, .btn-danger {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #b5600b;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #d1872c;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+/* Lists */
+.searches-list, .messages-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.search-item, .message-item {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.search-keyword {
+    color: #b5600b;
+    font-weight: bold;
+}
+
+.search-results, .search-date {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9em;
+}
+
+.message-item.unread {
+    background: rgba(181, 96, 11, 0.1);
+    border-left: 3px solid #b5600b;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.message-user {
+    color: #b5600b;
+    font-weight: bold;
+}
+
+.message-date {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85em;
+}
+
+.message-content {
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+/* Top Postcards */
+.section {
+    margin-top: 30px;
+}
+
+.section h2 {
+    color: #b5600b;
+    margin-bottom: 20px;
+}
+
+.top-postcards {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding: 10px 0;
+}
+
+.top-postcard-item {
+    flex: 0 0 150px;
+    background: rgba(32, 32, 32, 0.8);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.top-postcard-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+}
+
+.top-postcard-info {
+    padding: 10px;
+    text-align: center;
+}
+
+.top-postcard-number {
+    display: block;
+    color: #b5600b;
+    font-weight: bold;
+}
+
+.top-postcard-views {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85em;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: #202020;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid #b5600b;
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+}
+
+.modal-content h2 {
+    color: #b5600b;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 5px;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid rgba(181, 96, 11, 0.5);
+    border-radius: 8px;
+    background: rgba(32, 32, 32, 0.8);
+    color: white;
+}
+
+.form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 10px;
+    color: white;
+    z-index: 3000;
+    animation: slideIn 0.3s ease;
+}
+
+.notification-success {
+    background: #28a745;
+}
+
+.notification-error {
+    background: #dc3545;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .admin-tabs {
+        flex-direction: column;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+</style>
 {% endblock %}

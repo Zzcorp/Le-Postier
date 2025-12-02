@@ -4,23 +4,27 @@ from . import views
 
 urlpatterns = [
     path('', views.home, name='home'),
-    #path('intro/', views.intro_view, name='intro'),
     path('parcourir/', views.browse, name='browse'),
     path('galerie/', views.gallery, name='gallery'),
     path('presentation/', views.presentation, name='presentation'),
     path('contact/', views.contact, name='contact'),
     path('inscription/', views.register, name='register'),
     path('connexion/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
 
-    # Admin
-    path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
-    path('admin/update-user/<int:user_id>/', views.update_user_category, name='update_user_category'),
-    path('admin/delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
+    # Custom Admin Dashboard
+    path('tableau-de-bord/', views.admin_dashboard, name='admin_dashboard'),
+    path('api/admin/stats/', views.admin_stats_api, name='admin_stats_api'),
+    path('api/admin/users/', views.admin_users_api, name='admin_users_api'),
+    path('api/admin/user/<int:user_id>/', views.admin_user_detail, name='admin_user_detail'),
+    path('api/admin/postcards/', views.admin_postcards_api, name='admin_postcards_api'),
+    path('api/admin/postcard/<int:postcard_id>/', views.admin_postcard_detail, name='admin_postcard_detail'),
 
     # AJAX endpoints
     path('api/postcard/<int:postcard_id>/', views.get_postcard_detail, name='postcard_detail'),
     path('api/postcard/<int:postcard_id>/zoom/', views.zoom_postcard, name='postcard_zoom'),
 
-    # Auth
-    path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
+    # Legacy admin URLs
+    path('admin/update-user/<int:user_id>/', views.update_user_category, name='update_user_category'),
+    path('admin/delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
 ]

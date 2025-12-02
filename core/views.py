@@ -1,16 +1,25 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q
+from django.db.models import Q, Count
+from django.db.models.functions import TruncDate
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
+from datetime import timedelta
 import traceback
+import json
 
 from .models import (
     CustomUser, Postcard, Theme, ContactMessage,
     SearchLog, PageView, UserActivity, SystemLog, IntroSeen
 )
 from .forms import ContactForm, SimpleRegistrationForm
+
+
+def is_admin(user):
+    """Check if user is admin"""
+    return user.is_authenticated and (user.is_staff or user.is_superuser)
 
 
 def home(request):
@@ -34,8 +43,13 @@ def browse(request):
                 Q(title__icontains=query) |
                 Q(keywords__icontains=query)
             )
+            # Log search
+            SearchLog.objects.create(
+                keyword=query,
+                results_count=postcards.count(),
+                user=request.user if request.user.is_authenticated else None
+            )
 
-        # Get postcards with images for slideshow
         postcards_with_images = postcards.exclude(vignette_url='').exclude(vignette_url__isnull=True)
 
         context = {
@@ -50,22 +64,17 @@ def browse(request):
         return render(request, 'browse.html', context)
 
     except Exception as e:
-        return HttpResponse(f"""
-            <h1>Browse Page Error</h1>
-            <pre style="background:#ffeeee;padding:20px;white-space:pre-wrap;">{traceback.format_exc()}</pre>
-            <p><a href="/">Back to Home</a></p>
-        """)
+        return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
 def gallery(request):
     """Gallery page"""
     try:
-        # Get postcards that have images
         postcards = Postcard.objects.exclude(
             vignette_url=''
         ).exclude(
             vignette_url__isnull=True
-        ).order_by('?')[:50]  # Random 50 postcards
+        ).order_by('?')[:50]
 
         context = {
             'postcards': postcards,
@@ -75,11 +84,7 @@ def gallery(request):
         return render(request, 'gallery.html', context)
 
     except Exception as e:
-        return HttpResponse(f"""
-            <h1>Gallery Page Error</h1>
-            <pre style="background:#ffeeee;padding:20px;white-space:pre-wrap;">{traceback.format_exc()}</pre>
-            <p><a href="/">Back to Home</a></p>
-        """)
+        return HttpResponse(f"<h1>Gallery Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
 def presentation(request):
@@ -118,7 +123,7 @@ def register(request):
             if form.is_valid():
                 user = form.save()
                 login(request, user)
-                return render(request, 'register.html', {'success': True})
+                return redirect('home')
         else:
             form = SimpleRegistrationForm()
 
@@ -140,7 +145,6 @@ def login_view(request):
             if user is not None:
                 login(request, user)
                 next_url = request.GET.get('next', '/')
-                from django.shortcuts import redirect
                 return redirect(next_url)
             else:
                 error = "Nom d'utilisateur ou mot de passe incorrect."
@@ -154,7 +158,6 @@ def login_view(request):
 def logout_view(request):
     """Logout"""
     logout(request)
-    from django.shortcuts import redirect
     return redirect('home')
 
 
@@ -162,8 +165,6 @@ def get_postcard_detail(request, postcard_id):
     """API endpoint for postcard details"""
     try:
         postcard = Postcard.objects.get(id=postcard_id)
-
-        # Increment view count
         postcard.views_count += 1
         postcard.save(update_fields=['views_count'])
 
@@ -182,8 +183,6 @@ def get_postcard_detail(request, postcard_id):
         return JsonResponse(data)
     except Postcard.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
 
 
 def zoom_postcard(request, postcard_id):
@@ -211,48 +210,229 @@ def zoom_postcard(request, postcard_id):
         return JsonResponse({'error': 'Not found'}, status=404)
 
 
-@user_passes_test(lambda u: u.is_staff if u.is_authenticated else False)
+# ============================================
+# ADMIN DASHBOARD VIEWS
+# ============================================
+
+@user_passes_test(is_admin)
 def admin_dashboard(request):
-    """Admin dashboard"""
+    """Custom admin dashboard"""
     try:
+        # Get statistics
+        today = timezone.now().date()
+        week_ago = today - timedelta(days=7)
+
         context = {
             'total_users': CustomUser.objects.count(),
             'total_postcards': Postcard.objects.count(),
             'total_themes': Theme.objects.count(),
-            'recent_users': CustomUser.objects.order_by('-date_joined')[:10],
+            'total_messages': ContactMessage.objects.count(),
+            'unread_messages': ContactMessage.objects.filter(is_read=False).count(),
+            'total_searches': SearchLog.objects.count(),
+            'today_searches': SearchLog.objects.filter(created_at__date=today).count(),
+            'postcards_with_images': Postcard.objects.exclude(vignette_url='').exclude(
+                vignette_url__isnull=True).count(),
+            'recent_users': CustomUser.objects.order_by('-date_joined')[:5],
             'recent_searches': SearchLog.objects.order_by('-created_at')[:10],
+            'recent_messages': ContactMessage.objects.order_by('-created_at')[:5],
+            'top_postcards': Postcard.objects.order_by('-views_count')[:5],
+            'user_categories': CustomUser.USER_CATEGORIES,
         }
+
         return render(request, 'admin_dashboard.html', context)
+
     except Exception as e:
         return HttpResponse(f"<h1>Admin Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
-def update_user_category(request, user_id):
-    """Update user category (admin only)"""
-    if not request.user.is_staff:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-
+@user_passes_test(is_admin)
+def admin_stats_api(request):
+    """API for dashboard statistics"""
     try:
-        import json
-        data = json.loads(request.body)
-        user = CustomUser.objects.get(id=user_id)
-        user.category = data.get('category', user.category)
-        user.save()
-        return JsonResponse({'success': True})
+        today = timezone.now().date()
+
+        # Get daily views for last 7 days
+        daily_views = []
+        for i in range(7):
+            date = today - timedelta(days=6 - i)
+            count = PageView.objects.filter(timestamp__date=date).count()
+            daily_views.append({
+                'date': date.strftime('%d/%m'),
+                'count': count
+            })
+
+        # Get daily searches
+        daily_searches = []
+        for i in range(7):
+            date = today - timedelta(days=6 - i)
+            count = SearchLog.objects.filter(created_at__date=date).count()
+            daily_searches.append({
+                'date': date.strftime('%d/%m'),
+                'count': count
+            })
+
+        # Top search terms
+        top_searches = SearchLog.objects.values('keyword').annotate(
+            count=Count('id')
+        ).order_by('-count')[:10]
+
+        return JsonResponse({
+            'daily_views': daily_views,
+            'daily_searches': daily_searches,
+            'top_searches': list(top_searches),
+            'total_users': CustomUser.objects.count(),
+            'total_postcards': Postcard.objects.count(),
+        })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@user_passes_test(is_admin)
+def admin_users_api(request):
+    """API for user management"""
+    if request.method == 'GET':
+        users = CustomUser.objects.all().order_by('-date_joined')
+        data = [{
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'category': u.category,
+            'is_staff': u.is_staff,
+            'is_active': u.is_active,
+            'date_joined': u.date_joined.strftime('%d/%m/%Y %H:%M'),
+            'last_login': u.last_login.strftime('%d/%m/%Y %H:%M') if u.last_login else 'Jamais',
+        } for u in users]
+        return JsonResponse({'users': data})
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@user_passes_test(is_admin)
+@require_http_methods(["GET", "PUT", "DELETE"])
+def admin_user_detail(request, user_id):
+    """API for individual user management"""
+    try:
+        user = CustomUser.objects.get(id=user_id)
+
+        if request.method == 'GET':
+            return JsonResponse({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'category': user.category,
+                'is_staff': user.is_staff,
+                'is_active': user.is_active,
+            })
+
+        elif request.method == 'PUT':
+            data = json.loads(request.body)
+
+            if 'category' in data:
+                user.category = data['category']
+            if 'is_active' in data:
+                user.is_active = data['is_active']
+            if 'is_staff' in data and request.user.is_superuser:
+                user.is_staff = data['is_staff']
+
+            user.save()
+            return JsonResponse({'success': True})
+
+        elif request.method == 'DELETE':
+            if user.is_superuser:
+                return JsonResponse({'error': 'Cannot delete superuser'}, status=400)
+            user.delete()
+            return JsonResponse({'success': True})
+
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@user_passes_test(is_admin)
+def admin_postcards_api(request):
+    """API for postcard management"""
+    if request.method == 'GET':
+        postcards = Postcard.objects.all().order_by('number')[:100]
+        data = [{
+            'id': p.id,
+            'number': p.number,
+            'title': p.title[:50],
+            'rarity': p.rarity,
+            'views_count': p.views_count,
+            'has_vignette': bool(p.vignette_url),
+            'has_grande': bool(p.grande_url),
+            'has_dos': bool(p.dos_url),
+            'has_zoom': bool(p.zoom_url),
+        } for p in postcards]
+        return JsonResponse({'postcards': data, 'total': Postcard.objects.count()})
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            postcard = Postcard.objects.create(
+                number=data['number'],
+                title=data['title'],
+                description=data.get('description', ''),
+                keywords=data.get('keywords', ''),
+                rarity=data.get('rarity', 'common'),
+            )
+            return JsonResponse({'success': True, 'id': postcard.id})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@user_passes_test(is_admin)
+@require_http_methods(["GET", "PUT", "DELETE"])
+def admin_postcard_detail(request, postcard_id):
+    """API for individual postcard management"""
+    try:
+        postcard = Postcard.objects.get(id=postcard_id)
+
+        if request.method == 'GET':
+            return JsonResponse({
+                'id': postcard.id,
+                'number': postcard.number,
+                'title': postcard.title,
+                'description': postcard.description,
+                'keywords': postcard.keywords,
+                'rarity': postcard.rarity,
+                'vignette_url': postcard.vignette_url,
+                'grande_url': postcard.grande_url,
+                'dos_url': postcard.dos_url,
+                'zoom_url': postcard.zoom_url,
+                'views_count': postcard.views_count,
+                'zoom_count': postcard.zoom_count,
+            })
+
+        elif request.method == 'PUT':
+            data = json.loads(request.body)
+
+            for field in ['number', 'title', 'description', 'keywords', 'rarity',
+                          'vignette_url', 'grande_url', 'dos_url', 'zoom_url']:
+                if field in data:
+                    setattr(postcard, field, data[field])
+
+            postcard.save()
+            return JsonResponse({'success': True})
+
+        elif request.method == 'DELETE':
+            postcard.delete()
+            return JsonResponse({'success': True})
+
+    except Postcard.DoesNotExist:
+        return JsonResponse({'error': 'Postcard not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def update_user_category(request, user_id):
+    """Legacy update user category"""
+    return admin_user_detail(request, user_id)
 
 
 def delete_user(request, user_id):
-    """Delete user (admin only)"""
-    if not request.user.is_staff:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-
-    try:
-        user = CustomUser.objects.get(id=user_id)
-        if not user.is_staff:
-            user.delete()
-            return JsonResponse({'success': True})
-        return JsonResponse({'error': 'Cannot delete staff'}, status=400)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+    """Legacy delete user"""
+    return admin_user_detail(request, user_id)

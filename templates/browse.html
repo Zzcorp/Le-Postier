@@ -9,12 +9,13 @@
 
 {% block content %}
 <div class="main-content">
+    <!-- Search Section -->
     <div id="page_top" class="page_top">
         <div id="research_input" class="research_input">
             <form id="researchForm" class="research_form" method="get">
                 <label id="research_input_title" class="research_input_title">Rechercher : </label>
                 <input type="text" name="keywords_input" id="keywords_input" class="keywords_input" 
-                       value="{{ query }}" placeholder="" autofocus>
+                       value="{{ query|default:'' }}" placeholder="Entrez un mot-clé..." autofocus>
                 <button type="submit" class="research_form_submit">
                     <img src="{% static 'images/Loupe_icone.png' %}" alt="Rechercher">
                 </button>
@@ -23,35 +24,28 @@
         
         {% if query %}
         <div id="submit_txt_output" class="submit_txt_output">
-            <p id="submit_txt_output">{{ total_count }} résultat{{ total_count|pluralize }} pour "{{ query }}"</p>
+            <p>{{ total_count }} résultat{{ total_count|pluralize }} pour "{{ query }}"</p>
         </div>
         {% endif %}
     </div>
 
     <hr id="top_hr" class="top_hr">
 
-    <!-- Slideshow Cinema Mode -->
+    <!-- Overlay for popups -->
     <div id="fade" class="black_overlay" onclick="closeAllPopups()"></div>
-    <div id="slider" class="slider">
-        {% for postcard in slideshow_postcards %}
-        <div class="slide {% if forloop.first %}active{% endif %}">
-            <img class="cp_cinema" src="{{ postcard.grande_image.url }}" alt="{{ postcard.title }}">
-        </div>
-        {% endfor %}
-    </div>
 
     <!-- Postcard Detail Popup -->
     <div id="popup_detail" class="popup_detail">
+        <a class="popup_close" href="javascript:void(0)" onclick="closeAllPopups();">
+            <img class="close_icon" src="{% static 'images/close_icon.png' %}" alt="Fermer">
+        </a>
         <img id="reverse_cp" class="reverse_cp" src="{% static 'images/Verso.png' %}" 
              onclick="togglePostcardSide();" title="Voir le verso">
-        <a class="popup_close" href="#" onclick="closeAllPopups();">
-            <img class="close_icon" src="{% static 'images/close_icon.png' %}">
-        </a>
-        <img id="lat_arrow_0" class="lat_arrow" src="{% static 'images/fleche-laterale-1.png' %}" 
-             onclick="previousImage();">
-        <img id="img_popup_detail" class="img_popup_detail" src="#">
-        <img id="lat_arrow_1" class="lat_arrow" src="{% static 'images/fleche-laterale.png' %}" 
-             onclick="nextImage();">
+        <img id="lat_arrow_0" class="lat_arrow lat_arrow_left" src="{% static 'images/fleche-laterale-1.png' %}" 
+             onclick="previousImage();" title="Précédent">
+        <img id="img_popup_detail" class="img_popup_detail" src="" alt="Carte postale">
+        <img id="lat_arrow_1" class="lat_arrow lat_arrow_right" src="{% static 'images/fleche-laterale.png' %}" 
+             onclick="nextImage();" title="Suivant">
         <div id="cp_popup_detail" class="cp_popup_detail">
             <p id="p_cp_popup_detail" class="p_cp_popup_detail"></p>
             <p id="p_nb_cp_popup_detail" class="p_nb_cp_popup_detail"></p>
@@ -60,84 +54,83 @@
     
     <!-- Zoom Popup -->
     <div id="popup_zoom" class="popup_zoom">
+        <a class="popup_close" href="javascript:void(0)" onclick="closeAllPopups();">
+            <img class="close_icon" src="{% static 'images/close_icon.png' %}" alt="Fermer">
+        </a>
         <div id="popup_zoom_container" class="popup_zoom_container">
-            <img id="img_popup_zoom" class="img_popup_zoom" src="#">
-            {% if not user.is_authenticated or not user.can_view_very_rare %}
-            <button id="login_popup_zoom" class="login_popup_zoom">
-                Veuillez-vous connecter pour zoomer
-            </button>
-            {% endif %}
+            <img id="img_popup_zoom" class="img_popup_zoom" src="" alt="Zoom">
         </div>
     </div>
 
-    <!-- Member Card Popup -->
-    <div id="popup_non_membre" class="popup_non_membre">
-        <a class="popup_close" href="#" onclick="closeAllPopups();">
-            <img class="close_icon" src="{% static 'images/close_icon.png' %}">
-        </a>
-        <img id="img_popup_membre" class="img_popup_membre" src="{% static 'images/Carte_Membre_4.jpg' %}">
-    </div>
-
-    <!-- Theme Keywords -->
-    <div id="glowing-words" class="glowing-words">
+    <!-- Animated Water Words - Only show if no search query -->
+    {% if not query and themes %}
+    <div id="water-words-container" class="water-words-container">
+        <div class="water-particles"></div>
         {% for theme in themes %}
-        <p class="glowing-word" onclick="searchTheme('{{ theme.display_name }}');">
+        <span class="water-word" 
+              data-delay="{{ forloop.counter0 }}"
+              onclick="searchTheme('{{ theme.display_name|escapejs }}');">
             {{ theme.display_name }}
-        </p>
+        </span>
         {% endfor %}
     </div>
+    {% endif %}
 
     <!-- Results Grid -->
     <div id="cp_result_area" class="cp_result_area">
-        <table id="cp_result_area" class="cp_result_area">
-            <tr>
-                {% for postcard in postcards %}
-                {% if forloop.counter0|divisibleby:4 and forloop.counter0 > 0 %}
-            </tr><tr>
-                {% endif %}
-                <td class="cp_result" id="cp_result_{{ postcard.id }}">
-                    <div class="cp_result">
-                        <img class="cp_result" src="{{ postcard.vignette_image.url }}" alt="{{ postcard.title }}">
-                        <div class="cp_details" id="cp_details_{{ postcard.id }}">
-                            <div class="cp_detail" onclick="showDetail({{ postcard.id }});" title="Détails">
-                                <img class="detail" src="{% static 'images/Eye_icon.png' %}">
-                            </div>
-                            <div class="cp_zoom" onclick="showZoom({{ postcard.id }});" title="Zoomer">
-                                <img class="zoom" src="{% static 'images/Loupe_icone.png' %}">
-                            </div>
+        {% if postcards %}
+        <div class="postcards-grid">
+            {% for postcard in postcards %}
+            <div class="cp_result" id="cp_result_{{ postcard.id }}">
+                <div class="cp_card">
+                    <img class="cp_image" 
+                         src="{{ postcard.vignette_url }}" 
+                         alt="{{ postcard.title }}"
+                         loading="lazy"
+                         onerror="this.style.display='none'">
+                    <div class="cp_overlay">
+                        <div class="cp_actions">
+                            <button class="cp_btn cp_detail" onclick="showDetail({{ postcard.id }});" title="Voir détails">
+                                <img src="{% static 'images/Eye_icon.png' %}" alt="Détails">
+                            </button>
+                            <button class="cp_btn cp_zoom_btn" onclick="showZoom({{ postcard.id }});" title="Zoomer">
+                                <img src="{% static 'images/Loupe_icone.png' %}" alt="Zoom">
+                            </button>
                         </div>
+                        <p class="cp_title">{{ postcard.title|truncatechars:50 }}</p>
                     </div>
-                </td>
-                {% empty %}
-                <td colspan="4">
-                    <p style="text-align: center; color: white; padding: 50px;">
-                        Aucune carte postale trouvée.
-                    </p>
-                </td>
-                {% endfor %}
-            </tr>
-        </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-results">
+            <p>Aucune carte postale trouvée.</p>
+            {% if query %}
+            <p><a href="{% url 'browse' %}">Voir toutes les cartes</a></p>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 
-    {% if slideshow_postcards %}
-    <div style="text-align: center; margin-top: 20px;">
-        <img id="cinema-clape" src="{% static 'images/cinema-clape.png' %}" 
-             onclick="cinemaMode();" title="Mode cinéma">
+    <!-- Statistics -->
+    <div class="browse-stats">
+        <p>{{ total_count }} cartes postales dans la collection</p>
     </div>
-    {% endif %}
 </div>
 
 <script>
-    // Store postcard data for navigation
+    // Postcard data for JavaScript
     const postcardsData = [
         {% for postcard in postcards %}
         {
             id: {{ postcard.id }},
-            number: "{{ postcard.number }}",
+            number: "{{ postcard.number|escapejs }}",
             title: "{{ postcard.title|escapejs }}",
-            grande_image: "{{ postcard.grande_image.url }}",
-            dos_image: "{{ postcard.dos_image.url }}",
-            zoom_image: "{% if postcard.zoom_image %}{{ postcard.zoom_image.url }}{% else %}{{ postcard.grande_image.url }}{% endif %}",
+            grande_url: "{{ postcard.grande_url|default:'' }}",
+            dos_url: "{{ postcard.dos_url|default:'' }}",
+            zoom_url: "{{ postcard.zoom_url|default:'' }}",
+            vignette_url: "{{ postcard.vignette_url|default:'' }}",
             rarity: "{{ postcard.rarity }}"
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
@@ -146,14 +139,68 @@
     let currentIndex = 0;
     let currentView = 'front';
     
+    // Initialize water words animation
+    document.addEventListener('DOMContentLoaded', function() {
+        initWaterWords();
+    });
+    
+    function initWaterWords() {
+        const container = document.getElementById('water-words-container');
+        if (!container) return;
+        
+        const words = container.querySelectorAll('.water-word');
+        const containerRect = container.getBoundingClientRect();
+        
+        words.forEach((word, index) => {
+            // Random position within container
+            const maxX = containerRect.width - 150;
+            const maxY = containerRect.height - 50;
+            
+            const randomX = Math.random() * maxX;
+            const randomY = Math.random() * maxY;
+            
+            word.style.left = randomX + 'px';
+            word.style.top = randomY + 'px';
+            
+            // Random animation delays
+            const delay = Math.random() * 5;
+            word.style.animationDelay = delay + 's';
+            
+            // Random sizes
+            const size = 0.8 + Math.random() * 0.6;
+            word.style.fontSize = size + 'rem';
+        });
+        
+        // Create floating particles
+        createWaterParticles(container);
+    }
+    
+    function createWaterParticles(container) {
+        const particlesContainer = container.querySelector('.water-particles');
+        if (!particlesContainer) return;
+        
+        for (let i = 0; i < 30; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 10 + 's';
+            particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+            particlesContainer.appendChild(particle);
+        }
+    }
+    
     function showDetail(postcardId) {
         const postcard = postcardsData.find(p => p.id === postcardId);
+        if (!postcard) return;
+        
         currentIndex = postcardsData.findIndex(p => p.id === postcardId);
         currentView = 'front';
         
-        document.getElementById('img_popup_detail').src = postcard.grande_image;
-        document.getElementById('p_cp_popup_detail').textContent = postcard.title.replace(/\\/g, '"');
-        document.getElementById('p_nb_cp_popup_detail').textContent = postcard.number;
+        const imgUrl = postcard.grande_url || postcard.vignette_url;
+        document.getElementById('img_popup_detail').src = imgUrl;
+        document.getElementById('p_cp_popup_detail').textContent = postcard.title;
+        document.getElementById('p_nb_cp_popup_detail').textContent = 'N° ' + postcard.number;
         
         document.getElementById('fade').style.display = 'block';
         document.getElementById('popup_detail').style.display = 'block';
@@ -163,35 +210,27 @@
     
     function togglePostcardSide() {
         const postcard = postcardsData[currentIndex];
+        if (!postcard) return;
+        
         const img = document.getElementById('img_popup_detail');
         
-        if (currentView === 'front') {
-            img.src = postcard.dos_image;
+        if (currentView === 'front' && postcard.dos_url) {
+            img.src = postcard.dos_url;
             currentView = 'back';
         } else {
-            img.src = postcard.grande_image;
+            img.src = postcard.grande_url || postcard.vignette_url;
             currentView = 'front';
         }
     }
     
     function showZoom(postcardId) {
         const postcard = postcardsData.find(p => p.id === postcardId);
+        if (!postcard) return;
         
-        {% if user.is_authenticated and user.can_view_very_rare %}
-            document.getElementById('img_popup_zoom').src = postcard.zoom_image;
-            document.getElementById('fade').style.display = 'block';
-            document.getElementById('popup_zoom').style.display = 'block';
-            addZoomEffect();
-        {% else %}
-            if (postcard.rarity === 'very_rare') {
-                document.getElementById('fade').style.display = 'block';
-                document.getElementById('popup_non_membre').style.display = 'block';
-            } else {
-                document.getElementById('img_popup_zoom').src = postcard.zoom_image;
-                document.getElementById('fade').style.display = 'block';
-                document.getElementById('popup_zoom').style.display = 'block';
-            }
-        {% endif %}
+        const zoomUrl = postcard.zoom_url || postcard.grande_url || postcard.vignette_url;
+        document.getElementById('img_popup_zoom').src = zoomUrl;
+        document.getElementById('fade').style.display = 'block';
+        document.getElementById('popup_zoom').style.display = 'block';
     }
     
     function previousImage() {
@@ -210,10 +249,12 @@
     
     function updateDetailImage() {
         const postcard = postcardsData[currentIndex];
+        if (!postcard) return;
+        
         currentView = 'front';
-        document.getElementById('img_popup_detail').src = postcard.grande_image;
-        document.getElementById('p_cp_popup_detail').textContent = postcard.title.replace(/\\/g, '"');
-        document.getElementById('p_nb_cp_popup_detail').textContent = postcard.number;
+        document.getElementById('img_popup_detail').src = postcard.grande_url || postcard.vignette_url;
+        document.getElementById('p_cp_popup_detail').textContent = postcard.title;
+        document.getElementById('p_nb_cp_popup_detail').textContent = 'N° ' + postcard.number;
         updateNavigationArrows();
     }
     
@@ -226,11 +267,6 @@
         document.getElementById('fade').style.display = 'none';
         document.getElementById('popup_detail').style.display = 'none';
         document.getElementById('popup_zoom').style.display = 'none';
-        document.getElementById('popup_non_membre').style.display = 'none';
-        
-        if (typeof slideInterval !== 'undefined') {
-            clearInterval(slideInterval);
-        }
     }
     
     function searchTheme(theme) {
@@ -238,33 +274,384 @@
         document.getElementById('researchForm').submit();
     }
     
-    function addZoomEffect() {
-        const img = document.getElementById('img_popup_zoom');
-        let isZoomed = false;
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        const detailPopup = document.getElementById('popup_detail');
+        const zoomPopup = document.getElementById('popup_zoom');
         
-        img.onclick = function() {
-            if (isZoomed) {
-                img.style.transform = 'scale(1)';
-                img.style.cursor = 'zoom-in';
-            } else {
-                img.style.transform = 'scale(2)';
-                img.style.cursor = 'zoom-out';
-            }
-            isZoomed = !isZoomed;
-        };
-        
-        img.onmousemove = function(e) {
-            if (isZoomed) {
-                const rect = img.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                img.style.transformOrigin = `${x}% ${y}%`;
-            }
-        };
-    }
+        if (detailPopup && detailPopup.style.display === 'block') {
+            if (e.key === 'ArrowLeft') previousImage();
+            else if (e.key === 'ArrowRight') nextImage();
+            else if (e.key === 'Escape') closeAllPopups();
+        } else if (zoomPopup && zoomPopup.style.display === 'block') {
+            if (e.key === 'Escape') closeAllPopups();
+        }
+    });
 </script>
-{% endblock %}
 
-{% block extra_js %}
-<script src="{% static 'js/browse.js' %}"></script>
+<style>
+/* Water Words Container */
+.water-words-container {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    margin: 40px 0;
+    overflow: hidden;
+    background: linear-gradient(180deg, 
+        rgba(32, 32, 32, 0.3) 0%, 
+        rgba(181, 96, 11, 0.1) 50%, 
+        rgba(32, 32, 32, 0.3) 100%);
+    border-radius: 20px;
+}
+
+.water-particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(181, 96, 11, 0.4) 50%, transparent 70%);
+    border-radius: 50%;
+    animation: float-particle 15s infinite ease-in-out;
+}
+
+@keyframes float-particle {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.3;
+    }
+    25% {
+        transform: translate(100px, -50px) scale(1.5);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translate(50px, 50px) scale(1);
+        opacity: 0.5;
+    }
+    75% {
+        transform: translate(-50px, -30px) scale(1.2);
+        opacity: 0.7;
+    }
+}
+
+.water-word {
+    position: absolute;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 8px 16px;
+    background: rgba(181, 96, 11, 0.15);
+    border-radius: 20px;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+    transition: all 0.3s ease;
+    animation: 
+        water-float 8s infinite ease-in-out,
+        water-glow 4s infinite ease-in-out,
+        water-scale 6s infinite ease-in-out;
+    text-shadow: 0 0 10px rgba(181, 96, 11, 0.5);
+    white-space: nowrap;
+    z-index: 1;
+}
+
+.water-word:hover {
+    color: white !important;
+    background: rgba(181, 96, 11, 0.8) !important;
+    transform: scale(1.3) !important;
+    box-shadow: 
+        0 0 30px rgba(181, 96, 11, 0.8),
+        0 0 60px rgba(255, 215, 0, 0.4);
+    z-index: 10;
+    animation: none;
+}
+
+@keyframes water-float {
+    0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    20% {
+        transform: translate(15px, -20px) rotate(2deg);
+    }
+    40% {
+        transform: translate(-10px, 15px) rotate(-1deg);
+    }
+    60% {
+        transform: translate(20px, 10px) rotate(1deg);
+    }
+    80% {
+        transform: translate(-15px, -15px) rotate(-2deg);
+    }
+}
+
+@keyframes water-glow {
+    0%, 100% {
+        text-shadow: 0 0 10px rgba(181, 96, 11, 0.3);
+        opacity: 0.6;
+    }
+    50% {
+        text-shadow: 
+            0 0 20px rgba(181, 96, 11, 0.8),
+            0 0 40px rgba(255, 215, 0, 0.4);
+        opacity: 1;
+    }
+}
+
+@keyframes water-scale {
+    0%, 100% {
+        font-size: inherit;
+    }
+    50% {
+        font-size: calc(inherit * 1.1);
+    }
+}
+
+/* Postcards Grid */
+.postcards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.cp_result {
+    position: relative;
+}
+
+.cp_card {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #333;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s, box-shadow 0.3s;
+    aspect-ratio: 3/2;
+}
+
+.cp_card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
+}
+
+.cp_image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cp_overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.9));
+    padding: 40px 10px 10px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.cp_card:hover .cp_overlay {
+    opacity: 1;
+}
+
+.cp_actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.cp_btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.cp_detail {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.cp_zoom_btn {
+    background: rgba(181, 96, 11, 0.9);
+}
+
+.cp_btn:hover {
+    transform: scale(1.1);
+}
+
+.cp_btn img {
+    width: 20px;
+    height: 20px;
+}
+
+.cp_title {
+    color: white;
+    font-size: 12px;
+    text-align: center;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.no-results {
+    text-align: center;
+    padding: 50px;
+    color: white;
+}
+
+.no-results a {
+    color: #b5600b;
+}
+
+.browse-stats {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+}
+
+/* Popup styles */
+.black_overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+}
+
+.popup_detail, .popup_zoom {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.popup_close {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    z-index: 1002;
+}
+
+.close_icon {
+    width: 30px;
+    height: 30px;
+    background: #b5600b;
+    border-radius: 50%;
+    padding: 5px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.close_icon:hover {
+    transform: scale(1.1);
+}
+
+.img_popup_detail, .img_popup_zoom {
+    max-width: 80vw;
+    max-height: 75vh;
+    border-radius: 10px;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+}
+
+.reverse_cp {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    background: rgba(0,0,0,0.5);
+    border-radius: 50%;
+    padding: 5px;
+    z-index: 1002;
+    transition: transform 0.2s;
+}
+
+.reverse_cp:hover {
+    transform: scale(1.1);
+}
+
+.lat_arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 50px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 1002;
+}
+
+.lat_arrow:hover {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.lat_arrow_left {
+    left: -60px;
+}
+
+.lat_arrow_right {
+    right: -60px;
+}
+
+.cp_popup_detail {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    padding: 15px;
+    border-radius: 0 0 10px 10px;
+}
+
+.p_cp_popup_detail {
+    color: white;
+    margin: 0 0 5px 0;
+    font-size: 16px;
+}
+
+.p_nb_cp_popup_detail {
+    color: rgba(255,255,255,0.8);
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .postcards-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .water-words-container {
+        height: 300px;
+    }
+    
+    .lat_arrow_left {
+        left: 10px;
+    }
+    
+    .lat_arrow_right {
+        right: 10px;
+    }
+}
+</style>
 {% endblock %}

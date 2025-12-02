@@ -3,91 +3,414 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/gallery.css' %}">
-<style>
-    /* Override white background */
-    body {
-        background-color: #202020 !important;
-    }
-    .gallery-container {
-        background-color: transparent;
-    }
-</style>
 {% endblock %}
 
 {% block page_title %}La Galerie{% endblock %}
 
 {% block content %}
 <div class="gallery-container">
+    <!-- Header -->
     <div class="gallery-header">
         <h1 class="gallery-title">La Galerie</h1>
         <p class="gallery-subtitle">Découvrez notre collection de cartes postales anciennes</p>
     </div>
     
+    <!-- Filter buttons -->
     <div class="gallery-filters">
         <button class="filter-btn active" data-filter="all">Toutes</button>
         <button class="filter-btn" data-filter="common">Communes</button>
         <button class="filter-btn" data-filter="rare">Rares</button>
-        {% if user.is_authenticated and user.can_view_very_rare %}
         <button class="filter-btn" data-filter="very_rare">Très Rares</button>
-        {% endif %}
     </div>
     
+    <!-- Gallery Grid -->
     <div class="gallery-grid">
         {% for postcard in postcards %}
         <div class="gallery-item" data-rarity="{{ postcard.rarity }}">
-            <img src="{{ postcard.front_image.url }}" alt="{{ postcard.title }}">
+            <img src="{{ postcard.vignette_url }}" 
+                 alt="{{ postcard.title }}"
+                 onerror="this.parentElement.style.display='none'"
+                 loading="lazy">
             <div class="gallery-overlay">
                 <div class="gallery-info">
-                    <span class="gallery-number">{{ postcard.number }}</span>
-                    <p class="gallery-title-item">{{ postcard.title|truncatechars:50 }}</p>
+                    <span class="gallery-number">N° {{ postcard.number }}</span>
+                    <p class="gallery-title-item">{{ postcard.title|truncatechars:60 }}</p>
+                    <span class="gallery-rarity rarity-{{ postcard.rarity }}">
+                        {% if postcard.rarity == 'common' %}Commune
+                        {% elif postcard.rarity == 'rare' %}Rare
+                        {% else %}Très Rare{% endif %}
+                    </span>
+                </div>
+                <div class="gallery-actions">
+                    <button class="gallery-btn" onclick="openLightbox('{{ postcard.grande_url|default:postcard.vignette_url }}', '{{ postcard.title|escapejs }}')">
+                        <img src="{% static 'images/Eye_icon.png' %}" alt="Voir">
+                    </button>
                 </div>
             </div>
         </div>
+        {% empty %}
+        <div class="no-postcards">
+            <p>Aucune carte postale disponible pour le moment.</p>
+            <a href="{% url 'browse' %}">Parcourir la collection</a>
+        </div>
         {% endfor %}
     </div>
-</div>
-
-<div class="gallery-lightbox" id="lightbox">
-    <div class="lightbox-content">
-        <div class="lightbox-close" onclick="closeLightbox()"></div>
-        <img class="lightbox-img" id="lightbox-img" src="" alt="">
+    
+    <!-- Stats -->
+    <div class="gallery-stats">
+        <p>{{ postcards|length }} cartes postales affichées</p>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- Lightbox -->
+<div class="gallery-lightbox" id="lightbox">
+    <div class="lightbox-backdrop" onclick="closeLightbox()"></div>
+    <div class="lightbox-content">
+        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <img class="lightbox-img" id="lightbox-img" src="" alt="">
+        <p class="lightbox-title" id="lightbox-title"></p>
+    </div>
+</div>
+
 <script>
-    // Gallery filtering
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const filter = this.dataset.filter;
-            
-            // Update active button
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Filter items
-            document.querySelectorAll('.gallery-item').forEach(item => {
-                if (filter === 'all' || item.dataset.rarity === filter) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
+// Filter functionality
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const filter = this.dataset.filter;
+        
+        // Update active button
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter items
+        document.querySelectorAll('.gallery-item').forEach(item => {
+            if (filter === 'all' || item.dataset.rarity === filter) {
+                item.style.display = 'block';
+                item.style.animation = 'fadeIn 0.5s ease';
+            } else {
+                item.style.display = 'none';
+            }
         });
     });
-    
-    // Lightbox
-    document.querySelectorAll('.gallery-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const img = this.querySelector('img');
-            document.getElementById('lightbox-img').src = img.src;
-            document.getElementById('lightbox').classList.add('active');
-        });
-    });
-    
-    function closeLightbox() {
-        document.getElementById('lightbox').classList.remove('active');
+});
+
+// Lightbox functions
+function openLightbox(imgSrc, title) {
+    document.getElementById('lightbox-img').src = imgSrc;
+    document.getElementById('lightbox-title').textContent = title;
+    document.getElementById('lightbox').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Close lightbox on escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeLightbox();
     }
+});
 </script>
+
+<style>
+/* Gallery Page Styles */
+.gallery-container {
+    padding: 80px 20px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+.gallery-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.gallery-title {
+    font-size: 2.5em;
+    color: white;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.gallery-subtitle {
+    font-size: 1.2em;
+    color: #b5600b;
+}
+
+/* Filter buttons */
+.gallery-filters {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.filter-btn {
+    padding: 10px 25px;
+    background: rgba(181, 96, 11, 0.2);
+    color: white;
+    border: 1px solid #b5600b;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+    background: #b5600b;
+    transform: scale(1.05);
+}
+
+/* Gallery Grid - Masonry style */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.gallery-item {
+    position: relative;
+    border-radius: 15px;
+    overflow: hidden;
+    background: #1a1a1a;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+}
+
+.gallery-item:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 40px rgba(181, 96, 11, 0.4);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.5s;
+}
+
+.gallery-item:hover img {
+    transform: scale(1.1);
+}
+
+.gallery-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.95));
+    padding: 60px 15px 15px;
+    transform: translateY(100%);
+    transition: transform 0.3s;
+}
+
+.gallery-item:hover .gallery-overlay {
+    transform: translateY(0);
+}
+
+.gallery-info {
+    color: white;
+}
+
+.gallery-number {
+    display: inline-block;
+    padding: 3px 10px;
+    background: #b5600b;
+    border-radius: 15px;
+    font-size: 11px;
+    margin-bottom: 8px;
+}
+
+.gallery-title-item {
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 0 0 8px 0;
+}
+
+.gallery-rarity {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.rarity-common {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.rarity-rare {
+    background: rgba(181, 96, 11, 0.5);
+}
+
+.rarity-very_rare {
+    background: rgba(255, 215, 0, 0.5);
+    color: #ffd700;
+}
+
+.gallery-actions {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.gallery-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gallery-btn:hover {
+    transform: scale(1.1);
+    background: #b5600b;
+}
+
+.gallery-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+/* Lightbox */
+.gallery-lightbox {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+}
+
+.gallery-lightbox.active {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.lightbox-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+}
+
+.lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    z-index: 1;
+    text-align: center;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 40px;
+    height: 40px;
+    background: #b5600b;
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-close:hover {
+    transform: scale(1.1) rotate(90deg);
+}
+
+.lightbox-img {
+    max-width: 100%;
+    max-height: 80vh;
+    border-radius: 10px;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-title {
+    color: white;
+    margin-top: 15px;
+    font-size: 16px;
+}
+
+/* Stats */
+.gallery-stats {
+    text-align: center;
+    padding: 30px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+}
+
+/* No postcards message */
+.no-postcards {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 50px;
+    color: white;
+}
+
+.no-postcards a {
+    color: #b5600b;
+    text-decoration: none;
+}
+
+.no-postcards a:hover {
+    text-decoration: underline;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .gallery-title {
+        font-size: 1.8em;
+    }
+    
+    .lightbox-close {
+        top: 10px;
+        right: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .gallery-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 {% endblock %}
