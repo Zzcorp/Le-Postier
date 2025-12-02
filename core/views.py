@@ -10,6 +10,7 @@ from datetime import timedelta
 import traceback
 import json
 
+
 from .models import (
     CustomUser, Postcard, Theme, ContactMessage,
     SearchLog, PageView, UserActivity, SystemLog, IntroSeen
@@ -78,7 +79,20 @@ def decouvrir(request):
     except Exception as e:
         import traceback
         return HttpResponse(f"<h1>Découvrir Error</h1><pre>{traceback.format_exc()}</pre>")
-    
+
+
+@login_required
+def profile(request):
+    """User profile page"""
+    try:
+        context = {
+            'user': request.user,
+        }
+        return render(request, 'profile.html', context)
+    except Exception as e:
+        import traceback
+        return HttpResponse(f"<h1>Profile Error</h1><pre>{traceback.format_exc()}</pre>")
+
 
 def browse(request):
     """Browse page"""

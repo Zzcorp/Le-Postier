@@ -10,6 +10,7 @@ urlpatterns = [
     path('contact/', views.contact, name='contact'),
     path('inscription/', views.register, name='register'),
     path('connexion/', views.login_view, name='login'),
+    path('profil/', views.profile, name='profile'),
     path('logout/', views.logout_view, name='logout'),
 
     # Admin Dashboard

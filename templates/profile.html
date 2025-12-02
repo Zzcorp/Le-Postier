@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Mon Profil{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                <span>{{ user.username|slice:":1"|upper }}</span>
+            </div>
+            <h1>{{ user.username }}</h1>
+            <p class="profile-category">{{ user.get_category_display }}</p>
+        </div>
+        
+        <div class="profile-info">
+            <div class="info-row">
+                <span class="info-label">📧 Email</span>
+                <span class="info-value">{{ user.email|default:"Non renseigné" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📅 Inscrit le</span>
+                <span class="info-value">{{ user.date_joined|date:"d F Y" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">🔐 Email vérifié</span>
+                <span class="info-value">{{ user.email_verified|yesno:"Oui,Non" }}</span>
+            </div>
+            {% if user.last_login %}
+            <div class="info-row">
+                <span class="info-label">🕐 Dernière connexion</span>
+                <span class="info-value">{{ user.last_login|date:"d F Y à H:i" }}</span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="profile-permissions">
+            <h3>Vos permissions</h3>
+            <ul>
+                <li class="{% if user.can_view_rare %}granted{% else %}denied{% endif %}">
+                    {% if user.can_view_rare %}✅{% else %}❌{% endif %}
+                    Voir les cartes rares
+                </li>
+                <li class="{% if user.can_view_very_rare %}granted{% else %}denied{% endif %}">
+                    {% if user.can_view_very_rare %}✅{% else %}❌{% endif %}
+                    Voir les cartes très rares
+                </li>
+                <li class="{% if user.is_staff %}granted{% else %}denied{% endif %}">
+                    {% if user.is_staff %}✅{% else %}❌{% endif %}
+                    Accès administrateur
+                </li>
+            </ul>
+        </div>
+        
+        <div class="profile-actions">
+            <a href="{% url 'browse' %}" class="btn btn-primary">🔍 Explorer la collection</a>
+            <a href="{% url 'logout' %}" class="btn btn-danger">🚪 Se déconnecter</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.profile-container {
+    min-height: 100vh;
+    padding: 100px 20px 50px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.profile-card {
+    background: linear-gradient(135deg, #1a1a1a, #252525);
+    border-radius: 24px;
+    padding: 40px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 2.5rem;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 10px 30px rgba(181, 96, 11, 0.4);
+}
+
+.profile-header h1 {
+    color: white;
+    margin: 0 0 10px 0;
+    font-size: 1.8rem;
+}
+
+.profile-category {
+    color: #b5600b;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.profile-info {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.info-value {
+    color: white;
+    font-weight: 500;
+}
+
+.profile-permissions {
+    margin-bottom: 25px;
+}
+
+.profile-permissions h3 {
+    color: #b5600b;
+    margin: 0 0 15px 0;
+    font-size: 1.1rem;
+}
+
+.profile-permissions ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.profile-permissions li {
+    padding: 10px 15px;
+    margin: 5px 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-permissions li.granted {
+    color: #4ade80;
+}
+
+.profile-permissions li.denied {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.profile-actions {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    flex: 1;
+    min-width: 150px;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(181, 96, 11, 0.4);
+}
+
+.btn-danger {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.btn-danger:hover {
+    background: rgba(255, 107, 107, 0.3);
+    transform: translateY(-3px);
+}
+
+@media (max-width: 480px) {
+    .profile-card {
+        padding: 25px;
+    }
+    
+    .profile-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

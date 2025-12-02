@@ -1,37 +1,62 @@
 {% load static %}
 
-<!-- Mobile Menu Dropdown -->
-<div id="menu_wrapper" class="menu_wrapper">
-    <div id="triangle_1" class="triangle_1"></div>
-    <nav class="mobile-nav">
-        <a href="{% url 'home' %}">Accueil</a>
-        <a href="{% url 'decouvrir' %}">Découvrir</a>
-        <a href="{% url 'presentation' %}">Présentation</a>
-        <a href="{% url 'browse' %}">Rechercher</a>
-        <a href="{% url 'contact' %}">Contact</a>
-        {% if user.is_staff %}
-        <a href="{% url 'admin_dashboard' %}">Admin</a>
-        {% endif %}
-    </nav>
-</div>
-
 <!-- Connection Dropdown -->
 <div id="conn_wrapper" class="conn_wrapper">
     <div id="triangle" class="triangle"></div>
     <div class="conn-content">
         {% if user.is_authenticated %}
-        <p class="conn-user">👤 {{ user.username }}</p>
-        <p class="conn-category">{{ user.get_category_display }}</p>
-        <hr>
+        <div class="conn-user-info">
+            <span class="conn-avatar">👤</span>
+            <div>
+                <p class="conn-username">{{ user.username }}</p>
+                <p class="conn-category">{{ user.get_category_display }}</p>
+            </div>
+        </div>
+        <hr class="conn-divider">
+        <a href="{% url 'profile' %}" class="conn-link">
+            <span>👤</span> Mon Profil
+        </a>
         {% if user.is_staff %}
-        <a href="{% url 'admin_dashboard' %}">📊 Tableau de bord</a>
+        <a href="{% url 'admin_dashboard' %}" class="conn-link">
+            <span>📊</span> Tableau de bord
+        </a>
         {% endif %}
-        <a href="{% url 'logout' %}">🚪 Déconnexion</a>
+        <a href="{% url 'logout' %}" class="conn-link conn-logout">
+            <span>🚪</span> Déconnexion
+        </a>
         {% else %}
-        <a href="{% url 'login' %}">🔑 Connexion</a>
-        <a href="{% url 'register' %}">📝 Inscription</a>
+        <a href="{% url 'login' %}" class="conn-link">
+            <span>🔑</span> Connexion
+        </a>
+        <a href="{% url 'register' %}" class="conn-link">
+            <span>📝</span> S'inscrire
+        </a>
         {% endif %}
     </div>
+</div>
+
+<!-- Mobile Menu Dropdown -->
+<div id="menu_wrapper" class="menu_wrapper">
+    <div id="triangle_1" class="triangle_1"></div>
+    <nav class="mobile-nav">
+        <a href="{% url 'home' %}" class="mobile-link">🏠 Accueil</a>
+        <a href="{% url 'decouvrir' %}" class="mobile-link">🎨 Découvrir</a>
+        <a href="{% url 'presentation' %}" class="mobile-link">📖 Présentation</a>
+        <a href="{% url 'browse' %}" class="mobile-link">🔍 Rechercher</a>
+        <a href="{% url 'contact' %}" class="mobile-link">✉️ Contact</a>
+        {% if user.is_authenticated %}
+        <hr class="mobile-divider">
+        <a href="{% url 'profile' %}" class="mobile-link">👤 Mon Profil</a>
+        {% if user.is_staff %}
+        <a href="{% url 'admin_dashboard' %}" class="mobile-link">📊 Admin</a>
+        {% endif %}
+        <a href="{% url 'logout' %}" class="mobile-link mobile-logout">🚪 Déconnexion</a>
+        {% else %}
+        <hr class="mobile-divider">
+        <a href="{% url 'login' %}" class="mobile-link">🔑 Connexion</a>
+        <a href="{% url 'register' %}" class="mobile-link">📝 S'inscrire</a>
+        {% endif %}
+    </nav>
 </div>
 
 <!-- Main Navigation Bar -->
@@ -60,18 +85,24 @@
                 </a>
             </li>
             <li>
-                <a href="javascript:void(0)" class="nav-link nav-icon" title="{% if user.is_authenticated %}Mon compte{% else %}Connexion{% endif %}" onclick="toggleConnDropdown()">
+                <a href="javascript:void(0)" class="nav-link nav-icon nav-account" title="{% if user.is_authenticated %}Mon compte{% else %}Connexion{% endif %}" onclick="toggleConnDropdown()">
                     <img src="{% static 'images/Connect_Icone.png' %}" alt="Compte">
+                    {% if user.is_authenticated %}
+                    <span class="nav-account-dot"></span>
+                    {% endif %}
                 </a>
             </li>
         </ul>
         
         <!-- Mobile Menu Button -->
         <div class="nav-mobile">
-            <a href="javascript:void(0)" class="nav-icon" onclick="toggleConnDropdown()">
+            <a href="javascript:void(0)" class="nav-icon nav-account" onclick="toggleConnDropdown()">
                 <img src="{% static 'images/Connect_Icone.png' %}" alt="Compte">
+                {% if user.is_authenticated %}
+                <span class="nav-account-dot"></span>
+                {% endif %}
             </a>
-            <button class="burger-btn" onclick="toggleMobileMenu()">
+            <button class="burger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -84,29 +115,27 @@
 function toggleMobileMenu() {
     const menu = document.getElementById('menu_wrapper');
     const burger = document.querySelector('.burger-btn');
+    const conn = document.getElementById('conn_wrapper');
     
-    if (menu.classList.contains('active')) {
-        menu.classList.remove('active');
-        burger.classList.remove('active');
-    } else {
-        menu.classList.add('active');
-        burger.classList.add('active');
-        // Close connection dropdown if open
-        document.getElementById('conn_wrapper').classList.remove('active');
-    }
+    // Close connection dropdown
+    conn.classList.remove('active');
+    
+    // Toggle mobile menu
+    menu.classList.toggle('active');
+    burger.classList.toggle('active');
 }
 
 function toggleConnDropdown() {
     const conn = document.getElementById('conn_wrapper');
+    const menu = document.getElementById('menu_wrapper');
+    const burger = document.querySelector('.burger-btn');
     
-    if (conn.classList.contains('active')) {
-        conn.classList.remove('active');
-    } else {
-        conn.classList.add('active');
-        // Close mobile menu if open
-        document.getElementById('menu_wrapper').classList.remove('active');
-        document.querySelector('.burger-btn').classList.remove('active');
-    }
+    // Close mobile menu
+    menu.classList.remove('active');
+    burger.classList.remove('active');
+    
+    // Toggle connection dropdown
+    conn.classList.toggle('active');
 }
 
 // Close dropdowns when clicking outside
@@ -115,15 +144,27 @@ document.addEventListener('click', function(e) {
     const menu = document.getElementById('menu_wrapper');
     const burger = document.querySelector('.burger-btn');
     
+    // Check if click is outside connection dropdown
     if (!e.target.closest('.conn_wrapper') && 
+        !e.target.closest('.nav-account') &&
         !e.target.closest('[onclick*="toggleConnDropdown"]')) {
         conn.classList.remove('active');
     }
     
+    // Check if click is outside mobile menu
     if (!e.target.closest('.menu_wrapper') && 
         !e.target.closest('.burger-btn')) {
         menu.classList.remove('active');
         burger.classList.remove('active');
+    }
+});
+
+// Close on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.getElementById('conn_wrapper').classList.remove('active');
+        document.getElementById('menu_wrapper').classList.remove('active');
+        document.querySelector('.burger-btn').classList.remove('active');
     }
 });
 </script>
@@ -139,7 +180,7 @@ document.addEventListener('click', function(e) {
     left: 0;
     right: 0;
     z-index: 1000;
-    background: linear-gradient(135deg, rgba(181, 96, 11, 0.95), rgba(209, 135, 44, 0.95));
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.97), rgba(209, 135, 44, 0.97));
     backdrop-filter: blur(10px);
     box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
 }
@@ -194,6 +235,7 @@ document.addEventListener('click', function(e) {
 
 .nav-icon {
     padding: 8px 12px;
+    position: relative;
 }
 
 .nav-icon img {
@@ -205,6 +247,28 @@ document.addEventListener('click', function(e) {
 
 .nav-icon:hover img {
     transform: scale(1.15);
+}
+
+/* Account indicator dot */
+.nav-account {
+    position: relative;
+}
+
+.nav-account-dot {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    width: 10px;
+    height: 10px;
+    background: #4ade80;
+    border-radius: 50%;
+    border: 2px solid rgba(181, 96, 11, 0.9);
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
 }
 
 /* Mobile */
@@ -232,6 +296,7 @@ document.addEventListener('click', function(e) {
     background: white;
     border-radius: 2px;
     transition: all 0.3s ease;
+    transform-origin: center;
 }
 
 .burger-btn.active span:nth-child(1) {
@@ -240,139 +305,209 @@ document.addEventListener('click', function(e) {
 
 .burger-btn.active span:nth-child(2) {
     opacity: 0;
+    transform: scaleX(0);
 }
 
 .burger-btn.active span:nth-child(3) {
     transform: translateY(-8.5px) rotate(-45deg);
 }
 
-/* Mobile Menu Dropdown */
-.menu_wrapper {
-    position: fixed;
-    top: 55px;
-    right: 10px;
-    width: 220px;
-    background: #202020;
-    border-radius: 15px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(181, 96, 11, 0.3);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.3s ease;
-    z-index: 1001;
-}
+/* ========================================
+   CONNECTION DROPDOWN
+   ======================================== */
 
-.menu_wrapper.active {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.triangle_1 {
-    position: absolute;
-    top: -10px;
-    right: 20px;
-    width: 0;
-    height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-bottom: 10px solid #202020;
-}
-
-.mobile-nav {
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
-}
-
-.mobile-nav a {
-    color: white;
-    text-decoration: none;
-    padding: 12px 15px;
-    border-radius: 10px;
-    transition: all 0.3s ease;
-    font-size: 0.95rem;
-}
-
-.mobile-nav a:hover {
-    background: rgba(181, 96, 11, 0.3);
-    color: #d1872c;
-}
-
-/* Connection Dropdown */
 .conn_wrapper {
     position: fixed;
-    top: 55px;
-    right: 10px;
-    width: 200px;
-    background: #202020;
-    border-radius: 15px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(181, 96, 11, 0.3);
+    top: 60px;
+    right: 15px;
+    width: 240px;
+    background: linear-gradient(135deg, #1a1a1a, #252525);
+    border-radius: 16px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(181, 96, 11, 0.4);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.3s ease;
+    transform: translateY(-15px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1002;
+    overflow: hidden;
 }
 
 .conn_wrapper.active {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .triangle {
     position: absolute;
-    top: -10px;
-    right: 15px;
+    top: -8px;
+    right: 20px;
     width: 0;
     height: 0;
     border-left: 10px solid transparent;
     border-right: 10px solid transparent;
-    border-bottom: 10px solid #202020;
+    border-bottom: 8px solid #1a1a1a;
 }
 
 .conn-content {
     padding: 15px;
 }
 
-.conn-user {
+/* User info section */
+.conn-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: rgba(181, 96, 11, 0.15);
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+
+.conn-avatar {
+    font-size: 2rem;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-radius: 50%;
+}
+
+.conn-username {
     color: white;
     font-weight: 600;
-    margin: 0 0 5px 0;
+    margin: 0;
     font-size: 1rem;
 }
 
 .conn-category {
     color: #b5600b;
-    font-size: 0.85rem;
-    margin: 0 0 10px 0;
+    font-size: 0.8rem;
+    margin: 0;
 }
 
-.conn-content hr {
+.conn-divider {
     border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    margin: 10px 0;
+    margin: 12px 0;
 }
 
-.conn-content a {
-    display: block;
-    color: white;
+/* Links */
+.conn-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.9);
     text-decoration: none;
-    padding: 10px 12px;
-    border-radius: 8px;
+    padding: 12px 15px;
+    border-radius: 10px;
     transition: all 0.3s ease;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    margin: 4px 0;
 }
 
-.conn-content a:hover {
+.conn-link span {
+    font-size: 1.1rem;
+}
+
+.conn-link:hover {
     background: rgba(181, 96, 11, 0.3);
-    color: #d1872c;
+    color: white;
+    transform: translateX(5px);
 }
 
-/* Responsive */
+.conn-logout {
+    color: #ff6b6b;
+}
+
+.conn-logout:hover {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+/* ========================================
+   MOBILE MENU DROPDOWN
+   ======================================== */
+
+.menu_wrapper {
+    position: fixed;
+    top: 60px;
+    right: 15px;
+    width: 260px;
+    background: linear-gradient(135deg, #1a1a1a, #252525);
+    border-radius: 16px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(181, 96, 11, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-15px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1001;
+    overflow: hidden;
+}
+
+.menu_wrapper.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.triangle_1 {
+    position: absolute;
+    top: -8px;
+    right: 25px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 8px solid #1a1a1a;
+}
+
+.mobile-nav {
+    padding: 15px;
+}
+
+.mobile-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    padding: 14px 15px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    margin: 3px 0;
+}
+
+.mobile-link:hover {
+    background: rgba(181, 96, 11, 0.3);
+    color: white;
+    transform: translateX(5px);
+}
+
+.mobile-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 12px 0;
+}
+
+.mobile-logout {
+    color: #ff6b6b;
+}
+
+.mobile-logout:hover {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
 @media (max-width: 900px) {
     .nav-menu {
         display: none;
@@ -385,14 +520,19 @@ document.addEventListener('click', function(e) {
 
 @media (max-width: 480px) {
     .brand-text {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
     }
     
     .menu_wrapper,
     .conn_wrapper {
-        width: calc(100% - 20px);
-        right: 10px;
-        left: 10px;
+        width: calc(100% - 30px);
+        right: 15px;
+        left: 15px;
+    }
+    
+    .triangle,
+    .triangle_1 {
+        right: 50px;
     }
 }
 </style>
