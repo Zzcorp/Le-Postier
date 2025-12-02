@@ -47,16 +47,12 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    # 'corsheaders.middleware.CorsMiddleware',  # REMOVED
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Remove this line if it exists:
-    # 'core.middleware.ActivityTrackingMiddleware',
+    # REMOVE ALL CUSTOM MIDDLEWARE
 ]
 
 ROOT_URLCONF = 'le_postier.urls'
@@ -152,9 +148,6 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Security Settings for Production
-SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
@@ -168,10 +161,15 @@ CORS_ALLOWED_ORIGINS = [
     "https://le-postier.onrender.com",
 ]
 
-# Login settings
-LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'browse'
-LOGOUT_REDIRECT_URL = 'home'
+# DISABLE ALL REDIRECTS
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
+# NO LOGIN REDIRECTS
+LOGIN_URL = None
+LOGIN_REDIRECT_URL = None
+LOGOUT_REDIRECT_URL = None
 
 # Logging
 LOGGING = {

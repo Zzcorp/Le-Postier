@@ -18,11 +18,76 @@ from .forms import ContactForm, SimpleRegistrationForm
 from django.http import JsonResponse
 from django.contrib.auth import logout
 
+from django.shortcuts import render
+from django.http import HttpResponse
+
+
+def home(request):
+    """Home page view - NO REDIRECTS"""
+    # REMOVE ANY REDIRECT LOGIC
+    try:
+        return render(request, 'home.html')
+    except:
+        # If template fails, return simple response
+        return HttpResponse("Le Postier - Home Page")
+
+
+def browse(request):
+    """Browse page"""
+    try:
+        return render(request, 'browse.html')
+    except:
+        return HttpResponse("Browse Page")
+
+
+def gallery(request):
+    """Gallery page"""
+    try:
+        return render(request, 'gallery.html')
+    except:
+        return HttpResponse("Gallery Page")
+
+
+def presentation(request):
+    """Presentation page"""
+    try:
+        return render(request, 'presentation.html')
+    except:
+        return HttpResponse("Presentation Page")
+
+
+def contact(request):
+    """Contact page"""
+    try:
+        return render(request, 'contact.html')
+    except:
+        return HttpResponse("Contact Page")
+
+
+def register(request):
+    """Register page"""
+    return HttpResponse("Register Page")
+
+
+def login_view(request):
+    """Login page"""
+    return HttpResponse("Login Page")
+
+
+# Remove these functions or make them return False:
+def check_intro_needed(request):
+    return False  # NEVER redirect to intro
+
+
+def intro_view(request):
+    return HttpResponse("Intro disabled")
+
 
 def logout_view(request):
     """Logout view"""
     logout(request)
     return redirect('home')
+
 
 def health_check(request):
     """Health check endpoint for Render"""
@@ -31,47 +96,6 @@ def health_check(request):
         'service': 'le-postier',
         'timestamp': timezone.now().isoformat()
     })
-
-
-def check_intro_needed(request):
-    """Check if intro animation should be shown"""
-    # Disable for now to avoid redirect loops
-    return False
-
-    # Original code (re-enable later):
-    # session_key = request.session.session_key
-    # if not session_key:
-    #     request.session.create()
-    #     session_key = request.session.session_key
-    #
-    # today = timezone.now().date()
-    #
-    # if request.user.is_authenticated:
-    #     if hasattr(request.user, 'last_visit_date') and request.user.last_visit_date != today:
-    #         request.user.last_visit_date = today
-    #         request.user.save(update_fields=['last_visit_date'])
-    #         return True
-    #
-    # return False
-
-
-def intro_view(request):
-    """Show intro animation"""
-    # Determine where to redirect after intro
-    next_url = request.GET.get('next', '/')
-
-    context = {
-        'redirect_url': next_url
-    }
-    return render(request, 'intro.html', context)
-
-
-def home(request):
-    # Temporarily disable intro redirect to avoid loops
-    # if check_intro_needed(request):
-    #     return redirect('intro')
-
-    return render(request, 'home.html')
 
 
 def log_page_view(request, page_name):
@@ -89,54 +113,6 @@ def log_page_view(request, page_name):
         user_agent=request.META.get('HTTP_USER_AGENT', ''),
         session_key=request.session.session_key or ''
     )
-
-
-def browse(request):
-    """Browse page with search functionality"""
-    log_page_view(request, 'Parcourir')
-
-    query = request.GET.get('keywords_input', '').strip()
-    postcards = Postcard.objects.all()
-    themes = Theme.objects.all().prefetch_related('postcards')
-
-    # Filter based on user permissions
-    if not request.user.is_authenticated:
-        postcards = postcards.exclude(rarity='very_rare')
-    elif request.user.is_authenticated and not request.user.can_view_very_rare():
-        postcards = postcards.exclude(rarity='very_rare')
-
-    if query:
-        # Search in title, description, and keywords
-        postcards = postcards.filter(
-            Q(title__icontains=query) |
-            Q(description__icontains=query) |
-            Q(keywords__icontains=query)
-        )
-
-        # Log the search
-        ip_address = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
-        SearchLog.objects.create(
-            keyword=query,
-            results_count=postcards.count(),
-            user=request.user if request.user.is_authenticated else None,
-            ip_address=ip_address
-        )
-
-    # Exclude very rare postcards for non-members in slideshow
-    if request.user.is_authenticated and request.user.can_view_very_rare():
-        slideshow_postcards = postcards
-    else:
-        slideshow_postcards = postcards.exclude(rarity='very_rare')
-
-    context = {
-        'postcards': postcards[:50],  # Limit to 50 for performance
-        'slideshow_postcards': slideshow_postcards[:20],  # Limit slideshow
-        'themes': themes,
-        'query': query,
-        'total_count': postcards.count(),
-    }
-
-    return render(request, 'browse.html', context)
 
 
 def get_postcard_detail(request, postcard_id):
@@ -207,126 +183,6 @@ def zoom_postcard(request, postcard_id):
     }
 
     return JsonResponse(data)
-
-
-def gallery(request):
-    """Gallery page - découvrir"""
-    log_page_view(request, 'Galerie')
-
-    # Get postcards based on user permissions
-    postcards = Postcard.objects.all()
-
-    if not request.user.is_authenticated:
-        postcards = postcards.exclude(rarity='very_rare')
-    elif not request.user.can_view_very_rare():
-        postcards = postcards.exclude(rarity='very_rare')
-
-    # Get featured or random selection
-    featured_postcards = postcards.order_by('?')[:20]
-
-    context = {
-        'postcards': featured_postcards,
-    }
-
-    return render(request, 'gallery.html', context)
-
-
-def presentation(request):
-    """Presentation page"""
-    log_page_view(request, 'Présentation')
-    return render(request, 'presentation.html')
-
-
-def contact(request):
-    """Contact page"""
-    log_page_view(request, 'Contact')
-
-    if request.method == 'POST':
-        form = ContactForm(request.POST)
-        if form.is_valid():
-            contact_message = form.save(commit=False)
-
-            # Get IP address
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                contact_message.ip_address = x_forwarded_for.split(',')[0]
-            else:
-                contact_message.ip_address = request.META.get('REMOTE_ADDR')
-
-            if request.user.is_authenticated:
-                contact_message.user = request.user
-                UserActivity.objects.create(
-                    user=request.user,
-                    action='contact',
-                    details='Sent contact message',
-                    ip_address=contact_message.ip_address
-                )
-
-            contact_message.save()
-
-            messages.success(request, 'Carte envoyée avec succès!')
-            return redirect('contact')
-    else:
-        form = ContactForm()
-
-    return render(request, 'contact.html', {'form': form})
-
-
-def register(request):
-    """Simple registration - only username and email"""
-    if request.user.is_authenticated:
-        return redirect('browse')
-
-    if request.method == 'POST':
-        form = SimpleRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-
-            UserActivity.objects.create(
-                user=user,
-                action='register',
-                details='New registration',
-                ip_address=request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
-            )
-
-            messages.success(
-                request,
-                'Inscription réussie! Un email vous a été envoyé pour vous connecter.'
-            )
-            return redirect('home')
-    else:
-        form = SimpleRegistrationForm()
-
-    return render(request, 'register.html', {'form': form})
-
-
-def login_view(request):
-    """Custom login view"""
-    if request.user.is_authenticated:
-        return redirect('browse')
-
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            login(request, user)
-
-            # Log activity
-            UserActivity.objects.create(
-                user=user,
-                action='login',
-                details='User logged in',
-                ip_address=request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
-            )
-
-            messages.success(request, f'Bienvenue {user.username}!')
-            return redirect('browse')
-        else:
-            messages.error(request, 'Nom d\'utilisateur ou mot de passe incorrect.')
-
-    return render(request, 'login.html')
 
 
 @user_passes_test(lambda u: u.is_staff)
