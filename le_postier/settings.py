@@ -153,8 +153,6 @@ CORS_ALLOWED_ORIGINS = [
 
 # IMPORTANT: NO REDIRECTS AT ALL
 SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
 SECURE_BROWSER_XSS_FILTER = False
 SECURE_CONTENT_TYPE_NOSNIFF = False
 X_FRAME_OPTIONS = 'SAMEORIGIN'
@@ -168,12 +166,6 @@ LOGOUT_REDIRECT_URL = '/'
 SECURE_HSTS_SECONDS = 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
-
-# CSRF settings
-CSRF_TRUSTED_ORIGINS = [
-    'http://*',
-    'https://*',
-]
 
 # Logging to see what's happening
 LOGGING = {
@@ -195,3 +187,20 @@ FTP_HOST = 'ftp.cluster010.hosting.ovh.net'
 FTP_USER = 'samathey'
 FTP_PASSWORD = 'qaszSZDE123'  # In production, use environment variable!
 FTP_IMAGE_PATH = 'www/collection_cp/cartes'  # Adjust after exploring
+
+# CSRF Settings - IMPORTANT FOR LOGIN
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.onrender.com',
+    'https://*.samathey.fr',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+# If you're having issues, also add:
+CSRF_COOKIE_SECURE = False  # Set to True only if using HTTPS everywhere
+CSRF_COOKIE_HTTPONLY = False
+CSRF_USE_SESSIONS = False
+
+# Session settings
+SESSION_COOKIE_SECURE = False  # Set to True only if using HTTPS everywhere
+SESSION_COOKIE_HTTPONLY = True

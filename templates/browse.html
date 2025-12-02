@@ -5,109 +5,117 @@
 {% block page_title %}Rechercher{% endblock %}
 
 {% block content %}
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-content">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+        </div>
+        <p class="loading-text">Chargement de la collection...</p>
+        <div class="loading-progress">
+            <div class="loading-bar" id="loading-bar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- River Background Animation - Full Page -->
+<div class="river-background" id="river-background">
+    <div class="river-gradient"></div>
+    <div class="river-waves">
+        <svg class="wave" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L0,320Z"></path>
+        </svg>
+        <svg class="wave wave-2" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path d="M0,64L48,96C96,128,192,192,288,202.7C384,213,480,171,576,149.3C672,128,768,128,864,149.3C960,171,1056,213,1152,218.7C1248,224,1344,192,1392,176L1440,160L1440,320L0,320Z"></path>
+        </svg>
+    </div>
+    <div class="river-particles" id="river-particles"></div>
+    <div class="river-lights" id="river-lights"></div>
+</div>
+
 <div class="browse-page">
     <!-- Search Section -->
     <div class="search-section">
-        <form id="researchForm" class="search-form" method="get">
+        <form id="researchForm" class="search-form" method="get" action="{% url 'browse' %}">
             <div class="search-box">
-                <input type="text" name="keywords_input" id="keywords_input" 
+                <input type="text" 
+                       name="keywords_input" 
+                       id="keywords_input" 
                        value="{{ query|default:'' }}" 
-                       placeholder="Rechercher dans la collection...">
-                <button type="submit">
-                    <img src="{% static 'images/Loupe_icone.png' %}" alt="Rechercher">
+                       placeholder="Rechercher dans la collection..."
+                       autocomplete="off">
+                <button type="submit" aria-label="Rechercher">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
                 </button>
             </div>
         </form>
         
         {% if query %}
-        <p class="search-results-text">{{ total_count }} résultat{{ total_count|pluralize }} pour "{{ query }}"</p>
+        <p class="search-results-text">
+            <span class="result-count">{{ total_count }}</span> résultat{{ total_count|pluralize }} pour "<span class="result-query">{{ query }}</span>"
+        </p>
         {% endif %}
     </div>
 
-    <!-- Popups -->
-    <div id="fade" class="overlay" onclick="closeAllPopups()"></div>
-    
-    <div id="popup_detail" class="popup">
-        <button class="popup-close" onclick="closeAllPopups()">×</button>
-        <img id="reverse_cp" class="popup-flip" src="{% static 'images/Verso.png' %}" onclick="togglePostcardSide();" title="Voir le verso">
-        <img id="lat_arrow_0" class="popup-arrow popup-arrow-left" src="{% static 'images/fleche-laterale-1.png' %}" onclick="previousImage();">
-        <img id="img_popup_detail" class="popup-image" src="" alt="">
-        <img id="lat_arrow_1" class="popup-arrow popup-arrow-right" src="{% static 'images/fleche-laterale.png' %}" onclick="nextImage();">
-        <div class="popup-info">
-            <p id="p_cp_popup_detail" class="popup-title"></p>
-            <p id="p_nb_cp_popup_detail" class="popup-number"></p>
-        </div>
-    </div>
-    
-    <div id="popup_zoom" class="popup popup-zoom">
-        <button class="popup-close" onclick="closeAllPopups()">×</button>
-        <img id="img_popup_zoom" class="popup-image-zoom" src="" alt="">
-    </div>
-
-    <!-- River Animation - Only without search -->
+    <!-- Floating Words Section -->
     {% if not query %}
-    <div class="river-scene" id="river-scene">
-        <!-- Gradient water background -->
-        <div class="water-gradient"></div>
-        
-        <!-- Animated wave layers -->
-        <div class="wave-container">
-            <svg class="wave wave-1" viewBox="0 0 1440 320" preserveAspectRatio="none">
-                <path fill="rgba(181, 96, 11, 0.1)" d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-            </svg>
-            <svg class="wave wave-2" viewBox="0 0 1440 320" preserveAspectRatio="none">
-                <path fill="rgba(209, 135, 44, 0.08)" d="M0,64L48,96C96,128,192,192,288,202.7C384,213,480,171,576,149.3C672,128,768,128,864,149.3C960,171,1056,213,1152,218.7C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-            </svg>
-            <svg class="wave wave-3" viewBox="0 0 1440 320" preserveAspectRatio="none">
-                <path fill="rgba(255, 200, 100, 0.05)" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,218.7C672,235,768,245,864,234.7C960,224,1056,192,1152,181.3C1248,171,1344,181,1392,186.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-            </svg>
-        </div>
-        
-        <!-- Light reflections -->
-        <div class="light-reflections">
-            <div class="light-reflection"></div>
-            <div class="light-reflection"></div>
-            <div class="light-reflection"></div>
-            <div class="light-reflection"></div>
-            <div class="light-reflection"></div>
-        </div>
-        
-        <!-- Floating particles container -->
-        <div class="particles-container" id="particles-container"></div>
-        
-        <!-- Floating words container -->
+    <div class="floating-words-section" id="floating-words-section">
         <div class="words-container" id="words-container"></div>
-        
-        <!-- Instruction -->
-        <div class="river-instruction">
-            <p>✨ Cliquez sur un mot pour explorer la collection ✨</p>
+        <div class="section-hint">
+            <p>✨ Cliquez sur un mot pour explorer ✨</p>
         </div>
     </div>
     {% endif %}
 
     <!-- Results Grid -->
-    <div class="results-section">
+    <div class="results-section" id="results-section">
         {% if postcards %}
-        <div class="postcards-grid">
+        <div class="postcards-grid" id="postcards-grid">
             {% for postcard in postcards %}
-            <div class="postcard-card" data-id="{{ postcard.id }}">
-                {% if postcard.vignette_url %}
-                <img src="{{ postcard.vignette_url }}" 
-                     alt="{{ postcard.title }}" 
-                     loading="lazy" 
-                     onerror="this.onerror=null; this.src='{% static 'images/placeholder.jpg' %}'; this.parentElement.classList.add('img-error');">
-                {% else %}
-                <div class="no-image-placeholder">
-                    <span>📷</span>
-                    <p>Image non disponible</p>
-                </div>
-                {% endif %}
-                <div class="postcard-overlay">
-                    <div class="postcard-actions">
-                        <button onclick="showDetail({{ postcard.id }})" title="Voir">👁️</button>
-                        <button onclick="showZoom({{ postcard.id }})" title="Zoom">🔍</button>
+            <div class="postcard-card" 
+                 data-id="{{ postcard.id }}"
+                 data-number="{{ postcard.number }}"
+                 style="animation-delay: {{ forloop.counter0|divisibleby:1 }}ms">
+                <div class="card-image-wrapper">
+                    {% if postcard.vignette_url %}
+                    <img class="card-image" 
+                         data-src="{{ postcard.vignette_url }}" 
+                         alt="{{ postcard.title }}"
+                         loading="lazy">
+                    <div class="card-placeholder">
+                        <div class="placeholder-spinner"></div>
                     </div>
-                    <p class="postcard-title">{{ postcard.title|truncatechars:45 }}</p>
+                    {% else %}
+                    <div class="card-no-image">
+                        <span>📷</span>
+                        <p>Image non disponible</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-overlay">
+                    <div class="card-actions">
+                        <button class="action-btn" onclick="showDetail({{ postcard.id }})" title="Voir détails">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                        <button class="action-btn" onclick="showZoom({{ postcard.id }})" title="Zoom">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                                <path d="M11 8v6"></path>
+                                <path d="M8 11h6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="card-title">{{ postcard.title|truncatechars:50 }}</p>
+                    <span class="card-number">N° {{ postcard.number }}</span>
                 </div>
             </div>
             {% endfor %}
@@ -115,8 +123,16 @@
         {% else %}
         {% if query %}
         <div class="no-results">
-            <p>Aucun résultat pour "{{ query }}"</p>
-            <a href="{% url 'browse' %}">← Voir toute la collection</a>
+            <div class="no-results-icon">🔍</div>
+            <h3>Aucun résultat trouvé</h3>
+            <p>Aucune carte postale ne correspond à "<strong>{{ query }}</strong>"</p>
+            <a href="{% url 'browse' %}" class="btn-back">← Voir toute la collection</a>
+        </div>
+        {% else %}
+        <div class="empty-collection">
+            <div class="empty-icon">📭</div>
+            <h3>Collection en cours de chargement</h3>
+            <p>Les cartes postales arrivent bientôt...</p>
         </div>
         {% endif %}
         {% endif %}
@@ -127,9 +143,62 @@
     </div>
 </div>
 
+<!-- Detail Popup -->
+<div class="popup-overlay" id="popup-overlay" onclick="closeAllPopups()"></div>
+
+<div class="popup-modal" id="popup-detail">
+    <button class="popup-close" onclick="closeAllPopups()" aria-label="Fermer">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18"></path>
+            <path d="M6 6l12 12"></path>
+        </svg>
+    </button>
+    
+    <button class="popup-flip" onclick="togglePostcardSide()" title="Voir le verso">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18"></path>
+            <path d="m12 5 7 7-7 7"></path>
+        </svg>
+    </button>
+    
+    <button class="popup-nav popup-prev" id="popup-prev" onclick="previousImage()">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m15 18-6-6 6-6"></path>
+        </svg>
+    </button>
+    
+    <div class="popup-image-container">
+        <img id="popup-image" src="" alt="">
+        <div class="popup-loading">
+            <div class="placeholder-spinner"></div>
+        </div>
+    </div>
+    
+    <button class="popup-nav popup-next" id="popup-next" onclick="nextImage()">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m9 18 6-6-6-6"></path>
+        </svg>
+    </button>
+    
+    <div class="popup-info">
+        <h3 id="popup-title"></h3>
+        <span id="popup-number"></span>
+    </div>
+</div>
+
+<div class="popup-modal popup-zoom-modal" id="popup-zoom">
+    <button class="popup-close" onclick="closeAllPopups()" aria-label="Fermer">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18"></path>
+            <path d="M6 6l12 12"></path>
+        </svg>
+    </button>
+    <img id="popup-zoom-image" src="" alt="">
+</div>
+
 <script>
 // =============================================
-// POSTCARD DATA AND NAVIGATION
+// POSTCARD DATA
 // =============================================
 const postcardsData = [
     {% for postcard in postcards %}
@@ -137,9 +206,9 @@ const postcardsData = [
         id: {{ postcard.id }},
         number: "{{ postcard.number|escapejs }}",
         title: "{{ postcard.title|escapejs }}",
-        grande_url: "{{ postcard.grande_url|default:'' }}",
+        grande_url: "{{ postcard.grande_url|default:postcard.vignette_url }}",
         dos_url: "{{ postcard.dos_url|default:'' }}",
-        zoom_url: "{{ postcard.zoom_url|default:'' }}",
+        zoom_url: "{{ postcard.zoom_url|default:postcard.grande_url }}",
         vignette_url: "{{ postcard.vignette_url|default:'' }}"
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
@@ -149,267 +218,649 @@ let currentIndex = 0;
 let currentView = 'front';
 
 // =============================================
-// RIVER ANIMATION SYSTEM
+// WORD SUGGESTIONS FOR FLOATING ANIMATION
 // =============================================
-const riverWords = [
+const searchWords = [
     'Seine', 'Marne', 'Bateau', 'Pont', 'Écluse', 'Péniche',
     'Navigation', 'Fleuve', 'Rivière', 'Port', 'Quai', 'Berge',
     'Vapeur', 'Marinier', 'Halage', 'Remorqueur', 'Toueur',
     'Crue', 'Inondation', 'Paris', 'Bords', 'Eau', 'Canaux',
-    'Passeur', 'Lavoir', 'Moulin', 'Barrage', 'Amont', 'Aval',
+    'Passeur', 'Lavoir', 'Moulin', 'Barrage', 'Croisière',
     {% for theme in themes %}'{{ theme.display_name|escapejs }}',{% endfor %}
 ];
 
-class RiverAnimation {
+// =============================================
+// LOADING ANIMATION
+// =============================================
+class LoadingManager {
     constructor() {
-        this.particlesContainer = document.getElementById('particles-container');
-        this.wordsContainer = document.getElementById('words-container');
-        this.riverScene = document.getElementById('river-scene');
+        this.overlay = document.getElementById('loading-overlay');
+        this.progressBar = document.getElementById('loading-bar');
+        this.progress = 0;
+        this.minDisplayTime = 1500; // Minimum 1.5 seconds
+        this.startTime = Date.now();
+    }
+    
+    start() {
+        this.animate();
+    }
+    
+    animate() {
+        const duration = 1500;
+        const startTime = Date.now();
         
-        if (!this.riverScene) return;
+        const tick = () => {
+            const elapsed = Date.now() - startTime;
+            this.progress = Math.min((elapsed / duration) * 100, 100);
+            this.progressBar.style.width = this.progress + '%';
+            
+            if (this.progress < 100) {
+                requestAnimationFrame(tick);
+            }
+        };
         
-        this.particleCount = 40;
-        this.wordSpawnInterval = 2500;
-        this.maxActiveWords = 8;
-        this.activeWords = 0;
+        requestAnimationFrame(tick);
+    }
+    
+    hide() {
+        const elapsed = Date.now() - this.startTime;
+        const remaining = Math.max(0, this.minDisplayTime - elapsed);
+        
+        setTimeout(() => {
+            this.progressBar.style.width = '100%';
+            setTimeout(() => {
+                this.overlay.classList.add('hidden');
+                setTimeout(() => {
+                    this.overlay.style.display = 'none';
+                }, 500);
+            }, 200);
+        }, remaining);
+    }
+}
+
+// =============================================
+// RIVER BACKGROUND ANIMATION
+// =============================================
+class RiverBackground {
+    constructor() {
+        this.background = document.getElementById('river-background');
+        this.particlesContainer = document.getElementById('river-particles');
+        this.lightsContainer = document.getElementById('river-lights');
+        this.brightness = 1;
+        this.brightnessDirection = -1;
+        this.cycleSpeed = 0.0003; // Speed of day/night cycle
         
         this.init();
     }
     
     init() {
-        this.createParticles();
-        this.startWordSpawner();
-        this.addMouseInteraction();
+        this.createParticles(50);
+        this.createLightBeams(5);
+        this.startDayNightCycle();
     }
     
-    createParticles() {
-        for (let i = 0; i < this.particleCount; i++) {
-            this.createParticle(i);
+    createParticles(count) {
+        for (let i = 0; i < count; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'river-particle';
+            
+            const size = 3 + Math.random() * 6;
+            const duration = 15 + Math.random() * 20;
+            const delay = Math.random() * duration;
+            const yPos = Math.random() * 100;
+            
+            particle.style.cssText = `
+                width: ${size}px;
+                height: ${size}px;
+                top: ${yPos}%;
+                animation-duration: ${duration}s;
+                animation-delay: -${delay}s;
+            `;
+            
+            this.particlesContainer.appendChild(particle);
         }
     }
     
-    createParticle(index) {
-        const particle = document.createElement('div');
-        particle.className = 'river-particle';
-        
-        // Random properties
-        const size = 3 + Math.random() * 6;
-        const duration = 12 + Math.random() * 18;
-        const delay = (index / this.particleCount) * duration;
-        const yPos = 10 + Math.random() * 80;
-        const brightness = 0.5 + Math.random() * 0.5;
-        
-        particle.style.cssText = `
-            width: ${size}px;
-            height: ${size}px;
-            top: ${yPos}%;
-            right: -${size * 2}px;
-            --duration: ${duration}s;
-            --delay: ${delay}s;
-            --brightness: ${brightness};
-        `;
-        
-        this.particlesContainer.appendChild(particle);
+    createLightBeams(count) {
+        for (let i = 0; i < count; i++) {
+            const light = document.createElement('div');
+            light.className = 'light-beam';
+            light.style.left = (i * 20 + Math.random() * 10) + '%';
+            light.style.animationDelay = (i * 1.5) + 's';
+            this.lightsContainer.appendChild(light);
+        }
     }
     
-    startWordSpawner() {
-        // Initial words with stagger
-        for (let i = 0; i < 4; i++) {
-            setTimeout(() => this.spawnWord(), i * 800);
+    startDayNightCycle() {
+        const cycle = () => {
+            this.brightness += this.brightnessDirection * this.cycleSpeed;
+            
+            // Reverse direction at bounds
+            if (this.brightness <= 0.4) {
+                this.brightnessDirection = 1;
+            } else if (this.brightness >= 1) {
+                this.brightnessDirection = -1;
+            }
+            
+            // Apply brightness to background
+            this.background.style.filter = `brightness(${this.brightness})`;
+            
+            requestAnimationFrame(cycle);
+        };
+        
+        requestAnimationFrame(cycle);
+    }
+}
+
+// =============================================
+// FLOATING WORDS ANIMATION
+// =============================================
+class FloatingWords {
+    constructor() {
+        this.container = document.getElementById('words-container');
+        if (!this.container) return;
+        
+        this.maxWords = 10;
+        this.activeWords = 0;
+        this.spawnInterval = 2000;
+        
+        this.init();
+    }
+    
+    init() {
+        // Spawn initial words
+        for (let i = 0; i < 5; i++) {
+            setTimeout(() => this.spawnWord(), i * 400);
         }
         
-        // Continuous spawning
+        // Continue spawning
         setInterval(() => {
-            if (this.activeWords < this.maxActiveWords) {
+            if (this.activeWords < this.maxWords) {
                 this.spawnWord();
             }
-        }, this.wordSpawnInterval);
+        }, this.spawnInterval);
     }
     
     spawnWord() {
         const word = document.createElement('button');
         word.className = 'floating-word';
-        word.textContent = riverWords[Math.floor(Math.random() * riverWords.length)];
+        word.type = 'button';
+        
+        // Random word
+        const text = searchWords[Math.floor(Math.random() * searchWords.length)];
+        word.textContent = text;
         
         // Random properties
-        const yPos = 15 + Math.random() * 65;
-        const duration = 16 + Math.random() * 10;
-        const scale = 0.85 + Math.random() * 0.4;
-        const delay = Math.random() * 1;
+        const yPos = 10 + Math.random() * 70;
+        const duration = 18 + Math.random() * 12;
+        const scale = 0.8 + Math.random() * 0.4;
         
         word.style.cssText = `
             top: ${yPos}%;
             --duration: ${duration}s;
-            --delay: ${delay}s;
             --scale: ${scale};
         `;
         
-        // Click handler - IMPORTANT: Navigate to search
-        word.onclick = (e) => {
+        // Click handler - FIXED: Properly navigate to search
+        word.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            this.searchWord(word.textContent);
-        };
+            this.searchWord(text);
+        });
         
-        this.wordsContainer.appendChild(word);
+        this.container.appendChild(word);
         this.activeWords++;
         
-        // Remove after animation completes
-        const totalTime = (duration + delay) * 1000;
+        // Remove after animation
         setTimeout(() => {
             if (word.parentNode) {
                 word.remove();
                 this.activeWords--;
             }
-        }, totalTime);
+        }, duration * 1000);
     }
     
     searchWord(term) {
-        // Visual feedback
-        const searchInput = document.getElementById('keywords_input');
-        if (searchInput) {
-            searchInput.value = term;
-            searchInput.classList.add('search-highlight');
+        const input = document.getElementById('keywords_input');
+        const form = document.getElementById('researchForm');
+        
+        if (input && form) {
+            input.value = term;
             
-            // Submit after brief animation
+            // Visual feedback
+            input.classList.add('highlight');
+            
+            // Submit form after brief animation
             setTimeout(() => {
-                document.getElementById('researchForm').submit();
+                form.submit();
             }, 300);
         }
-    }
-    
-    addMouseInteraction() {
-        this.riverScene.addEventListener('mousemove', (e) => {
-            const rect = this.riverScene.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width;
-            const y = (e.clientY - rect.top) / rect.height;
-            
-            // Subtle parallax effect on waves
-            const waves = this.riverScene.querySelectorAll('.wave');
-            waves.forEach((wave, i) => {
-                const offsetX = (x - 0.5) * (10 + i * 5);
-                const offsetY = (y - 0.5) * (5 + i * 2);
-                wave.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-            });
-        });
     }
 }
 
 // =============================================
-// POSTCARD FUNCTIONS
+// LAZY IMAGE LOADING
+// =============================================
+class ImageLoader {
+    constructor() {
+        this.images = document.querySelectorAll('.card-image[data-src]');
+        this.loadedCount = 0;
+        this.totalCount = this.images.length;
+        
+        this.init();
+    }
+    
+    init() {
+        if ('IntersectionObserver' in window) {
+            this.lazyLoad();
+        } else {
+            this.loadAll();
+        }
+    }
+    
+    lazyLoad() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    this.loadImage(entry.target);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            rootMargin: '100px'
+        });
+        
+        this.images.forEach(img => observer.observe(img));
+    }
+    
+    loadAll() {
+        this.images.forEach(img => this.loadImage(img));
+    }
+    
+    loadImage(img) {
+        const src = img.dataset.src;
+        if (!src) return;
+        
+        const newImg = new Image();
+        newImg.onload = () => {
+            img.src = src;
+            img.classList.add('loaded');
+            img.parentElement.querySelector('.card-placeholder')?.classList.add('hidden');
+            this.loadedCount++;
+        };
+        newImg.onerror = () => {
+            img.parentElement.classList.add('load-error');
+            img.parentElement.querySelector('.card-placeholder')?.classList.add('hidden');
+        };
+        newImg.src = src;
+    }
+}
+
+// =============================================
+// POPUP FUNCTIONS
 // =============================================
 function showDetail(id) {
-    const p = postcardsData.find(x => x.id === id);
-    if (!p) return;
+    const postcard = postcardsData.find(p => p.id === id);
+    if (!postcard) return;
     
-    currentIndex = postcardsData.findIndex(x => x.id === id);
+    currentIndex = postcardsData.findIndex(p => p.id === id);
     currentView = 'front';
     
-    const imgSrc = p.grande_url || p.vignette_url;
+    const imgSrc = postcard.grande_url || postcard.vignette_url;
     if (!imgSrc) {
         alert('Image non disponible');
         return;
     }
     
-    document.getElementById('img_popup_detail').src = imgSrc;
-    document.getElementById('p_cp_popup_detail').textContent = p.title;
-    document.getElementById('p_nb_cp_popup_detail').textContent = 'N° ' + p.number;
+    const popupImage = document.getElementById('popup-image');
+    popupImage.src = '';
+    popupImage.parentElement.classList.add('loading');
     
-    document.getElementById('fade').style.display = 'block';
-    document.getElementById('popup_detail').style.display = 'block';
+    const img = new Image();
+    img.onload = () => {
+        popupImage.src = imgSrc;
+        popupImage.parentElement.classList.remove('loading');
+    };
+    img.src = imgSrc;
+    
+    document.getElementById('popup-title').textContent = postcard.title;
+    document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
+    
+    document.getElementById('popup-overlay').classList.add('active');
+    document.getElementById('popup-detail').classList.add('active');
     document.body.style.overflow = 'hidden';
-    updateArrows();
-}
-
-function togglePostcardSide() {
-    const p = postcardsData[currentIndex];
-    const img = document.getElementById('img_popup_detail');
     
-    if (currentView === 'front' && p.dos_url) {
-        img.src = p.dos_url;
-        currentView = 'back';
-    } else {
-        img.src = p.grande_url || p.vignette_url;
-        currentView = 'front';
-    }
+    updateNavButtons();
 }
 
 function showZoom(id) {
-    const p = postcardsData.find(x => x.id === id);
-    if (!p) return;
+    const postcard = postcardsData.find(p => p.id === id);
+    if (!postcard) return;
     
-    const zoomSrc = p.zoom_url || p.grande_url || p.vignette_url;
+    const zoomSrc = postcard.zoom_url || postcard.grande_url || postcard.vignette_url;
     if (!zoomSrc) {
         alert('Image non disponible');
         return;
     }
     
-    document.getElementById('img_popup_zoom').src = zoomSrc;
-    document.getElementById('fade').style.display = 'block';
-    document.getElementById('popup_zoom').style.display = 'block';
+    document.getElementById('popup-zoom-image').src = zoomSrc;
+    document.getElementById('popup-overlay').classList.add('active');
+    document.getElementById('popup-zoom').classList.add('active');
     document.body.style.overflow = 'hidden';
+}
+
+function togglePostcardSide() {
+    const postcard = postcardsData[currentIndex];
+    const img = document.getElementById('popup-image');
+    
+    if (currentView === 'front' && postcard.dos_url) {
+        img.src = postcard.dos_url;
+        currentView = 'back';
+    } else {
+        img.src = postcard.grande_url || postcard.vignette_url;
+        currentView = 'front';
+    }
 }
 
 function previousImage() {
     if (currentIndex > 0) {
         currentIndex--;
-        updateDetail();
+        updatePopupContent();
     }
 }
 
 function nextImage() {
     if (currentIndex < postcardsData.length - 1) {
         currentIndex++;
-        updateDetail();
+        updatePopupContent();
     }
 }
 
-function updateDetail() {
-    const p = postcardsData[currentIndex];
+function updatePopupContent() {
+    const postcard = postcardsData[currentIndex];
     currentView = 'front';
-    document.getElementById('img_popup_detail').src = p.grande_url || p.vignette_url;
-    document.getElementById('p_cp_popup_detail').textContent = p.title;
-    document.getElementById('p_nb_cp_popup_detail').textContent = 'N° ' + p.number;
-    updateArrows();
+    
+    document.getElementById('popup-image').src = postcard.grande_url || postcard.vignette_url;
+    document.getElementById('popup-title').textContent = postcard.title;
+    document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
+    
+    updateNavButtons();
 }
 
-function updateArrows() {
-    document.getElementById('lat_arrow_0').style.display = currentIndex > 0 ? 'block' : 'none';
-    document.getElementById('lat_arrow_1').style.display = currentIndex < postcardsData.length - 1 ? 'block' : 'none';
+function updateNavButtons() {
+    document.getElementById('popup-prev').style.display = currentIndex > 0 ? 'flex' : 'none';
+    document.getElementById('popup-next').style.display = currentIndex < postcardsData.length - 1 ? 'flex' : 'none';
 }
 
 function closeAllPopups() {
-    document.getElementById('fade').style.display = 'none';
-    document.getElementById('popup_detail').style.display = 'none';
-    document.getElementById('popup_zoom').style.display = 'none';
+    document.getElementById('popup-overlay').classList.remove('active');
+    document.getElementById('popup-detail').classList.remove('active');
+    document.getElementById('popup-zoom').classList.remove('active');
     document.body.style.overflow = '';
 }
 
 // Keyboard navigation
-document.addEventListener('keydown', function(e) {
-    if (document.getElementById('popup_detail').style.display === 'block') {
+document.addEventListener('keydown', (e) => {
+    if (document.getElementById('popup-detail').classList.contains('active')) {
         if (e.key === 'ArrowLeft') previousImage();
         else if (e.key === 'ArrowRight') nextImage();
         else if (e.key === 'Escape') closeAllPopups();
-    } else if (document.getElementById('popup_zoom').style.display === 'block') {
+    } else if (document.getElementById('popup-zoom').classList.contains('active')) {
         if (e.key === 'Escape') closeAllPopups();
     }
 });
 
-// Initialize river animation on DOM ready
-document.addEventListener('DOMContentLoaded', function() {
-    new RiverAnimation();
+// =============================================
+// INITIALIZATION
+// =============================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Start loading manager
+    const loadingManager = new LoadingManager();
+    loadingManager.start();
+    
+    // Initialize components
+    const riverBg = new RiverBackground();
+    const floatingWords = new FloatingWords();
+    const imageLoader = new ImageLoader();
+    
+    // Hide loading after images start loading or timeout
+    window.addEventListener('load', () => {
+        loadingManager.hide();
+    });
+    
+    // Fallback: hide loading after 3 seconds max
+    setTimeout(() => {
+        loadingManager.hide();
+    }, 3000);
 });
 </script>
 
 <style>
 /* ========================================
-   BROWSE PAGE - BASE STYLES
+   LOADING OVERLAY
+   ======================================== */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: linear-gradient(135deg, #1a1208 0%, #0d0906 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease;
+}
+
+.loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-spinner {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 30px;
+}
+
+.spinner-ring {
+    position: absolute;
+    inset: 0;
+    border: 3px solid transparent;
+    border-radius: 50%;
+}
+
+.spinner-ring:nth-child(1) {
+    border-top-color: #b5600b;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-ring:nth-child(2) {
+    inset: 8px;
+    border-right-color: #d1872c;
+    animation: spin 1.5s linear infinite reverse;
+}
+
+.spinner-ring:nth-child(3) {
+    inset: 16px;
+    border-bottom-color: #ffc168;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+.loading-progress {
+    width: 200px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.loading-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #b5600b, #ffc168);
+    border-radius: 2px;
+    transition: width 0.1s ease;
+}
+
+/* ========================================
+   RIVER BACKGROUND - FULL PAGE
+   ======================================== */
+.river-background {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+        180deg,
+        #1a1208 0%,
+        #2d1f0d 20%,
+        #3d2a12 40%,
+        #2d1f0d 60%,
+        #1a1208 80%,
+        #0d0906 100%
+    );
+    overflow: hidden;
+    transition: filter 0.5s ease;
+}
+
+.river-gradient {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 20% 30%, rgba(255, 180, 50, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(181, 96, 11, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(209, 135, 44, 0.05) 0%, transparent 70%);
+}
+
+.river-waves {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.river-waves .wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 100%;
+}
+
+.river-waves .wave path {
+    fill: rgba(181, 96, 11, 0.08);
+}
+
+.river-waves .wave:nth-child(1) {
+    animation: wave-move 20s linear infinite;
+}
+
+.river-waves .wave-2 path {
+    fill: rgba(209, 135, 44, 0.05);
+}
+
+.river-waves .wave-2 {
+    animation: wave-move 25s linear infinite reverse;
+    bottom: 30%;
+}
+
+@keyframes wave-move {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+.river-particles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.river-particle {
+    position: absolute;
+    right: -20px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(255, 200, 100, 0.9) 0%,
+        rgba(255, 160, 50, 0.6) 30%,
+        rgba(181, 96, 11, 0.3) 60%,
+        transparent 100%
+    );
+    box-shadow: 0 0 15px rgba(255, 180, 50, 0.5);
+    animation: particle-flow linear infinite;
+}
+
+@keyframes particle-flow {
+    0% {
+        transform: translateX(0) scale(0);
+        opacity: 0;
+    }
+    5% {
+        transform: translateX(-50px) scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        opacity: 1;
+    }
+    95% {
+        transform: translateX(calc(-100vw - 50px)) scale(0.8);
+        opacity: 0.6;
+    }
+    100% {
+        transform: translateX(calc(-100vw - 100px)) scale(0);
+        opacity: 0;
+    }
+}
+
+.river-lights {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.light-beam {
+    position: absolute;
+    width: 150px;
+    height: 100%;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 200, 100, 0.1) 0%,
+        rgba(255, 180, 50, 0.05) 30%,
+        transparent 70%
+    );
+    filter: blur(30px);
+    animation: light-pulse 8s ease-in-out infinite;
+}
+
+@keyframes light-pulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(0.9); }
+    50% { opacity: 0.7; transform: scaleY(1.1); }
+}
+
+/* ========================================
+   BROWSE PAGE LAYOUT
    ======================================== */
 .browse-page {
+    position: relative;
+    z-index: 1;
     min-height: 100vh;
     padding-top: 70px;
-    background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
 }
 
 /* ========================================
@@ -427,15 +878,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .search-box {
     display: flex;
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border-radius: 50px;
     overflow: hidden;
-    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
-    transition: box-shadow 0.3s, transform 0.3s;
+    box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(181, 96, 11, 0.2);
+    transition: all 0.3s ease;
 }
 
 .search-box:focus-within {
-    box-shadow: 0 8px 40px rgba(181, 96, 11, 0.4);
+    box-shadow: 
+        0 15px 50px rgba(181, 96, 11, 0.3),
+        0 0 0 2px rgba(181, 96, 11, 0.5);
     transform: translateY(-2px);
 }
 
@@ -444,17 +899,20 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 18px 25px;
     border: none;
     font-size: 1.1rem;
-    outline: none;
     background: transparent;
+    color: #333;
 }
 
-.search-box input.search-highlight {
-    animation: highlight-pulse 0.3s ease;
+.search-box input:focus {
+    outline: none;
 }
 
-@keyframes highlight-pulse {
-    0%, 100% { background: transparent; }
-    50% { background: rgba(181, 96, 11, 0.2); }
+.search-box input.highlight {
+    animation: input-highlight 0.3s ease;
+}
+
+@keyframes input-highlight {
+    50% { background: rgba(181, 96, 11, 0.1); }
 }
 
 .search-box button {
@@ -462,187 +920,47 @@ document.addEventListener('DOMContentLoaded', function() {
     background: linear-gradient(135deg, #b5600b, #d1872c);
     border: none;
     cursor: pointer;
-    transition: transform 0.3s;
+    color: white;
+    transition: all 0.3s ease;
 }
 
 .search-box button:hover {
-    transform: scale(1.05);
+    background: linear-gradient(135deg, #d1872c, #b5600b);
 }
 
-.search-box button img {
-    height: 24px;
-    filter: brightness(0) invert(1);
+.search-box button svg {
+    display: block;
 }
 
 .search-results-text {
-    color: #b5600b;
     margin-top: 20px;
+    color: rgba(255, 255, 255, 0.9);
     font-size: 1.1rem;
 }
 
+.result-count {
+    color: #ffc168;
+    font-weight: bold;
+    font-size: 1.3rem;
+}
+
+.result-query {
+    color: #ffc168;
+}
+
 /* ========================================
-   RIVER SCENE - ORANGE/YELLOW THEME
+   FLOATING WORDS SECTION
    ======================================== */
-.river-scene {
+.floating-words-section {
     position: relative;
-    height: 420px;
+    height: 350px;
     margin: 20px;
-    border-radius: 24px;
+    border-radius: 20px;
     overflow: hidden;
-    background: linear-gradient(
-        180deg,
-        #1a1208 0%,
-        #2d1f0d 25%,
-        #3d2a12 50%,
-        #2d1f0d 75%,
-        #1a1208 100%
-    );
-    box-shadow: 
-        inset 0 0 100px rgba(181, 96, 11, 0.1),
-        0 10px 40px rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
 }
 
-/* Water gradient overlay */
-.water-gradient {
-    position: absolute;
-    inset: 0;
-    background: 
-        radial-gradient(ellipse at 30% 20%, rgba(255, 180, 50, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 70% 80%, rgba(181, 96, 11, 0.1) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(209, 135, 44, 0.05) 0%, transparent 70%);
-    pointer-events: none;
-}
-
-/* Wave container */
-.wave-container {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.wave {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 200%;
-    height: 100%;
-    transition: transform 0.3s ease-out;
-}
-
-.wave-1 {
-    animation: wave-flow 25s linear infinite;
-    opacity: 0.6;
-}
-
-.wave-2 {
-    animation: wave-flow 20s linear infinite reverse;
-    opacity: 0.4;
-    bottom: 20px;
-}
-
-.wave-3 {
-    animation: wave-flow 30s linear infinite;
-    opacity: 0.3;
-    bottom: 40px;
-}
-
-@keyframes wave-flow {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-}
-
-/* Light reflections */
-.light-reflections {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-}
-
-.light-reflection {
-    position: absolute;
-    width: 200px;
-    height: 100%;
-    background: linear-gradient(
-        180deg,
-        rgba(255, 200, 100, 0.15) 0%,
-        rgba(255, 180, 50, 0.08) 30%,
-        rgba(181, 96, 11, 0.05) 60%,
-        transparent 100%
-    );
-    animation: light-shimmer 6s ease-in-out infinite;
-    filter: blur(20px);
-}
-
-.light-reflection:nth-child(1) { left: 5%; animation-delay: 0s; }
-.light-reflection:nth-child(2) { left: 25%; animation-delay: 1.5s; width: 150px; }
-.light-reflection:nth-child(3) { left: 45%; animation-delay: 3s; width: 250px; }
-.light-reflection:nth-child(4) { left: 65%; animation-delay: 4.5s; width: 180px; }
-.light-reflection:nth-child(5) { left: 85%; animation-delay: 2s; width: 120px; }
-
-@keyframes light-shimmer {
-    0%, 100% { 
-        opacity: 0.3; 
-        transform: scaleY(0.9) translateY(5%);
-    }
-    50% { 
-        opacity: 0.8; 
-        transform: scaleY(1.1) translateY(-5%);
-    }
-}
-
-/* Particles container */
-.particles-container {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.river-particle {
-    position: absolute;
-    border-radius: 50%;
-    background: radial-gradient(
-        circle,
-        rgba(255, 200, 100, calc(0.9 * var(--brightness, 1))) 0%,
-        rgba(255, 160, 50, calc(0.6 * var(--brightness, 1))) 30%,
-        rgba(181, 96, 11, calc(0.3 * var(--brightness, 1))) 60%,
-        transparent 100%
-    );
-    box-shadow: 
-        0 0 10px rgba(255, 180, 50, calc(0.6 * var(--brightness, 1))),
-        0 0 20px rgba(181, 96, 11, calc(0.3 * var(--brightness, 1)));
-    animation: particle-drift var(--duration) linear infinite;
-    animation-delay: var(--delay);
-}
-
-@keyframes particle-drift {
-    0% {
-        transform: translateX(0) translateY(0) scale(0);
-        opacity: 0;
-    }
-    5% {
-        transform: translateX(-30px) translateY(-5px) scale(1);
-        opacity: 0.9;
-    }
-    50% {
-        transform: translateX(calc(-50vw - 50px)) translateY(10px) scale(1.2);
-        opacity: 1;
-    }
-    95% {
-        transform: translateX(calc(-100vw - 80px)) translateY(-8px) scale(0.8);
-        opacity: 0.7;
-    }
-    100% {
-        transform: translateX(calc(-100vw - 100px)) translateY(0) scale(0);
-        opacity: 0;
-    }
-}
-
-/* Words container */
 .words-container {
     position: absolute;
     inset: 0;
@@ -651,105 +969,72 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .floating-word {
     position: absolute;
-    right: -220px;
-    padding: 10px 22px;
+    right: -250px;
+    padding: 12px 24px;
     font-family: 'Georgia', serif;
     font-style: italic;
     font-size: calc(1rem * var(--scale, 1));
-    color: rgba(255, 240, 220, 0.9);
-    background: linear-gradient(
-        135deg,
-        rgba(181, 96, 11, 0.25) 0%,
-        rgba(139, 69, 19, 0.2) 100%
-    );
-    border: 1px solid rgba(255, 180, 100, 0.3);
+    color: rgba(255, 240, 220, 0.95);
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.4), rgba(139, 69, 19, 0.3));
+    border: 1px solid rgba(255, 180, 100, 0.4);
     border-radius: 30px;
     cursor: pointer;
     white-space: nowrap;
-    backdrop-filter: blur(4px);
-    box-shadow: 
-        0 4px 15px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-    animation: 
-        word-flow var(--duration) linear forwards,
-        word-bob 4s ease-in-out infinite;
-    animation-delay: var(--delay), 0s;
-    transition: 
-        transform 0.3s ease,
-        background 0.3s ease,
-        box-shadow 0.3s ease,
-        border-color 0.3s ease;
+    animation: word-drift var(--duration, 20s) linear forwards;
+    transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
     z-index: 10;
 }
 
 .floating-word:hover {
-    background: linear-gradient(
-        135deg,
-        rgba(255, 160, 50, 0.9) 0%,
-        rgba(181, 96, 11, 0.85) 100%
-    ) !important;
+    background: linear-gradient(135deg, rgba(255, 160, 50, 0.95), rgba(181, 96, 11, 0.9)) !important;
     color: white !important;
-    border-color: rgba(255, 200, 100, 0.8) !important;
-    transform: scale(1.25) translateY(-5px) !important;
+    transform: scale(1.3) translateY(-5px) !important;
     box-shadow: 
-        0 8px 30px rgba(255, 160, 50, 0.5),
-        0 0 40px rgba(181, 96, 11, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-    animation-play-state: paused, paused !important;
+        0 10px 40px rgba(255, 160, 50, 0.5),
+        0 0 60px rgba(181, 96, 11, 0.3) !important;
+    animation-play-state: paused !important;
     z-index: 100 !important;
 }
 
 .floating-word:active {
-    transform: scale(1.15) !important;
+    transform: scale(1.2) !important;
 }
 
-@keyframes word-flow {
+@keyframes word-drift {
     0% {
         transform: translateX(0);
         opacity: 0;
     }
-    3% {
+    2% {
         opacity: 1;
     }
-    92% {
+    95% {
         opacity: 1;
     }
     100% {
-        transform: translateX(calc(-100vw - 280px));
+        transform: translateX(calc(-100vw - 300px));
         opacity: 0;
     }
 }
 
-@keyframes word-bob {
-    0%, 100% { 
-        margin-top: 0;
-        filter: brightness(1);
-    }
-    50% { 
-        margin-top: -12px;
-        filter: brightness(1.1);
-    }
-}
-
-/* River instruction */
-.river-instruction {
+.section-hint {
     position: absolute;
-    bottom: 25px;
+    bottom: 20px;
     width: 100%;
     text-align: center;
     pointer-events: none;
 }
 
-.river-instruction p {
-    color: rgba(255, 200, 150, 0.5);
+.section-hint p {
+    color: rgba(255, 200, 150, 0.6);
     font-style: italic;
-    font-size: 0.95rem;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* ========================================
-   RESULTS GRID
+   RESULTS SECTION
    ======================================== */
 .results-section {
     padding: 30px 20px;
@@ -757,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .postcards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 25px;
     max-width: 1400px;
     margin: 0 auto;
@@ -769,34 +1054,71 @@ document.addEventListener('DOMContentLoaded', function() {
     border-radius: 16px;
     overflow: hidden;
     background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
-    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
     cursor: pointer;
+    animation: card-appear 0.6s ease backwards;
     transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+@keyframes card-appear {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
 }
 
 .postcard-card:hover {
     transform: translateY(-10px) scale(1.02);
     box-shadow: 
-        0 20px 50px rgba(181, 96, 11, 0.3),
-        0 0 30px rgba(255, 160, 50, 0.1);
+        0 25px 60px rgba(181, 96, 11, 0.3),
+        0 0 40px rgba(255, 160, 50, 0.1);
 }
 
-.postcard-card img {
+.card-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.card-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s ease;
+    opacity: 0;
+    transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-.postcard-card:hover img {
+.card-image.loaded {
+    opacity: 1;
+}
+
+.postcard-card:hover .card-image {
     transform: scale(1.1);
 }
 
-.postcard-card.img-error {
-    background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
+.card-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
 }
 
-.no-image-placeholder {
+.card-placeholder.hidden {
+    display: none;
+}
+
+.placeholder-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(181, 96, 11, 0.2);
+    border-top-color: #b5600b;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.card-no-image {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -805,186 +1127,240 @@ document.addEventListener('DOMContentLoaded', function() {
     color: rgba(255, 255, 255, 0.3);
 }
 
-.no-image-placeholder span {
-    font-size: 2.5rem;
+.card-no-image span {
+    font-size: 3rem;
     margin-bottom: 10px;
 }
 
-.no-image-placeholder p {
-    font-size: 0.85rem;
-}
-
-.postcard-overlay {
+.card-overlay {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 50px 15px 15px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, transparent 60%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 20px;
     opacity: 0;
-    transform: translateY(10px);
-    transition: opacity 0.3s, transform 0.3s;
+    transition: opacity 0.3s ease;
 }
 
-.postcard-card:hover .postcard-overlay {
+.postcard-card:hover .card-overlay {
     opacity: 1;
-    transform: translateY(0);
 }
 
-.postcard-actions {
+.card-actions {
     display: flex;
     justify-content: center;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
 }
 
-.postcard-actions button {
-    width: 44px;
-    height: 44px;
+.action-btn {
+    width: 48px;
+    height: 48px;
     border: none;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.95);
-    font-size: 1.2rem;
+    color: #333;
     cursor: pointer;
-    transition: transform 0.2s, background 0.2s;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-.postcard-actions button:hover {
-    transform: scale(1.15);
+.action-btn:hover {
     background: #b5600b;
-}
-
-.postcard-title {
     color: white;
-    font-size: 0.9rem;
-    text-align: center;
-    margin: 0;
-    line-height: 1.3;
+    transform: scale(1.1);
 }
 
-.no-results {
+.card-title {
+    color: white;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    margin: 0 0 8px;
+    text-align: center;
+}
+
+.card-number {
+    display: block;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+}
+
+/* No Results */
+.no-results, .empty-collection {
     text-align: center;
     padding: 80px 20px;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.8);
 }
 
-.no-results p {
-    font-size: 1.3rem;
+.no-results-icon, .empty-icon {
+    font-size: 4rem;
     margin-bottom: 20px;
 }
 
-.no-results a {
-    color: #b5600b;
-    text-decoration: none;
-    font-size: 1.1rem;
-    transition: color 0.3s;
+.no-results h3, .empty-collection h3 {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: white;
 }
 
-.no-results a:hover {
-    color: #d1872c;
+.btn-back {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+    text-decoration: none;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.btn-back:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(181, 96, 11, 0.4);
 }
 
 .browse-footer {
     text-align: center;
     padding: 40px;
-    color: rgba(255, 255, 255, 0.35);
-    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.4);
 }
 
 /* ========================================
-   POPUPS
+   POPUP MODALS
    ======================================== */
-.overlay {
-    display: none;
+.popup-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.92);
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(10px);
     z-index: 2000;
-    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
 }
 
-.popup {
-    display: none;
+.popup-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.popup-modal {
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.9);
     z-index: 2001;
-    max-width: 90vw;
-    max-height: 90vh;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.popup-modal.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
 }
 
 .popup-close {
     position: absolute;
-    top: -18px;
-    right: -18px;
+    top: -50px;
+    right: 0;
     width: 44px;
     height: 44px;
     background: linear-gradient(135deg, #b5600b, #d1872c);
-    color: white;
     border: none;
     border-radius: 50%;
-    font-size: 26px;
+    color: white;
     cursor: pointer;
-    z-index: 10;
-    transition: transform 0.3s;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
-    line-height: 1;
+    transition: all 0.3s ease;
+    z-index: 10;
 }
 
 .popup-close:hover {
-    transform: scale(1.1) rotate(90deg);
-}
-
-.popup-image {
-    max-width: 80vw;
-    max-height: 70vh;
-    border-radius: 12px;
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+    transform: rotate(90deg) scale(1.1);
 }
 
 .popup-flip {
     position: absolute;
-    top: 12px;
-    left: 12px;
-    width: 40px;
-    height: 40px;
-    cursor: pointer;
-    background: rgba(0, 0, 0, 0.6);
+    top: 15px;
+    left: 15px;
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
     border-radius: 50%;
-    padding: 8px;
-    z-index: 5;
-    transition: transform 0.3s, background 0.3s;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 10;
 }
 
 .popup-flip:hover {
-    transform: scale(1.1);
     background: #b5600b;
 }
 
-.popup-arrow {
+.popup-nav {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    height: 55px;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: white;
     cursor: pointer;
-    opacity: 0.6;
-    z-index: 5;
-    transition: opacity 0.3s, transform 0.3s;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
 }
 
-.popup-arrow:hover {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.15);
+.popup-nav:hover {
+    background: rgba(181, 96, 11, 0.8);
 }
 
-.popup-arrow-left { left: -70px; }
-.popup-arrow-right { right: -70px; }
+.popup-prev { left: -70px; }
+.popup-next { right: -70px; }
+
+.popup-image-container {
+    position: relative;
+    max-width: 85vw;
+    max-height: 75vh;
+}
+
+.popup-image-container.loading .popup-loading {
+    display: flex;
+}
+
+.popup-loading {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+}
+
+#popup-image {
+    max-width: 85vw;
+    max-height: 75vh;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
 
 .popup-info {
     position: absolute;
@@ -992,27 +1368,29 @@ document.addEventListener('DOMContentLoaded', function() {
     left: 0;
     right: 0;
     background: linear-gradient(135deg, #b5600b, #d1872c);
-    padding: 18px 25px;
+    padding: 20px;
     border-radius: 0 0 12px 12px;
 }
 
-.popup-title {
+.popup-info h3 {
     color: white;
-    margin: 0 0 6px 0;
-    font-size: 1.05rem;
-    line-height: 1.3;
+    margin: 0 0 8px;
+    font-size: 1.1rem;
 }
 
-.popup-number {
-    color: rgba(255, 255, 255, 0.75);
-    margin: 0;
+.popup-info span {
+    color: rgba(255, 255, 255, 0.8);
     font-size: 0.9rem;
 }
 
-.popup-zoom .popup-image-zoom {
+.popup-zoom-modal {
     max-width: 95vw;
     max-height: 95vh;
-    cursor: zoom-in;
+}
+
+#popup-zoom-image {
+    max-width: 95vw;
+    max-height: 95vh;
     border-radius: 8px;
 }
 
@@ -1020,22 +1398,23 @@ document.addEventListener('DOMContentLoaded', function() {
    RESPONSIVE
    ======================================== */
 @media (max-width: 900px) {
-    .river-scene {
-        height: 350px;
-        margin: 15px;
+    .floating-words-section {
+        height: 280px;
     }
     
     .postcards-grid {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 15px;
     }
+    
+    .popup-prev { left: 10px; }
+    .popup-next { right: 10px; }
 }
 
 @media (max-width: 600px) {
-    .river-scene {
-        height: 300px;
+    .floating-words-section {
+        height: 220px;
         margin: 10px;
-        border-radius: 16px;
     }
     
     .floating-word {
@@ -1048,19 +1427,14 @@ document.addEventListener('DOMContentLoaded', function() {
         gap: 12px;
     }
     
-    .popup-arrow-left { left: 10px; }
-    .popup-arrow-right { right: 10px; }
-    .popup-arrow { height: 40px; }
-    
-    .search-box input {
-        padding: 14px 18px;
-        font-size: 1rem;
+    .popup-close {
+        top: 10px;
+        right: 10px;
     }
-}
-
-@media (max-width: 400px) {
-    .postcards-grid {
-        grid-template-columns: 1fr;
+    
+    .popup-nav {
+        width: 40px;
+        height: 40px;
     }
 }
 </style>
