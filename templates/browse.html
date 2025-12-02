@@ -1,905 +1,768 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/browse.css' %}">
-{% endblock %}
-
-{% block page_title %}Parcourir{% endblock %}
+{% block page_title %}Rechercher{% endblock %}
 
 {% block content %}
-<div class="main-content">
+<div class="browse-page">
     <!-- Search Section -->
-    <div id="page_top" class="page_top">
-        <div id="research_input" class="research_input">
-            <form id="researchForm" class="research_form" method="get">
-                <label id="research_input_title" class="research_input_title">Rechercher : </label>
-                <input type="text" name="keywords_input" id="keywords_input" class="keywords_input" 
-                       value="{{ query|default:'' }}" placeholder="Entrez un mot-clé..." autofocus>
-                <button type="submit" class="research_form_submit">
+    <div class="search-section">
+        <form id="researchForm" class="search-form" method="get">
+            <div class="search-box">
+                <input type="text" name="keywords_input" id="keywords_input" 
+                       value="{{ query|default:'' }}" 
+                       placeholder="Rechercher dans la collection...">
+                <button type="submit">
                     <img src="{% static 'images/Loupe_icone.png' %}" alt="Rechercher">
                 </button>
-            </form>
-        </div>
+            </div>
+        </form>
         
         {% if query %}
-        <div id="submit_txt_output" class="submit_txt_output">
-            <p>{{ total_count }} résultat{{ total_count|pluralize }} pour "{{ query }}"</p>
-        </div>
+        <p class="search-results-text">{{ total_count }} résultat{{ total_count|pluralize }} pour "{{ query }}"</p>
         {% endif %}
     </div>
 
-    <hr id="top_hr" class="top_hr">
-
-    <!-- Overlay for popups -->
-    <div id="fade" class="black_overlay" onclick="closeAllPopups()"></div>
-
-    <!-- Postcard Detail Popup -->
-    <div id="popup_detail" class="popup_detail">
-        <a class="popup_close" href="javascript:void(0)" onclick="closeAllPopups();">
-            <img class="close_icon" src="{% static 'images/close_icon.png' %}" alt="Fermer">
-        </a>
-        <img id="reverse_cp" class="reverse_cp" src="{% static 'images/Verso.png' %}" 
-             onclick="togglePostcardSide();" title="Voir le verso">
-        <img id="lat_arrow_0" class="lat_arrow lat_arrow_left" src="{% static 'images/fleche-laterale-1.png' %}" 
-             onclick="previousImage();" title="Précédent">
-        <img id="img_popup_detail" class="img_popup_detail" src="" alt="Carte postale">
-        <img id="lat_arrow_1" class="lat_arrow lat_arrow_right" src="{% static 'images/fleche-laterale.png' %}" 
-             onclick="nextImage();" title="Suivant">
-        <div id="cp_popup_detail" class="cp_popup_detail">
-            <p id="p_cp_popup_detail" class="p_cp_popup_detail"></p>
-            <p id="p_nb_cp_popup_detail" class="p_nb_cp_popup_detail"></p>
+    <!-- Popups -->
+    <div id="fade" class="overlay" onclick="closeAllPopups()"></div>
+    
+    <div id="popup_detail" class="popup">
+        <button class="popup-close" onclick="closeAllPopups()">×</button>
+        <img id="reverse_cp" class="popup-flip" src="{% static 'images/Verso.png' %}" onclick="togglePostcardSide();" title="Voir le verso">
+        <img id="lat_arrow_0" class="popup-arrow popup-arrow-left" src="{% static 'images/fleche-laterale-1.png' %}" onclick="previousImage();">
+        <img id="img_popup_detail" class="popup-image" src="" alt="">
+        <img id="lat_arrow_1" class="popup-arrow popup-arrow-right" src="{% static 'images/fleche-laterale.png' %}" onclick="nextImage();">
+        <div class="popup-info">
+            <p id="p_cp_popup_detail" class="popup-title"></p>
+            <p id="p_nb_cp_popup_detail" class="popup-number"></p>
         </div>
     </div>
     
-    <!-- Zoom Popup -->
-    <div id="popup_zoom" class="popup_zoom">
-        <a class="popup_close" href="javascript:void(0)" onclick="closeAllPopups();">
-            <img class="close_icon" src="{% static 'images/close_icon.png' %}" alt="Fermer">
-        </a>
-        <div id="popup_zoom_container" class="popup_zoom_container">
-            <img id="img_popup_zoom" class="img_popup_zoom" src="" alt="Zoom">
-        </div>
+    <div id="popup_zoom" class="popup popup-zoom">
+        <button class="popup-close" onclick="closeAllPopups()">×</button>
+        <img id="img_popup_zoom" class="popup-image-zoom" src="" alt="">
     </div>
 
-    <!-- Beautiful Water Animation - Only show if no search query -->
+    <!-- River Animation - Only without search -->
     {% if not query %}
-    <div class="river-container">
-        <!-- Water waves background -->
-        <div class="water-bg">
-            <div class="wave wave1"></div>
-            <div class="wave wave2"></div>
-            <div class="wave wave3"></div>
+    <div class="river-scene">
+        <!-- Water background layers -->
+        <div class="water-layer water-layer-1"></div>
+        <div class="water-layer water-layer-2"></div>
+        <div class="water-layer water-layer-3"></div>
+        
+        <!-- Light effects -->
+        <div class="light-effects">
+            <div class="light-beam light-beam-1"></div>
+            <div class="light-beam light-beam-2"></div>
+            <div class="light-beam light-beam-3"></div>
         </div>
         
-        <!-- Floating particles -->
-        <div class="particles-container" id="particles"></div>
+        <!-- Particles container -->
+        <div class="river-particles" id="river-particles"></div>
         
-        <!-- Floating words -->
-        <div class="floating-words" id="floating-words">
-            <!-- Theme words -->
-            {% for theme in themes %}
-            <span class="float-word theme-word" onclick="searchTheme('{{ theme.display_name|escapejs }}')">
-                {{ theme.display_name }}
-            </span>
-            {% endfor %}
-            
-            <!-- Additional suggestive words -->
-            <span class="float-word suggest-word" onclick="searchTheme('Seine')">Seine</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Marne')">Marne</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Bateau')">Bateau</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Pont')">Pont</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Écluse')">Écluse</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Péniche')">Péniche</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Quai')">Quai</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Navigation')">Navigation</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Fleuve')">Fleuve</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Rivière')">Rivière</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Port')">Port</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Vapeur')">Vapeur</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Mariniers')">Mariniers</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Berge')">Berge</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Remorqueur')">Remorqueur</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Halage')">Halage</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Toueur')">Toueur</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Crue')">Crue</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Inondation')">Inondation</span>
-            <span class="float-word suggest-word" onclick="searchTheme('Paris')">Paris</span>
-        </div>
+        <!-- Floating words container -->
+        <div class="word-spawner" id="word-spawner"></div>
         
-        <!-- Instruction text -->
-        <div class="river-instruction">
-            <p>✨ Cliquez sur un mot pour découvrir les cartes postales associées ✨</p>
+        <!-- Instruction -->
+        <div class="river-hint">
+            <p>✨ Les mots flottent comme sur l'eau... Cliquez pour explorer ✨</p>
         </div>
     </div>
     {% endif %}
 
     <!-- Results Grid -->
-    <div id="cp_result_area" class="cp_result_area">
+    <div class="results-section">
         {% if postcards %}
         <div class="postcards-grid">
             {% for postcard in postcards %}
-            <div class="cp_result" id="cp_result_{{ postcard.id }}">
-                <div class="cp_card">
-                    {% if postcard.vignette_url %}
-                    <img class="cp_image" 
-                         src="{{ postcard.vignette_url }}" 
-                         alt="{{ postcard.title }}"
-                         loading="lazy"
-                         onerror="this.parentElement.classList.add('no-image')">
-                    {% else %}
-                    <div class="cp_placeholder">
-                        <span>{{ postcard.number }}</span>
+            <div class="postcard-card" data-id="{{ postcard.id }}">
+                {% if postcard.vignette_url %}
+                <img src="{{ postcard.vignette_url }}" alt="{{ postcard.title }}" loading="lazy" onerror="this.parentElement.classList.add('no-img')">
+                {% endif %}
+                <div class="postcard-overlay">
+                    <div class="postcard-actions">
+                        <button onclick="showDetail({{ postcard.id }})" title="Voir">👁️</button>
+                        <button onclick="showZoom({{ postcard.id }})" title="Zoom">🔍</button>
                     </div>
-                    {% endif %}
-                    <div class="cp_overlay">
-                        <div class="cp_actions">
-                            <button class="cp_btn cp_detail" onclick="showDetail({{ postcard.id }});" title="Voir détails">
-                                <img src="{% static 'images/Eye_icon.png' %}" alt="Détails">
-                            </button>
-                            <button class="cp_btn cp_zoom_btn" onclick="showZoom({{ postcard.id }});" title="Zoomer">
-                                <img src="{% static 'images/Loupe_icone.png' %}" alt="Zoom">
-                            </button>
-                        </div>
-                        <p class="cp_title">{{ postcard.title|truncatechars:50 }}</p>
-                    </div>
+                    <p class="postcard-title">{{ postcard.title|truncatechars:45 }}</p>
                 </div>
             </div>
             {% endfor %}
         </div>
         {% else %}
+        {% if query %}
         <div class="no-results">
-            {% if query %}
-            <p>Aucune carte postale trouvée pour "{{ query }}".</p>
-            <p><a href="{% url 'browse' %}">← Retour à la collection</a></p>
-            {% else %}
-            <p>Explorez notre collection en cliquant sur les mots ci-dessus ou en utilisant la recherche.</p>
-            {% endif %}
+            <p>Aucun résultat pour "{{ query }}"</p>
+            <a href="{% url 'browse' %}">← Voir toute la collection</a>
         </div>
         {% endif %}
+        {% endif %}
     </div>
-
-    <!-- Statistics -->
-    <div class="browse-stats">
-        <p>🖼️ {{ total_count }} cartes postales dans la collection</p>
+    
+    <div class="browse-footer">
+        <p>{{ total_count }} cartes postales dans la collection</p>
     </div>
 </div>
 
 <script>
-    // Postcard data for JavaScript
-    const postcardsData = [
-        {% for postcard in postcards %}
-        {
-            id: {{ postcard.id }},
-            number: "{{ postcard.number|escapejs }}",
-            title: "{{ postcard.title|escapejs }}",
-            grande_url: "{{ postcard.grande_url|default:'' }}",
-            dos_url: "{{ postcard.dos_url|default:'' }}",
-            zoom_url: "{{ postcard.zoom_url|default:'' }}",
-            vignette_url: "{{ postcard.vignette_url|default:'' }}",
-            rarity: "{{ postcard.rarity }}"
-        }{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
+// Postcard data
+const postcardsData = [
+    {% for postcard in postcards %}
+    {
+        id: {{ postcard.id }},
+        number: "{{ postcard.number|escapejs }}",
+        title: "{{ postcard.title|escapejs }}",
+        grande_url: "{{ postcard.grande_url|default:'' }}",
+        dos_url: "{{ postcard.dos_url|default:'' }}",
+        zoom_url: "{{ postcard.zoom_url|default:'' }}",
+        vignette_url: "{{ postcard.vignette_url|default:'' }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+let currentIndex = 0;
+let currentView = 'front';
+
+// Word suggestions for river animation
+const riverWords = [
+    'Seine', 'Marne', 'Bateau', 'Pont', 'Écluse', 'Péniche',
+    'Navigation', 'Fleuve', 'Rivière', 'Port', 'Quai', 'Berge',
+    'Vapeur', 'Marinier', 'Halage', 'Remorqueur', 'Toueur',
+    'Crue', 'Inondation', 'Paris', 'Bords', 'Eau', 'Canaux',
+    {% for theme in themes %}'{{ theme.display_name|escapejs }}',{% endfor %}
+];
+
+// Initialize river animation
+document.addEventListener('DOMContentLoaded', function() {
+    initRiverScene();
+});
+
+function initRiverScene() {
+    const particlesContainer = document.getElementById('river-particles');
+    const wordSpawner = document.getElementById('word-spawner');
     
-    let currentIndex = 0;
-    let currentView = 'front';
+    if (!particlesContainer || !wordSpawner) return;
     
-    // Initialize animations when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        initRiverAnimation();
-    });
-    
-    function initRiverAnimation() {
-        const container = document.getElementById('floating-words');
-        if (!container) return;
-        
-        const words = container.querySelectorAll('.float-word');
-        const containerRect = container.parentElement.getBoundingClientRect();
-        
-        words.forEach((word, index) => {
-            // Random starting position (start from right side, off-screen)
-            const startX = containerRect.width + Math.random() * 200;
-            const startY = 50 + Math.random() * (containerRect.height - 150);
-            
-            word.style.left = startX + 'px';
-            word.style.top = startY + 'px';
-            
-            // Random animation duration (slower = more relaxing)
-            const duration = 20 + Math.random() * 25; // 20-45 seconds
-            word.style.setProperty('--float-duration', duration + 's');
-            
-            // Random delay so words don't all start together
-            const delay = Math.random() * 15;
-            word.style.animationDelay = delay + 's';
-            
-            // Random vertical wave amplitude
-            const amplitude = 10 + Math.random() * 30;
-            word.style.setProperty('--wave-amplitude', amplitude + 'px');
-            
-            // Random size variation
-            const size = 0.7 + Math.random() * 0.6; // 0.7 to 1.3
-            word.style.fontSize = size + 'rem';
-            
-            // Random opacity
-            const opacity = 0.5 + Math.random() * 0.5;
-            word.style.setProperty('--base-opacity', opacity);
-        });
-        
-        // Create particles
-        createParticles();
+    // Create particles
+    for (let i = 0; i < 60; i++) {
+        createParticle(particlesContainer, i);
     }
     
-    function createParticles() {
-        const container = document.getElementById('particles');
-        if (!container) return;
-        
-        const particleCount = 50;
-        
-        for (let i = 0; i < particleCount; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'particle';
-            
-            // Random properties
-            const size = 2 + Math.random() * 6;
-            particle.style.width = size + 'px';
-            particle.style.height = size + 'px';
-            
-            // Start position (right side)
-            particle.style.right = -20 + 'px';
-            particle.style.top = Math.random() * 100 + '%';
-            
-            // Animation
-            const duration = 10 + Math.random() * 20;
-            particle.style.setProperty('--particle-duration', duration + 's');
-            particle.style.animationDelay = Math.random() * 10 + 's';
-            
-            container.appendChild(particle);
+    // Spawn words continuously
+    spawnWord(wordSpawner);
+    setInterval(() => spawnWord(wordSpawner), 2000);
+}
+
+function createParticle(container, index) {
+    const particle = document.createElement('div');
+    particle.className = 'river-particle';
+    
+    const size = 3 + Math.random() * 8;
+    const duration = 15 + Math.random() * 20;
+    const delay = Math.random() * 15;
+    const yPos = Math.random() * 100;
+    
+    particle.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        top: ${yPos}%;
+        right: -20px;
+        animation-duration: ${duration}s;
+        animation-delay: ${delay}s;
+    `;
+    
+    container.appendChild(particle);
+}
+
+function spawnWord(container) {
+    const word = document.createElement('span');
+    word.className = 'floating-word';
+    word.textContent = riverWords[Math.floor(Math.random() * riverWords.length)];
+    word.onclick = function() {
+        searchFor(this.textContent);
+    };
+    
+    // Random properties
+    const yPos = 15 + Math.random() * 70;
+    const duration = 18 + Math.random() * 12;
+    const size = 0.8 + Math.random() * 0.5;
+    const delay = Math.random() * 2;
+    
+    word.style.cssText = `
+        top: ${yPos}%;
+        right: -200px;
+        font-size: ${size}rem;
+        animation-duration: ${duration}s;
+        animation-delay: ${delay}s;
+    `;
+    
+    container.appendChild(word);
+    
+    // Remove after animation
+    setTimeout(() => {
+        if (word.parentNode) {
+            word.remove();
         }
-    }
+    }, (duration + delay) * 1000);
+}
+
+function searchFor(term) {
+    document.getElementById('keywords_input').value = term;
+    document.getElementById('researchForm').submit();
+}
+
+function showDetail(id) {
+    const p = postcardsData.find(x => x.id === id);
+    if (!p) return;
     
-    function showDetail(postcardId) {
-        const postcard = postcardsData.find(p => p.id === postcardId);
-        if (!postcard) return;
-        
-        currentIndex = postcardsData.findIndex(p => p.id === postcardId);
+    currentIndex = postcardsData.findIndex(x => x.id === id);
+    currentView = 'front';
+    
+    document.getElementById('img_popup_detail').src = p.grande_url || p.vignette_url;
+    document.getElementById('p_cp_popup_detail').textContent = p.title;
+    document.getElementById('p_nb_cp_popup_detail').textContent = 'N° ' + p.number;
+    
+    document.getElementById('fade').style.display = 'block';
+    document.getElementById('popup_detail').style.display = 'block';
+    updateArrows();
+}
+
+function togglePostcardSide() {
+    const p = postcardsData[currentIndex];
+    const img = document.getElementById('img_popup_detail');
+    
+    if (currentView === 'front' && p.dos_url) {
+        img.src = p.dos_url;
+        currentView = 'back';
+    } else {
+        img.src = p.grande_url || p.vignette_url;
         currentView = 'front';
-        
-        const imgUrl = postcard.grande_url || postcard.vignette_url;
-        document.getElementById('img_popup_detail').src = imgUrl;
-        document.getElementById('p_cp_popup_detail').textContent = postcard.title;
-        document.getElementById('p_nb_cp_popup_detail').textContent = 'N° ' + postcard.number;
-        
-        document.getElementById('fade').style.display = 'block';
-        document.getElementById('popup_detail').style.display = 'block';
-        
-        updateNavigationArrows();
     }
+}
+
+function showZoom(id) {
+    const p = postcardsData.find(x => x.id === id);
+    if (!p) return;
     
-    function togglePostcardSide() {
-        const postcard = postcardsData[currentIndex];
-        if (!postcard) return;
-        
-        const img = document.getElementById('img_popup_detail');
-        
-        if (currentView === 'front' && postcard.dos_url) {
-            img.src = postcard.dos_url;
-            currentView = 'back';
-        } else {
-            img.src = postcard.grande_url || postcard.vignette_url;
-            currentView = 'front';
-        }
+    document.getElementById('img_popup_zoom').src = p.zoom_url || p.grande_url || p.vignette_url;
+    document.getElementById('fade').style.display = 'block';
+    document.getElementById('popup_zoom').style.display = 'block';
+}
+
+function previousImage() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        updateDetail();
     }
-    
-    function showZoom(postcardId) {
-        const postcard = postcardsData.find(p => p.id === postcardId);
-        if (!postcard) return;
-        
-        const zoomUrl = postcard.zoom_url || postcard.grande_url || postcard.vignette_url;
-        document.getElementById('img_popup_zoom').src = zoomUrl;
-        document.getElementById('fade').style.display = 'block';
-        document.getElementById('popup_zoom').style.display = 'block';
+}
+
+function nextImage() {
+    if (currentIndex < postcardsData.length - 1) {
+        currentIndex++;
+        updateDetail();
     }
-    
-    function previousImage() {
-        if (currentIndex > 0) {
-            currentIndex--;
-            updateDetailImage();
-        }
+}
+
+function updateDetail() {
+    const p = postcardsData[currentIndex];
+    currentView = 'front';
+    document.getElementById('img_popup_detail').src = p.grande_url || p.vignette_url;
+    document.getElementById('p_cp_popup_detail').textContent = p.title;
+    document.getElementById('p_nb_cp_popup_detail').textContent = 'N° ' + p.number;
+    updateArrows();
+}
+
+function updateArrows() {
+    document.getElementById('lat_arrow_0').style.display = currentIndex > 0 ? 'block' : 'none';
+    document.getElementById('lat_arrow_1').style.display = currentIndex < postcardsData.length - 1 ? 'block' : 'none';
+}
+
+function closeAllPopups() {
+    document.getElementById('fade').style.display = 'none';
+    document.getElementById('popup_detail').style.display = 'none';
+    document.getElementById('popup_zoom').style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (document.getElementById('popup_detail').style.display === 'block') {
+        if (e.key === 'ArrowLeft') previousImage();
+        else if (e.key === 'ArrowRight') nextImage();
+        else if (e.key === 'Escape') closeAllPopups();
+    } else if (document.getElementById('popup_zoom').style.display === 'block') {
+        if (e.key === 'Escape') closeAllPopups();
     }
-    
-    function nextImage() {
-        if (currentIndex < postcardsData.length - 1) {
-            currentIndex++;
-            updateDetailImage();
-        }
-    }
-    
-    function updateDetailImage() {
-        const postcard = postcardsData[currentIndex];
-        if (!postcard) return;
-        
-        currentView = 'front';
-        document.getElementById('img_popup_detail').src = postcard.grande_url || postcard.vignette_url;
-        document.getElementById('p_cp_popup_detail').textContent = postcard.title;
-        document.getElementById('p_nb_cp_popup_detail').textContent = 'N° ' + postcard.number;
-        updateNavigationArrows();
-    }
-    
-    function updateNavigationArrows() {
-        document.getElementById('lat_arrow_0').style.display = currentIndex > 0 ? 'block' : 'none';
-        document.getElementById('lat_arrow_1').style.display = currentIndex < postcardsData.length - 1 ? 'block' : 'none';
-    }
-    
-    function closeAllPopups() {
-        document.getElementById('fade').style.display = 'none';
-        document.getElementById('popup_detail').style.display = 'none';
-        document.getElementById('popup_zoom').style.display = 'none';
-    }
-    
-    function searchTheme(theme) {
-        document.getElementById('keywords_input').value = theme;
-        document.getElementById('researchForm').submit();
-    }
-    
-    // Keyboard navigation
-    document.addEventListener('keydown', function(e) {
-        const detailPopup = document.getElementById('popup_detail');
-        const zoomPopup = document.getElementById('popup_zoom');
-        
-        if (detailPopup && detailPopup.style.display === 'block') {
-            if (e.key === 'ArrowLeft') previousImage();
-            else if (e.key === 'ArrowRight') nextImage();
-            else if (e.key === 'Escape') closeAllPopups();
-        } else if (zoomPopup && zoomPopup.style.display === 'block') {
-            if (e.key === 'Escape') closeAllPopups();
-        }
-    });
+});
 </script>
 
 <style>
 /* ========================================
-   RIVER WATER ANIMATION STYLES
+   BROWSE PAGE STYLES
    ======================================== */
 
-.river-container {
+.browse-page {
+    min-height: 100vh;
+    padding-top: 70px;
+    background: #1a1a1a;
+}
+
+/* Search Section */
+.search-section {
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.search-form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.search-box {
+    display: flex;
+    background: white;
+    border-radius: 50px;
+    overflow: hidden;
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+}
+
+.search-box input {
+    flex: 1;
+    padding: 18px 25px;
+    border: none;
+    font-size: 1.1rem;
+    outline: none;
+}
+
+.search-box button {
+    padding: 15px 25px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.search-box button:hover {
+    transform: scale(1.05);
+}
+
+.search-box button img {
+    height: 24px;
+}
+
+.search-results-text {
+    color: #b5600b;
+    margin-top: 20px;
+    font-size: 1.1rem;
+}
+
+/* ========================================
+   RIVER SCENE ANIMATION
+   ======================================== */
+
+.river-scene {
     position: relative;
-    width: 100%;
-    height: 450px;
-    margin: 30px 0;
-    overflow: hidden;
+    height: 400px;
+    margin: 20px;
     border-radius: 20px;
-    background: linear-gradient(180deg, 
-        #0a1628 0%, 
-        #1a3a5c 30%,
-        #2d5a7b 60%,
-        #1a3a5c 80%,
-        #0a1628 100%);
-}
-
-/* Water waves background */
-.water-bg {
-    position: absolute;
-    width: 100%;
-    height: 100%;
     overflow: hidden;
+    background: linear-gradient(180deg,
+        #0d1b2a 0%,
+        #1b3a4b 30%,
+        #2d5a6b 50%,
+        #1b3a4b 70%,
+        #0d1b2a 100%);
 }
 
-.wave {
+/* Water layers */
+.water-layer {
     position: absolute;
     width: 200%;
     height: 100%;
-    background: linear-gradient(90deg, 
+    background: linear-gradient(90deg,
         transparent 0%,
-        rgba(255, 255, 255, 0.03) 25%,
-        rgba(255, 255, 255, 0.08) 50%,
-        rgba(255, 255, 255, 0.03) 75%,
+        rgba(255, 255, 255, 0.02) 20%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0.02) 80%,
         transparent 100%);
-    animation: wave-flow linear infinite;
+    animation: water-move linear infinite;
 }
 
-.wave1 {
-    animation-duration: 25s;
-    opacity: 0.5;
+.water-layer-1 { animation-duration: 20s; }
+.water-layer-2 { animation-duration: 25s; top: 30%; opacity: 0.5; }
+.water-layer-3 { animation-duration: 30s; top: 60%; opacity: 0.3; }
+
+@keyframes water-move {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
 }
 
-.wave2 {
-    animation-duration: 20s;
-    animation-delay: -5s;
-    opacity: 0.3;
-    top: 30%;
-}
-
-.wave3 {
-    animation-duration: 30s;
-    animation-delay: -10s;
-    opacity: 0.4;
-    top: 60%;
-}
-
-@keyframes wave-flow {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-50%);
-    }
-}
-
-/* Particles floating in the water */
-.particles-container {
+/* Light effects */
+.light-effects {
     position: absolute;
     width: 100%;
     height: 100%;
     pointer-events: none;
 }
 
-.particle {
+.light-beam {
     position: absolute;
-    background: radial-gradient(circle, 
-        rgba(255, 215, 0, 0.9) 0%, 
-        rgba(181, 96, 11, 0.6) 40%, 
+    width: 300px;
+    height: 100%;
+    background: linear-gradient(180deg,
+        rgba(255, 215, 0, 0.1) 0%,
+        rgba(255, 215, 0, 0.05) 50%,
+        transparent 100%);
+    animation: light-shimmer 8s ease-in-out infinite;
+}
+
+.light-beam-1 { left: 10%; animation-delay: 0s; }
+.light-beam-2 { left: 40%; animation-delay: 2s; }
+.light-beam-3 { left: 70%; animation-delay: 4s; }
+
+@keyframes light-shimmer {
+    0%, 100% { opacity: 0.3; transform: scaleX(1); }
+    50% { opacity: 0.8; transform: scaleX(1.2); }
+}
+
+/* Particles */
+.river-particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.river-particle {
+    position: absolute;
+    background: radial-gradient(circle,
+        rgba(255, 215, 0, 0.9) 0%,
+        rgba(255, 200, 100, 0.5) 40%,
         transparent 70%);
     border-radius: 50%;
-    animation: particle-float var(--particle-duration, 15s) linear infinite;
+    animation: particle-flow linear infinite;
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
-@keyframes particle-float {
+@keyframes particle-flow {
     0% {
-        transform: translateX(0) translateY(0) scale(0);
+        transform: translate(0, 0) scale(0);
         opacity: 0;
     }
     5% {
         opacity: 0.8;
-        transform: translateX(-50px) translateY(-10px) scale(1);
+        transform: translate(-30px, -10px) scale(1);
     }
     50% {
         opacity: 1;
-        transform: translateX(calc(-50vw - 100px)) translateY(20px) scale(1.2);
+        transform: translate(calc(-50vw), 15px) scale(1.1);
     }
     95% {
         opacity: 0.6;
-        transform: translateX(calc(-100vw - 150px)) translateY(-15px) scale(0.8);
+        transform: translate(calc(-100vw - 50px), -10px) scale(0.8);
     }
     100% {
-        transform: translateX(calc(-100vw - 200px)) translateY(0) scale(0);
+        transform: translate(calc(-100vw - 100px), 0) scale(0);
         opacity: 0;
     }
 }
 
-/* Floating words container */
-.floating-words {
+/* Floating words */
+.word-spawner {
     position: absolute;
     width: 100%;
     height: 100%;
     pointer-events: none;
 }
 
-/* Individual floating words */
-.float-word {
+.floating-word {
     position: absolute;
-    color: rgba(255, 255, 255, var(--base-opacity, 0.7));
+    color: rgba(255, 255, 255, 0.8);
     font-family: 'Georgia', serif;
     font-style: italic;
+    padding: 8px 18px;
+    background: rgba(181, 96, 11, 0.2);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 25px;
     cursor: pointer;
     pointer-events: auto;
-    padding: 6px 14px;
-    background: rgba(181, 96, 11, 0.15);
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    border-radius: 20px;
     white-space: nowrap;
     animation: 
-        word-float var(--float-duration, 25s) linear infinite,
-        word-wave 4s ease-in-out infinite,
-        word-glow 3s ease-in-out infinite;
-    text-shadow: 0 0 10px rgba(181, 96, 11, 0.5);
+        word-drift linear forwards,
+        word-bob 3s ease-in-out infinite;
+    text-shadow: 0 0 15px rgba(181, 96, 11, 0.5);
+    backdrop-filter: blur(3px);
     transition: all 0.3s ease;
-    backdrop-filter: blur(2px);
 }
 
-.float-word:hover {
-    color: white !important;
+.floating-word:hover {
     background: rgba(181, 96, 11, 0.8) !important;
-    border-color: gold !important;
-    transform: scale(1.4) !important;
-    box-shadow: 
-        0 0 30px rgba(181, 96, 11, 0.8),
-        0 0 60px rgba(255, 215, 0, 0.4),
-        inset 0 0 20px rgba(255, 255, 255, 0.1);
-    z-index: 100 !important;
-    animation: none !important;
-    text-shadow: 0 0 20px white;
+    color: white !important;
+    transform: scale(1.5) !important;
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+    animation-play-state: paused;
+    z-index: 100;
 }
 
-/* Theme words - slightly larger and more prominent */
-.theme-word {
-    font-weight: 600;
-    font-size: 1rem;
-    background: rgba(181, 96, 11, 0.25);
-    border-color: rgba(255, 215, 0, 0.3);
-}
-
-/* Suggested words - smaller and more subtle */
-.suggest-word {
-    font-size: 0.85rem;
-    font-weight: 400;
-    background: rgba(100, 149, 237, 0.15);
-    border-color: rgba(100, 149, 237, 0.2);
-}
-
-/* Float from right to left */
-@keyframes word-float {
+@keyframes word-drift {
     0% {
         transform: translateX(0);
         opacity: 0;
     }
-    3% {
-        opacity: var(--base-opacity, 0.7);
+    5% {
+        opacity: 1;
     }
-    97% {
-        opacity: var(--base-opacity, 0.7);
+    90% {
+        opacity: 1;
     }
     100% {
-        transform: translateX(calc(-100vw - 300px));
+        transform: translateX(calc(-100vw - 250px));
         opacity: 0;
     }
 }
 
-/* Gentle vertical wave motion */
-@keyframes word-wave {
-    0%, 100% {
-        margin-top: 0;
-    }
-    25% {
-        margin-top: calc(var(--wave-amplitude, 20px) * -1);
-    }
-    50% {
-        margin-top: 0;
-    }
-    75% {
-        margin-top: var(--wave-amplitude, 20px);
-    }
+@keyframes word-bob {
+    0%, 100% { margin-top: 0; }
+    50% { margin-top: -15px; }
 }
 
-/* Subtle glow pulsing */
-@keyframes word-glow {
-    0%, 100% {
-        text-shadow: 0 0 10px rgba(181, 96, 11, 0.3);
-        filter: brightness(1);
-    }
-    50% {
-        text-shadow: 
-            0 0 20px rgba(181, 96, 11, 0.6),
-            0 0 40px rgba(255, 215, 0, 0.3);
-        filter: brightness(1.2);
-    }
-}
-
-/* Instruction text */
-.river-instruction {
+.river-hint {
     position: absolute;
     bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+    width: 100%;
     text-align: center;
 }
 
-.river-instruction p {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.9rem;
+.river-hint p {
+    color: rgba(255, 255, 255, 0.5);
     font-style: italic;
-    margin: 0;
-    animation: pulse-text 3s ease-in-out infinite;
-}
-
-@keyframes pulse-text {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
+    font-size: 0.9rem;
 }
 
 /* ========================================
-   POSTCARDS GRID STYLES
+   RESULTS GRID
    ======================================== */
 
-.postcards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
+.results-section {
     padding: 20px;
 }
 
-.cp_result {
-    position: relative;
+.postcards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-.cp_card {
+.postcard-card {
     position: relative;
+    aspect-ratio: 3/2;
     border-radius: 12px;
     overflow: hidden;
-    background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    background: #2a2a2a;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
     transition: transform 0.3s, box-shadow 0.3s;
-    aspect-ratio: 3/2;
 }
 
-.cp_card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 12px 40px rgba(181, 96, 11, 0.4);
+.postcard-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(181, 96, 11, 0.3);
 }
 
-.cp_card.no-image {
-    background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
-}
-
-.cp_image {
+.postcard-card img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     transition: transform 0.5s;
 }
 
-.cp_card:hover .cp_image {
+.postcard-card:hover img {
     transform: scale(1.1);
 }
 
-.cp_placeholder {
-    width: 100%;
-    height: 100%;
+.postcard-card.no-img {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
-    color: #b5600b;
-    font-size: 1.5rem;
-    font-weight: bold;
+    color: #666;
 }
 
-.cp_overlay {
+.postcard-overlay {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(transparent, rgba(0,0,0,0.95));
-    padding: 50px 12px 12px;
+    padding: 40px 15px 15px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.9));
     opacity: 0;
     transition: opacity 0.3s;
 }
 
-.cp_card:hover .cp_overlay {
+.postcard-card:hover .postcard-overlay {
     opacity: 1;
 }
 
-.cp_actions {
+.postcard-actions {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 10px;
 }
 
-.cp_btn {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
+.postcard-actions button {
+    width: 40px;
+    height: 40px;
     border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s;
 }
 
-.cp_detail {
-    background: rgba(255, 255, 255, 0.95);
-}
-
-.cp_zoom_btn {
-    background: linear-gradient(135deg, #b5600b, #d1872c);
-}
-
-.cp_btn:hover {
+.postcard-actions button:hover {
     transform: scale(1.15);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-.cp_btn img {
-    width: 20px;
-    height: 20px;
-}
-
-.cp_title {
+.postcard-title {
     color: white;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     text-align: center;
     margin: 0;
-    line-height: 1.3;
 }
 
 .no-results {
     text-align: center;
-    padding: 60px 20px;
-    color: rgba(255, 255, 255, 0.8);
+    padding: 60px;
+    color: white;
 }
 
 .no-results a {
     color: #b5600b;
     text-decoration: none;
-    transition: color 0.3s;
 }
 
-.no-results a:hover {
-    color: #d1872c;
-    text-decoration: underline;
-}
-
-.browse-stats {
+.browse-footer {
     text-align: center;
-    padding: 25px;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.9rem;
+    padding: 30px;
+    color: rgba(255, 255, 255, 0.4);
 }
 
 /* ========================================
-   POPUP STYLES
+   POPUPS
    ======================================== */
 
-.black_overlay {
+.overlay {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background: rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
+    z-index: 2000;
 }
 
-.popup_detail, .popup_zoom {
+.popup {
     display: none;
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 1001;
+    z-index: 2001;
     max-width: 90vw;
     max-height: 90vh;
 }
 
-.popup_close {
+.popup-close {
     position: absolute;
-    top: -20px;
-    right: -20px;
-    z-index: 1002;
-}
-
-.close_icon {
+    top: -15px;
+    right: -15px;
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, #b5600b, #d1872c);
+    background: #b5600b;
+    color: white;
+    border: none;
     border-radius: 50%;
-    padding: 8px;
+    font-size: 24px;
     cursor: pointer;
-    transition: transform 0.3s, box-shadow 0.3s;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    transition: transform 0.3s;
 }
 
-.close_icon:hover {
+.popup-close:hover {
     transform: scale(1.1) rotate(90deg);
-    box-shadow: 0 6px 20px rgba(181, 96, 11, 0.5);
 }
 
-.img_popup_detail, .img_popup_zoom {
+.popup-image {
     max-width: 80vw;
     max-height: 75vh;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
 }
 
-.reverse_cp {
+.popup-flip {
     position: absolute;
-    top: 15px;
-    left: 15px;
-    width: 40px;
-    height: 40px;
+    top: 10px;
+    left: 10px;
+    width: 35px;
     cursor: pointer;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0,0,0,0.5);
     border-radius: 50%;
-    padding: 8px;
-    z-index: 1002;
-    transition: transform 0.3s, background 0.3s;
+    padding: 5px;
+    z-index: 5;
 }
 
-.reverse_cp:hover {
-    transform: scale(1.1) rotateY(180deg);
-    background: #b5600b;
-}
-
-.lat_arrow {
+.popup-arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    height: 60px;
+    height: 50px;
     cursor: pointer;
     opacity: 0.7;
-    transition: opacity 0.3s, transform 0.3s;
-    z-index: 1002;
-    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+    z-index: 5;
 }
 
-.lat_arrow:hover {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.2);
-}
+.popup-arrow:hover { opacity: 1; }
+.popup-arrow-left { left: -60px; }
+.popup-arrow-right { right: -60px; }
 
-.lat_arrow_left {
-    left: -70px;
-}
-
-.lat_arrow_right {
-    right: -70px;
-}
-
-.cp_popup_detail {
+.popup-info {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
     background: linear-gradient(135deg, #b5600b, #d1872c);
-    padding: 18px 20px;
-    border-radius: 0 0 12px 12px;
+    padding: 15px 20px;
+    border-radius: 0 0 10px 10px;
 }
 
-.p_cp_popup_detail {
+.popup-title {
     color: white;
     margin: 0 0 5px 0;
-    font-size: 1.1rem;
-    line-height: 1.4;
+    font-size: 1rem;
 }
 
-.p_nb_cp_popup_detail {
-    color: rgba(255, 255, 255, 0.8);
+.popup-number {
+    color: rgba(255,255,255,0.7);
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
-/* ========================================
-   RESPONSIVE STYLES
-   ======================================== */
+.popup-zoom .popup-image-zoom {
+    max-width: 95vw;
+    max-height: 95vh;
+    cursor: zoom-in;
+}
 
+/* Responsive */
 @media (max-width: 768px) {
-    .river-container {
-        height: 350px;
-    }
-    
-    .postcards-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        padding: 12px;
-    }
-    
-    .lat_arrow_left {
-        left: 10px;
-    }
-    
-    .lat_arrow_right {
-        right: 10px;
-    }
-    
-    .float-word {
-        font-size: 0.75rem !important;
-        padding: 4px 10px;
-    }
+    .river-scene { height: 300px; }
+    .postcards-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .popup-arrow-left { left: 10px; }
+    .popup-arrow-right { right: 10px; }
 }
 
 @media (max-width: 480px) {
-    .river-container {
-        height: 300px;
-    }
-    
-    .postcards-grid {
-        grid-template-columns: 1fr;
-    }
+    .postcards-grid { grid-template-columns: 1fr; }
+    .river-scene { height: 250px; }
 }
 </style>
 {% endblock %}

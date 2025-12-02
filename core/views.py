@@ -30,6 +30,56 @@ def home(request):
         return HttpResponse(f"<h1>Home Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
+def decouvrir(request):
+    """Découvrir page - 6 category panels"""
+    try:
+        # Define the 6 discovery categories
+        categories = [
+            {
+                'title': 'Les Bateaux',
+                'subtitle': 'Découvrez les embarcations fluviales',
+                'keyword': 'bateau',
+                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000001.jpg',
+            },
+            {
+                'title': 'Les Écluses',
+                'subtitle': 'Passages et ouvrages d\'art',
+                'keyword': 'écluse',
+                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000050.jpg',
+            },
+            {
+                'title': 'Les Ponts',
+                'subtitle': 'Traversées historiques',
+                'keyword': 'pont',
+                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000100.jpg',
+            },
+            {
+                'title': 'La Seine',
+                'subtitle': 'Le fleuve parisien',
+                'keyword': 'seine',
+                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000150.jpg',
+            },
+            {
+                'title': 'La Marne',
+                'subtitle': 'Affluent et paysages',
+                'keyword': 'marne',
+                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000200.jpg',
+            },
+            {
+                'title': 'Les Métiers',
+                'subtitle': 'Mariniers et travailleurs',
+                'keyword': 'marinier',
+                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000250.jpg',
+            },
+        ]
+
+        return render(request, 'decouvrir.html', {'categories': categories})
+
+    except Exception as e:
+        import traceback
+        return HttpResponse(f"<h1>Découvrir Error</h1><pre>{traceback.format_exc()}</pre>")
+    
+
 def browse(request):
     """Browse page"""
     try:
@@ -436,3 +486,4 @@ def update_user_category(request, user_id):
 def delete_user(request, user_id):
     """Legacy delete user"""
     return admin_user_detail(request, user_id)
+
