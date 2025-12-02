@@ -183,49 +183,48 @@ def home(request):
 
 
 def decouvrir(request):
-    """Découvrir page - 6 category panels"""
+    """Découvrir page - 6 paintings with videos"""
     try:
-        # Define the 6 discovery categories
-        categories = [
+        paintings = [
             {
-                'title': 'Les Bateaux',
-                'subtitle': 'Découvrez les embarcations fluviales',
-                'keyword': 'bateau',
-                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000001.jpg',
+                'title': "Ascenseur de la Terrasse",
+                'image_off': 'images/decouvrir/Cadre_1_Off.jpg',
+                'image_on': 'images/decouvrir/Cadre_1_Clic.jpg',
+                'video_url': 'https://www.youtube.com/watch?v=2hD8sSnelHs',
             },
             {
-                'title': 'Les Écluses',
-                'subtitle': 'Passages et ouvrages d\'art',
-                'keyword': 'écluse',
-                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000050.jpg',
+                'title': "Accident de l'archevêché",
+                'image_off': 'images/decouvrir/Cadre_2_Off.jpg',
+                'image_on': 'images/decouvrir/Cadre_2_Clic.jpg',
+                'video_url': 'https://www.youtube.com/watch?v=VIDEO_ID_2',  # Add correct video ID
             },
             {
-                'title': 'Les Ponts',
-                'subtitle': 'Traversées historiques',
-                'keyword': 'pont',
-                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000100.jpg',
+                'title': "Bateau « Touriste »",
+                'image_off': 'images/decouvrir/Cadre_3_Off.jpg',
+                'image_on': 'images/decouvrir/Cadre_3_Clic.jpg',
+                'video_url': 'https://www.youtube.com/watch?v=6462WnYcRxo',
             },
             {
-                'title': 'La Seine',
-                'subtitle': 'Le fleuve parisien',
-                'keyword': 'seine',
-                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000150.jpg',
+                'title': "Machine de Marly",
+                'image_off': 'images/decouvrir/Cadre_4_Off.jpg',
+                'image_on': 'images/decouvrir/Cadre_4_Clic.jpg',
+                'video_url': 'https://www.youtube.com/watch?v=h-bLPdvk4BU',
             },
             {
-                'title': 'La Marne',
-                'subtitle': 'Affluent et paysages',
-                'keyword': 'marne',
-                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000200.jpg',
+                'title': "Yacht « Le Druide »",
+                'image_off': 'images/decouvrir/Cadre_5_Off.jpg',
+                'image_on': 'images/decouvrir/Cadre_5_Clic.jpg',
+                'video_url': 'https://www.youtube.com/watch?v=J-VMocHfFb8',
             },
             {
-                'title': 'Les Métiers',
-                'subtitle': 'Mariniers et travailleurs',
-                'keyword': 'marinier',
-                'image': 'https://collections.samathey.fr/collection_cp/cartes/Grande/000250.jpg',
+                'title': "La Pénichienne",
+                'image_off': 'images/decouvrir/Cadre_6_Off.jpg',
+                'image_on': 'images/decouvrir/Cadre_6_Clic.jpg',
+                'video_url': 'https://www.youtube.com/watch?v=0ftXAcvLukY',
             },
         ]
 
-        return render(request, 'decouvrir.html', {'categories': categories})
+        return render(request, 'decouvrir.html', {'paintings': paintings})
 
     except Exception as e:
         import traceback
