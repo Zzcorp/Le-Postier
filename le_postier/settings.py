@@ -39,20 +39,18 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'crispy_forms',
-    'crispy_bootstrap5',
-    # 'corsheaders',  # REMOVED - not needed
     'core',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    # REMOVE ALL CUSTOM MIDDLEWARE
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'le_postier.urls'
@@ -147,77 +145,47 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# Security Settings for Production
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
     "https://collections.samathey.fr",
     "https://le-postier.onrender.com",
 ]
 
-# DISABLE ALL REDIRECTS
+# IMPORTANT: NO REDIRECTS AT ALL
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
+SECURE_BROWSER_XSS_FILTER = False
+SECURE_CONTENT_TYPE_NOSNIFF = False
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 
-# NO LOGIN REDIRECTS
-LOGIN_URL = None
-LOGIN_REDIRECT_URL = None
-LOGOUT_REDIRECT_URL = None
+# NO login redirects
+LOGIN_URL = '/login/'  # Don't use reverse()
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
 
-# Logging
+# Disable all HSTS
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = [
+    'http://*',
+    'https://*',
+]
+
+# Logging to see what's happening
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
-        },
-    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
         },
     },
     'root': {
         'handlers': ['console'],
-        'level': 'INFO',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
+        'level': 'DEBUG',
     },
 }
-
-# Cache Configuration (Redis if available)
-REDIS_URL = config('REDIS_URL', default='')
-if REDIS_URL:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-        }
-    }
-else:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        }
-    }
-
-# FTP Settings for OVH
-FTP_HOST = config('FTP_HOST', default='ftp.cluster010.hosting.ovh.net')
-FTP_USER = config('FTP_USER', default='samathey')
-FTP_PASSWORD = config('FTP_PASSWORD', default='qaszSZDE123')
-FTP_POSTCARDS_PATH = config('FTP_POSTCARDS_PATH', default='/www/cpa/scan')
