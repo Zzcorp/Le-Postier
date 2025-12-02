@@ -10,12 +10,45 @@ from datetime import timedelta
 import traceback
 import json
 
-
 from .models import (
     CustomUser, Postcard, Theme, ContactMessage,
     SearchLog, PageView, UserActivity, SystemLog, IntroSeen
 )
 from .forms import ContactForm, SimpleRegistrationForm
+
+import requests
+from django.http import HttpResponse, Http404
+from django.views.decorators.cache import cache_page
+
+
+@cache_page(60 * 60 * 24)  # Cache for 24 hours
+def serve_postcard_image(request, image_type, number):
+    """Proxy to serve images from OVH"""
+    valid_types = ['Vignette', 'Grande', 'Dos', 'Zoom']
+
+    if image_type not in valid_types:
+        raise Http404("Invalid image type")
+
+    # Ensure number is padded
+    number = str(number).zfill(6)
+
+    # Build the OVH URL
+    ovh_url = f"https://collections.samathey.fr/collection_cp/cartes/{image_type}/{number}.jpg"
+
+    try:
+        response = requests.get(ovh_url, timeout=10)
+        if response.status_code == 200:
+            return HttpResponse(
+                response.content,
+                content_type='image/jpeg',
+                headers={
+                    'Cache-Control': 'public, max-age=86400',
+                    'Access-Control-Allow-Origin': '*',
+                }
+            )
+        raise Http404("Image not found")
+    except requests.RequestException:
+        raise Http404("Could not fetch image")
 
 
 def is_admin(user):

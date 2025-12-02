@@ -13,6 +13,8 @@ urlpatterns = [
     path('profil/', views.profile, name='profile'),
     path('logout/', views.logout_view, name='logout'),
 
+    path('images/<str:image_type>/<str:number>.jpg', views.serve_postcard_image, name='serve_image'),
+
     # Admin Dashboard
     path('tableau-de-bord/', views.admin_dashboard, name='admin_dashboard'),
     path('api/admin/stats/', views.admin_stats_api, name='admin_stats_api'),
