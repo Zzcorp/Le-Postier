@@ -11,7 +11,6 @@ urlpatterns = [
     path('contact/', views.contact, name='contact'),
     path('inscription/', views.register, name='register'),
     path('connexion/', views.login_view, name='login'),
-    path('health/', views.health_check, name='health_check'),
 
     # Admin
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
