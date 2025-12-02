@@ -16,26 +16,18 @@
     <section class="paintings-gallery">
         <div class="paintings-grid">
             {% for painting in paintings %}
-            <div class="painting-item animate-fade-in-up delay-{{ forloop.counter }}" 
-                 data-video="{{ painting.video_url }}"
-                 data-title="{{ painting.title }}"
-                 onclick="openVideoModal(this)">
+            <div class="painting-item animate-fade-in-up" 
+                data-video="{{ painting.video_url }}"
+                data-title="{{ painting.title }}"
+                onclick="openVideoModal(this)"
+                style="animation-delay: {{ forloop.counter }}00ms;">
                 <div class="painting-frame">
-                    <img class="painting-off" 
-                         src="{% static painting.image_off %}" 
-                         alt="{{ painting.title }}">
-                    <img class="painting-on" 
-                         src="{% static painting.image_on %}" 
-                         alt="{{ painting.title }} - Hover">
+                    <img class="painting-off" src="{{ painting.image_off }}" alt="{{ painting.title }}">
+                    <img class="painting-on" src="{{ painting.image_on }}" alt="{{ painting.title }} - Hover">
                 </div>
                 <div class="painting-info">
                     <h3>{{ painting.title }}</h3>
-                    <span class="play-indicator">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                        Voir la vidéo
-                    </span>
+                    <span class="play-indicator">▶ Voir la vidéo</span>
                 </div>
             </div>
             {% endfor %}

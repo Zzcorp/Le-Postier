@@ -11,6 +11,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         base_url = 'https://collections.samathey.fr/cartes'
+        animated_base = 'https://collections.samathey.fr/cartes/animated_cp'
 
         postcards = Postcard.objects.all().order_by('number')
         total = postcards.count()
@@ -25,7 +26,6 @@ class Command(BaseCommand):
 
         for postcard in postcards:
             try:
-                # Extract numeric part and pad to 6 digits
                 num_str = ''.join(filter(str.isdigit, str(postcard.number)))
                 if not num_str:
                     num_str = str(postcard.id)
@@ -37,6 +37,7 @@ class Command(BaseCommand):
                 postcard.grande_url = f"{base_url}/Grande/{num_padded}.jpg"
                 postcard.dos_url = f"{base_url}/Dos/{num_padded}.jpg"
                 postcard.zoom_url = f"{base_url}/Zoom/{num_padded}.jpg"
+                postcard.animated_url = f"{animated_base}/{num_padded}.mp4"
 
                 postcard.save()
                 updated += 1
@@ -54,6 +55,4 @@ class Command(BaseCommand):
         if sample:
             self.stdout.write(f'\n📌 Sample URLs for #{sample.number}:')
             self.stdout.write(f'   Vignette: {sample.vignette_url}')
-            self.stdout.write(f'   Grande: {sample.grande_url}')
-            self.stdout.write(f'   Dos: {sample.dos_url}')
-            self.stdout.write(f'   Zoom: {sample.zoom_url}')
+            self.stdout.write(f'   Animated: {sample.animated_url}')

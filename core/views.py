@@ -182,44 +182,45 @@ def home(request):
         return HttpResponse(f"<h1>Home Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
+# core/views.py - Update decouvrir view
 def decouvrir(request):
     """Découvrir page - 6 paintings with videos"""
     try:
         paintings = [
             {
                 'title': "Ascenseur de la Terrasse",
-                'image_off': 'images/decouvrir/Cadre_1_Off.jpg',
-                'image_on': 'images/decouvrir/Cadre_1_Clic.jpg',
+                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_1_Off.png',
+                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_1_Clic.png',
                 'video_url': 'https://www.youtube.com/watch?v=2hD8sSnelHs',
             },
             {
                 'title': "Accident de l'archevêché",
-                'image_off': 'images/decouvrir/Cadre_2_Off.jpg',
-                'image_on': 'images/decouvrir/Cadre_2_Clic.jpg',
-                'video_url': 'https://www.youtube.com/watch?v=VIDEO_ID_2',  # Add correct video ID
+                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_2_Off.png',
+                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_2_Clic.png',
+                'video_url': 'https://www.youtube.com/watch?v=PLACEHOLDER',
             },
             {
                 'title': "Bateau « Touriste »",
-                'image_off': 'images/decouvrir/Cadre_3_Off.jpg',
-                'image_on': 'images/decouvrir/Cadre_3_Clic.jpg',
+                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_3_Off.png',
+                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_3_Clic.png',
                 'video_url': 'https://www.youtube.com/watch?v=6462WnYcRxo',
             },
             {
                 'title': "Machine de Marly",
-                'image_off': 'images/decouvrir/Cadre_4_Off.jpg',
-                'image_on': 'images/decouvrir/Cadre_4_Clic.jpg',
+                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_4_Off.png',
+                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_4_Clic.png',
                 'video_url': 'https://www.youtube.com/watch?v=h-bLPdvk4BU',
             },
             {
                 'title': "Yacht « Le Druide »",
-                'image_off': 'images/decouvrir/Cadre_5_Off.jpg',
-                'image_on': 'images/decouvrir/Cadre_5_Clic.jpg',
+                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_5_Off.png',
+                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_5_Clic.png',
                 'video_url': 'https://www.youtube.com/watch?v=J-VMocHfFb8',
             },
             {
                 'title': "La Pénichienne",
-                'image_off': 'images/decouvrir/Cadre_6_Off.jpg',
-                'image_on': 'images/decouvrir/Cadre_6_Clic.jpg',
+                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_6_Off.png',
+                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_6_Clic.png',
                 'video_url': 'https://www.youtube.com/watch?v=0ftXAcvLukY',
             },
         ]

@@ -10,7 +10,7 @@
     <header class="hero-section">
         <div class="video-container">
             <video autoplay muted loop playsinline id="hero-video" class="hero-video">
-                <source src="{% static 'video/Annimate_CPA_optimized.mp4' %}" type="video/mp4">
+                <source id="video-source" src="https://collections.samathey.fr/static/video/Annimate_CPA_optimized_0.mp4" type="video/mp4">
             </video>
             <div class="video-overlay"></div>
         </div>
@@ -32,11 +32,7 @@
         
         <div class="scroll-indicator animate-fade-in delay-5">
             <span>Découvrir</span>
-            <div class="scroll-arrow">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14M5 12l7 7 7-7"/>
-                </svg>
-            </div>
+            <div class="scroll-arrow">▼</div>
         </div>
     </header>
 
@@ -54,451 +50,150 @@
             <p class="welcome-text animate-fade-in-up delay-2">
                 Cette collection de cartes postales anciennes a été mise en ligne pour vous permettre 
                 de naviguer et de vous promener le long des berges à la « Belle Époque », cette période 
-                (1873-1914) pleine d'insouciance et d'optimisme, grâce notamment aux extraordinaires 
-                progrès techniques, médicaux et sociaux.
+                (1873-1914) pleine d'insouciance et d'optimisme.
             </p>
             
             <p class="welcome-text animate-fade-in-up delay-3">
                 Vous pourrez découvrir des métiers et des bateaux aujourd'hui disparus, reconnaître 
-                certains détours ou boucles de la Seine et d'autres cours d'eau. Vous revisiterez 
-                des écluses ou des ponts toujours présents aujourd'hui, grâce à la qualité de 
-                construction de cette époque, et bien d'autres surprises encore.
+                certains détours ou boucles de la Seine et d'autres cours d'eau.
             </p>
             
-            <p class="welcome-signature animate-fade-in-up delay-4">
-                Bonne visite à tous !
-            </p>
+            <p class="welcome-signature animate-fade-in-up delay-4">Bonne visite à tous !</p>
             
             <div class="welcome-actions animate-fade-in-up delay-5">
-                <a href="{% url 'browse' %}" class="btn btn-primary">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                    Parcourir
-                </a>
-                <a href="{% url 'decouvrir' %}" class="btn btn-secondary">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                    </svg>
-                    Découvrir
-                </a>
-            </div>
-        </div>
-        
-        <!-- Decorative Elements -->
-        <div class="floating-postcards">
-            <div class="floating-card card-1"></div>
-            <div class="floating-card card-2"></div>
-            <div class="floating-card card-3"></div>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="stats-section">
-        <div class="stats-container">
-            <div class="stat-item animate-fade-in-up delay-1">
-                <span class="stat-number" data-count="1860">0</span>
-                <span class="stat-label">Cartes Postales</span>
-            </div>
-            <div class="stat-item animate-fade-in-up delay-2">
-                <span class="stat-number" data-count="25">0</span>
-                <span class="stat-label">Thèmes</span>
-            </div>
-            <div class="stat-item animate-fade-in-up delay-3">
-                <span class="stat-number" data-count="1914">0</span>
-                <span class="stat-label">Année Max</span>
+                <a href="{% url 'browse' %}" class="btn btn-primary">🔍 Parcourir</a>
+                <a href="{% url 'decouvrir' %}" class="btn btn-secondary">📖 Découvrir</a>
             </div>
         </div>
     </section>
 </div>
 
+<script>
+// Video rotation - iterate through 50 videos
+const videoElement = document.getElementById('hero-video');
+const videoSource = document.getElementById('video-source');
+const totalVideos = 50;
+let currentVideoIndex = 0;
+
+function getVideoUrl(index) {
+    return `https://collections.samathey.fr/static/video/Annimate_CPA_optimized_${index}.mp4`;
+}
+
+function playNextVideo() {
+    currentVideoIndex = (currentVideoIndex + 1) % totalVideos;
+    videoSource.src = getVideoUrl(currentVideoIndex);
+    videoElement.load();
+    videoElement.play().catch(() => {});
+}
+
+// When current video ends, play next one
+videoElement.addEventListener('ended', playNextVideo);
+
+// Also rotate every 30 seconds in case video is looping
+setInterval(() => {
+    playNextVideo();
+}, 30000);
+
+// Handle video load errors - skip to next
+videoElement.addEventListener('error', () => {
+    console.log('Video error, skipping to next');
+    playNextVideo();
+});
+</script>
+
 <style>
-/* ========================================
-   HOME PAGE STYLES
-   ======================================== */
-.home-page {
-    overflow-x: hidden;
-}
+.home-page { overflow-x: hidden; }
 
-/* Hero Section */
 .hero-section {
-    position: relative;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+    position: relative; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
 }
-
-.video-container {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-}
-
-.hero-video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: brightness(0.6);
-}
-
+.video-container { position: absolute; inset: 0; z-index: 0; }
+.hero-video { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.6); }
 .video-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        180deg,
-        rgba(26, 18, 8, 0.3) 0%,
-        rgba(26, 18, 8, 0.1) 50%,
-        rgba(26, 18, 8, 0.8) 100%
-    );
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(26,18,8,0.3) 0%, rgba(26,18,8,0.1) 50%, rgba(26,18,8,0.8) 100%);
 }
-
-.hero-content {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    padding: 20px;
-    max-width: 900px;
-}
-
+.hero-content { position: relative; z-index: 1; text-align: center; padding: 20px; max-width: 900px; }
 .hero-title {
-    font-size: clamp(2rem, 5vw, 4rem);
-    color: white;
-    text-shadow: 2px 2px 20px rgba(0, 0, 0, 0.5);
-    margin-bottom: 20px;
-    line-height: 1.2;
+    font-size: clamp(2rem, 5vw, 4rem); color: white;
+    text-shadow: 2px 2px 20px rgba(0,0,0,0.5); margin-bottom: 20px;
 }
-
 .hero-subtitle {
-    font-size: clamp(1.1rem, 2.5vw, 1.6rem);
-    color: rgba(255, 255, 255, 0.9);
-    text-shadow: 1px 1px 10px rgba(0, 0, 0, 0.5);
-    margin-bottom: 40px;
-    font-style: italic;
+    font-size: clamp(1.1rem, 2.5vw, 1.6rem); color: rgba(255,255,255,0.9);
+    text-shadow: 1px 1px 10px rgba(0,0,0,0.5); margin-bottom: 40px; font-style: italic;
 }
-
 .hero-cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
+    display: inline-flex; align-items: center; gap: 12px;
     padding: 18px 40px;
     background: linear-gradient(135deg, #b5600b, #d1872c);
-    color: white;
-    text-decoration: none;
-    border-radius: 50px;
-    font-size: 1.2rem;
-    font-weight: 600;
+    color: white; text-decoration: none; border-radius: 50px;
+    font-size: 1.2rem; font-weight: 600;
     transition: all 0.4s ease;
     box-shadow: 0 10px 40px rgba(181, 96, 11, 0.5);
 }
+.hero-cta:hover { transform: translateY(-5px) scale(1.05); }
 
-.hero-cta:hover {
-    transform: translateY(-5px) scale(1.05);
-    box-shadow: 0 20px 60px rgba(181, 96, 11, 0.6);
-}
-
-.hero-cta svg {
-    transition: transform 0.3s ease;
-}
-
-.hero-cta:hover svg {
-    transform: translateX(5px);
-}
-
-/* Scroll Indicator */
 .scroll-indicator {
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    color: rgba(255, 255, 255, 0.7);
-    z-index: 1;
+    position: absolute; bottom: 40px; left: 50%;
+    transform: translateX(-50%); text-align: center;
+    color: rgba(255,255,255,0.7); z-index: 1;
 }
-
-.scroll-indicator span {
-    display: block;
-    font-size: 0.9rem;
-    margin-bottom: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-}
-
-.scroll-arrow {
-    animation: bounce 2s infinite;
-}
-
+.scroll-indicator span { display: block; font-size: 0.9rem; margin-bottom: 10px; letter-spacing: 2px; text-transform: uppercase; }
+.scroll-arrow { animation: bounce 2s infinite; }
 @keyframes bounce {
     0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
     40% { transform: translateY(10px); }
-    60% { transform: translateY(5px); }
 }
 
-/* Welcome Section */
 .welcome-section {
-    position: relative;
-    background: linear-gradient(180deg, #f5f0e8 0%, #fff 50%, #f5f0e8 100%);
+    background: linear-gradient(180deg, #f5f0e8, #fff, #f5f0e8);
     padding: 100px 20px;
-    overflow: hidden;
 }
-
-.welcome-container {
-    max-width: 900px;
-    margin: 0 auto;
-    text-align: center;
-    position: relative;
-    z-index: 1;
-}
-
-.welcome-decoration {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    margin-bottom: 40px;
-}
-
-.deco-line {
-    width: 80px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #b5600b, transparent);
-}
-
-.deco-year {
-    color: #b5600b;
-    font-size: 1.1rem;
-    font-weight: 600;
-    letter-spacing: 3px;
-}
-
-.welcome-title {
-    font-size: 2.5rem;
-    color: #2d1f0d;
-    margin-bottom: 40px;
-}
-
-.welcome-text {
-    color: #5a4a3a;
-    font-size: 1.15rem;
-    line-height: 1.9;
-    margin-bottom: 25px;
-    text-align: justify;
-}
-
-.welcome-signature {
-    color: #b5600b;
-    font-size: 1.3rem;
-    font-style: italic;
-    margin: 40px 0;
-}
-
-.welcome-actions {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 16px 35px;
-    background: linear-gradient(135deg, #b5600b, #d1872c);
-    color: white;
-    text-decoration: none;
-    border-radius: 30px;
-    font-size: 1.1rem;
-    font-weight: 600;
+.welcome-container { max-width: 900px; margin: 0 auto; text-align: center; }
+.welcome-decoration { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 40px; }
+.deco-line { width: 80px; height: 2px; background: linear-gradient(90deg, transparent, #b5600b, transparent); }
+.deco-year { color: #b5600b; font-size: 1.1rem; font-weight: 600; letter-spacing: 3px; }
+.welcome-title { font-size: 2.5rem; color: #2d1f0d; margin-bottom: 40px; }
+.welcome-text { color: #5a4a3a; font-size: 1.15rem; line-height: 1.9; margin-bottom: 25px; text-align: justify; }
+.welcome-signature { color: #b5600b; font-size: 1.3rem; font-style: italic; margin: 40px 0; }
+.welcome-actions { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.btn-primary, .btn-secondary {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 35px; border-radius: 30px;
+    font-size: 1.1rem; font-weight: 600; text-decoration: none;
     transition: all 0.3s ease;
+}
+.btn-primary {
+    background: linear-gradient(135deg, #b5600b, #d1872c); color: white;
     box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
 }
+.btn-primary:hover { transform: translateY(-3px); }
+.btn-secondary { background: transparent; color: #b5600b; border: 2px solid #b5600b; }
+.btn-secondary:hover { background: #b5600b; color: white; }
 
-.btn-primary:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(181, 96, 11, 0.5);
-}
+/* Animations */
+.animate-fade-in-down { animation: fadeInDown 0.8s ease forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; }
+.animate-scale-in { animation: scaleIn 0.6s ease forwards; }
+.animate-fade-in { animation: fadeIn 0.8s ease forwards; }
+[class*="animate-"] { opacity: 0; }
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+.delay-5 { animation-delay: 0.5s; }
 
-.btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 16px 35px;
-    background: transparent;
-    color: #b5600b;
-    text-decoration: none;
-    border-radius: 30px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    border: 2px solid #b5600b;
-    transition: all 0.3s ease;
-}
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.btn-secondary:hover {
-    background: #b5600b;
-    color: white;
-    transform: translateY(-3px);
-}
-
-/* Floating Postcards Decoration */
-.floating-postcards {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.floating-card {
-    position: absolute;
-    width: 150px;
-    height: 100px;
-    background: linear-gradient(135deg, #d4c4a8, #e8dcc8);
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    opacity: 0.3;
-}
-
-.card-1 {
-    top: 10%;
-    left: 5%;
-    transform: rotate(-15deg);
-    animation: float 6s ease-in-out infinite;
-}
-
-.card-2 {
-    top: 60%;
-    right: 8%;
-    transform: rotate(10deg);
-    animation: float 7s ease-in-out infinite 1s;
-}
-
-.card-3 {
-    bottom: 15%;
-    left: 10%;
-    transform: rotate(5deg);
-    animation: float 8s ease-in-out infinite 2s;
-}
-
-/* Stats Section */
-.stats-section {
-    background: linear-gradient(135deg, #1a1208 0%, #2d1f0d 100%);
-    padding: 80px 20px;
-}
-
-.stats-container {
-    max-width: 1000px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: center;
-    gap: 80px;
-    flex-wrap: wrap;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-number {
-    display: block;
-    font-size: 3.5rem;
-    font-weight: 700;
-    color: #ffc168;
-    text-shadow: 0 0 30px rgba(255, 193, 104, 0.3);
-}
-
-.stat-label {
-    display: block;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 1.1rem;
-    margin-top: 10px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-
-/* Responsive */
 @media (max-width: 768px) {
-    .hero-title {
-        font-size: 2rem;
-    }
-    
-    .hero-cta {
-        padding: 15px 30px;
-        font-size: 1rem;
-    }
-    
-    .welcome-section {
-        padding: 60px 20px;
-    }
-    
-    .welcome-title {
-        font-size: 1.8rem;
-    }
-    
-    .stats-container {
-        gap: 40px;
-    }
-    
-    .stat-number {
-        font-size: 2.5rem;
-    }
+    .hero-title { font-size: 2rem; }
+    .hero-cta { padding: 15px 30px; font-size: 1rem; }
+    .welcome-section { padding: 60px 20px; }
+    .welcome-title { font-size: 1.8rem; }
 }
 </style>
-
-<script>
-// Animate numbers on scroll
-document.addEventListener('DOMContentLoaded', () => {
-    const animateNumbers = () => {
-        document.querySelectorAll('.stat-number').forEach(el => {
-            const target = parseInt(el.dataset.count);
-            const duration = 2000;
-            const start = performance.now();
-            
-            const update = (currentTime) => {
-                const elapsed = currentTime - start;
-                const progress = Math.min(elapsed / duration, 1);
-                const easeOut = 1 - Math.pow(1 - progress, 3);
-                
-                el.textContent = Math.floor(target * easeOut).toLocaleString();
-                
-                if (progress < 1) {
-                    requestAnimationFrame(update);
-                }
-            };
-            
-            requestAnimationFrame(update);
-        });
-    };
-    
-    // Intersection Observer for stats
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                animateNumbers();
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.5 });
-    
-    const statsSection = document.querySelector('.stats-section');
-    if (statsSection) observer.observe(statsSection);
-    
-    // Trigger animations on scroll
-    const animateOnScroll = () => {
-        document.querySelectorAll('[class*="animate-"]').forEach(el => {
-            const rect = el.getBoundingClientRect();
-            const inView = rect.top < window.innerHeight * 0.85;
-            
-            if (inView) {
-                el.style.opacity = '1';
-            }
-        });
-    };
-    
-    window.addEventListener('scroll', animateOnScroll);
-    animateOnScroll();
-});
-</script>
 {% endblock %}

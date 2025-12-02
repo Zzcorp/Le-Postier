@@ -56,6 +56,7 @@ class Postcard(models.Model):
     grande_url = models.URLField(max_length=500, blank=True, verbose_name="URL Grande")
     dos_url = models.URLField(max_length=500, blank=True, verbose_name="URL Dos")
     zoom_url = models.URLField(max_length=500, blank=True, verbose_name="URL Zoom")
+    animated_url = models.URLField(max_length=500, blank=True, verbose_name="URL Animation")
 
     rarity = models.CharField(max_length=20, choices=RARITY_CHOICES, default='common', verbose_name="Rareté")
 
