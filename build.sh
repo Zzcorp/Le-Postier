@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# exit on error
 set -o errexit
 
 echo "Starting build process..."
 echo "Python version: $(python --version)"
 
-# Upgrade pip and install wheel
+# Upgrade pip
 python -m pip install --upgrade pip wheel setuptools
 
 # Install dependencies
@@ -20,7 +19,7 @@ python manage.py collectstatic --no-input
 echo "Running migrations..."
 python manage.py migrate
 
-# Create superuser if it doesn't exist
+# Create superuser
 echo "Checking for superuser..."
 python manage.py shell << END
 from django.contrib.auth import get_user_model
@@ -30,7 +29,9 @@ if not User.objects.filter(username='samathey').exists():
         User.objects.create_superuser(
             username='samathey',
             email='sam@samathey.com',
-            password='Elpatron78!'
+            password='Elpatron78!',
+            category='viewer',
+            email_verified=True
         )
         print('Superuser created successfully.')
     except Exception as e:
