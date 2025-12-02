@@ -189,3 +189,9 @@ LOGGING = {
         'level': 'DEBUG',
     },
 }
+
+# FTP Configuration for OVH
+FTP_HOST = 'ftp.cluster010.hosting.ovh.net'
+FTP_USER = 'samathey'
+FTP_PASSWORD = 'qaszSZDE123'  # In production, use environment variable!
+FTP_IMAGE_PATH = 'www/collection_cp/cartes'  # Adjust after exploring

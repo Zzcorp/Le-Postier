@@ -16,39 +16,157 @@ from .models import (
 )
 from .forms import ContactForm, SimpleRegistrationForm
 
-import requests
+# core/views.py - Add these imports and views
+
+import ftplib
+from io import BytesIO
 from django.http import HttpResponse, Http404
 from django.views.decorators.cache import cache_page
+from django.conf import settings
+
+# FTP Configuration - Add to settings.py or use directly
+FTP_CONFIG = {
+    'host': 'ftp.cluster010.hosting.ovh.net',
+    'user': 'samathey',
+    'password': 'qaszSZDE123',
+    'image_path': 'www/collection_cp/cartes',  # Adjust after exploring
+}
+
+# core/views.py - Improved version with better caching
+
+import ftplib
+from io import BytesIO
+from django.http import HttpResponse, Http404
+from django.core.cache import cache
+from django.conf import settings
+import hashlib
 
 
-@cache_page(60 * 60 * 24)  # Cache for 24 hours
+def get_ftp_image(image_type, number):
+    """
+    Fetch image from FTP with caching
+    """
+    # Create cache key
+    cache_key = f"postcard_image_{image_type}_{number}"
+
+    # Check cache first
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data if cached_data != 'NOT_FOUND' else None
+
+    # Fetch from FTP
+    try:
+        ftp = ftplib.FTP(
+            getattr(settings, 'FTP_HOST', 'ftp.cluster010.hosting.ovh.net'),
+            timeout=30
+        )
+        ftp.login(
+            getattr(settings, 'FTP_USER', 'samathey'),
+            getattr(settings, 'FTP_PASSWORD', 'qaszSZDE123')
+        )
+
+        # Build path
+        folder_map = {
+            'vignette': 'Vignette',
+            'grande': 'Grande',
+            'dos': 'Dos',
+            'zoom': 'Zoom',
+        }
+
+        folder = folder_map.get(image_type.lower())
+        if not folder:
+            cache.set(cache_key, 'NOT_FOUND', 60 * 60)  # Cache miss for 1 hour
+            return None
+
+        num_padded = str(number).zfill(6)
+        base_path = getattr(settings, 'FTP_IMAGE_PATH', 'www/collection_cp/cartes')
+        file_path = f"{base_path}/{folder}/{num_padded}.jpg"
+
+        # Download
+        buffer = BytesIO()
+        ftp.retrbinary(f'RETR {file_path}', buffer.write)
+        ftp.quit()
+
+        buffer.seek(0)
+        image_data = buffer.getvalue()
+
+        # Cache for 24 hours
+        cache.set(cache_key, image_data, 60 * 60 * 24)
+
+        return image_data
+
+    except ftplib.error_perm:
+        # File not found - cache this result
+        cache.set(cache_key, 'NOT_FOUND', 60 * 60)
+        return None
+    except Exception as e:
+        print(f"FTP Error fetching {image_type}/{number}: {e}")
+        return None
+
+
 def serve_postcard_image(request, image_type, number):
-    """Proxy to serve images from OVH"""
-    valid_types = ['Vignette', 'Grande', 'Dos', 'Zoom']
+    """
+    Serve postcard image - with caching and proper headers
+    """
+    valid_types = ['vignette', 'grande', 'dos', 'zoom']
 
+    image_type = image_type.lower()
     if image_type not in valid_types:
         raise Http404("Invalid image type")
 
-    # Ensure number is padded
-    number = str(number).zfill(6)
+    # Clean number
+    number = ''.join(filter(str.isdigit, str(number).split('.')[0]))
+    if not number:
+        raise Http404("Invalid number")
 
-    # Build the OVH URL
-    ovh_url = f"https://collections.samathey.fr/collection_cp/cartes/{image_type}/{number}.jpg"
+    # Get image
+    image_data = get_ftp_image(image_type, number)
 
-    try:
-        response = requests.get(ovh_url, timeout=10)
-        if response.status_code == 200:
-            return HttpResponse(
-                response.content,
-                content_type='image/jpeg',
-                headers={
-                    'Cache-Control': 'public, max-age=86400',
-                    'Access-Control-Allow-Origin': '*',
-                }
-            )
+    if image_data is None:
         raise Http404("Image not found")
-    except requests.RequestException:
-        raise Http404("Could not fetch image")
+
+    # Generate ETag for browser caching
+    etag = hashlib.md5(image_data).hexdigest()
+
+    # Check If-None-Match header
+    if request.META.get('HTTP_IF_NONE_MATCH') == etag:
+        return HttpResponse(status=304)
+
+    response = HttpResponse(image_data, content_type='image/jpeg')
+    response['Cache-Control'] = 'public, max-age=86400'
+    response['ETag'] = etag
+    response['Access-Control-Allow-Origin'] = '*'
+
+    return response
+
+
+# Alternative: Batch check which images exist
+def check_ftp_images(request):
+    """Admin view to check which images exist on FTP"""
+    if not request.user.is_staff:
+        raise Http404()
+
+    from core.models import Postcard
+
+    fetcher = FTPImageFetcher()
+    results = []
+
+    postcards = Postcard.objects.all()[:20]  # Test with 20
+
+    for pc in postcards:
+        num = ''.join(filter(str.isdigit, str(pc.number)))
+        if not num:
+            continue
+
+        exists = {
+            'number': pc.number,
+            'vignette': fetcher.get_image('vignette', num) is not None,
+            'grande': fetcher.get_image('grande', num) is not None,
+        }
+        results.append(exists)
+
+    from django.http import JsonResponse
+    return JsonResponse({'results': results})
 
 
 def is_admin(user):
