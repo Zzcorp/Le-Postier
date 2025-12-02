@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
-from django.utils.text import slugify
 import uuid
 
 
@@ -27,15 +26,12 @@ class CustomUser(AbstractUser):
     last_visit_date = models.DateField(null=True, blank=True, verbose_name="Dernière visite (date)")
 
     def can_view_rare(self):
-        """Check if user can view rare postcards"""
         return self.category in ['subscribed_verified', 'postman', 'viewer'] or self.is_staff
 
     def can_view_very_rare(self):
-        """Check if user can view very rare postcards"""
         return self.category in ['postman', 'viewer'] or self.is_staff
 
     def has_seen_intro_today(self):
-        """Check if user has seen intro animation today"""
         return self.last_visit_date == timezone.now().date()
 
     class Meta:
@@ -53,31 +49,13 @@ class Postcard(models.Model):
     number = models.CharField(max_length=20, unique=True, verbose_name="Numéro")
     title = models.CharField(max_length=500, verbose_name="Titre")
     description = models.TextField(blank=True, verbose_name="Description")
-    keywords = models.TextField(verbose_name="Mots-clés", help_text="Séparés par des virgules")
+    keywords = models.TextField(blank=True, verbose_name="Mots-clés", help_text="Séparés par des virgules")
 
-    # Different image formats
-    vignette_image = models.ImageField(
-        upload_to='postcards/vignette/',
-        verbose_name="Image Vignette (liste)",
-        help_text="Petite image pour affichage en liste"
-    )
-    grande_image = models.ImageField(
-        upload_to='postcards/grande/',
-        verbose_name="Image Grande (détail)",
-        help_text="Grande image pour vue détaillée"
-    )
-    dos_image = models.ImageField(
-        upload_to='postcards/dos/',
-        verbose_name="Image Dos (verso)",
-        help_text="Image du dos de la carte"
-    )
-    zoom_image = models.ImageField(
-        upload_to='postcards/zoom/',
-        verbose_name="Image Zoom (haute résolution)",
-        help_text="Image haute résolution pour zoom",
-        null=True,
-        blank=True
-    )
+    # Store URLs instead of files - pointing to OVH
+    vignette_url = models.URLField(max_length=500, blank=True, verbose_name="URL Vignette")
+    grande_url = models.URLField(max_length=500, blank=True, verbose_name="URL Grande")
+    dos_url = models.URLField(max_length=500, blank=True, verbose_name="URL Dos")
+    zoom_url = models.URLField(max_length=500, blank=True, verbose_name="URL Zoom")
 
     rarity = models.CharField(max_length=20, choices=RARITY_CHOICES, default='common', verbose_name="Rareté")
 
@@ -86,8 +64,13 @@ class Postcard(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
-                                   related_name='created_postcards')
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_postcards'
+    )
 
     class Meta:
         ordering = ['number']
@@ -99,6 +82,23 @@ class Postcard(models.Model):
 
     def get_keywords_list(self):
         return [k.strip() for k in self.keywords.split(',') if k.strip()]
+
+    # Properties to access images (for template compatibility)
+    @property
+    def vignette_image(self):
+        return type('obj', (object,), {'url': self.vignette_url})()
+
+    @property
+    def grande_image(self):
+        return type('obj', (object,), {'url': self.grande_url})()
+
+    @property
+    def dos_image(self):
+        return type('obj', (object,), {'url': self.dos_url})()
+
+    @property
+    def zoom_image(self):
+        return type('obj', (object,), {'url': self.zoom_url})()
 
 
 class Theme(models.Model):
@@ -214,7 +214,6 @@ class SystemLog(models.Model):
 
 
 class IntroSeen(models.Model):
-    """Track intro animation views"""
     session_key = models.CharField(max_length=100, unique=True)
     date_seen = models.DateField(default=timezone.now)
 
