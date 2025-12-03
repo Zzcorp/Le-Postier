@@ -27,7 +27,7 @@ urlpatterns = [
     path('api/users/search/', views.search_users, name='search_users'),
     path('api/profile/update/', views.update_profile, name='update_profile'),
     path('api/profile/signature/', views.upload_signature, name='upload_signature'),
-    
+
     # Image proxy routes
     path('images/<str:image_type>/<str:number>.jpg', views.serve_postcard_image, name='serve_image'),
     path('api/check-images/', views.check_ftp_images, name='check_images'),

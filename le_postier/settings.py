@@ -158,7 +158,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = False
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 # NO login redirects
-LOGIN_URL = '/login/'  # Don't use reverse()
+LOGIN_URL = '/connexion/'  # Don't use reverse()
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
