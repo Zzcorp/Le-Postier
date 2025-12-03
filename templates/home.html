@@ -6,14 +6,21 @@
 
 {% block content %}
 <div class="home-page">
-    <!-- Video Background Hero -->
+    <!-- Video Background Hero with Diaporama -->
     <header class="hero-section">
         <div class="video-container">
+            <!-- Multiple video sources for diaporama -->
             <video autoplay muted loop playsinline id="hero-video" class="hero-video">
-                <source id="video-source" src="https://collections.samathey.fr/static/video/Annimate_CPA_optimized_0.mp4" type="video/mp4">
+                <source id="video-source" src="" type="video/mp4">
             </video>
             <div class="video-overlay"></div>
+            
+            <!-- Video transition overlay -->
+            <div class="video-transition" id="video-transition"></div>
         </div>
+        
+        <!-- Video indicator dots -->
+        <div class="video-indicators" id="video-indicators"></div>
         
         <div class="hero-content">
             <h1 class="hero-title animate-fade-in-down">
@@ -32,7 +39,11 @@
         
         <div class="scroll-indicator animate-fade-in delay-5">
             <span>Découvrir</span>
-            <div class="scroll-arrow">▼</div>
+            <div class="scroll-arrow">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12l7 7 7-7"/>
+                </svg>
+            </div>
         </div>
     </header>
 
@@ -61,116 +72,477 @@
             <p class="welcome-signature animate-fade-in-up delay-4">Bonne visite à tous !</p>
             
             <div class="welcome-actions animate-fade-in-up delay-5">
-                <a href="{% url 'browse' %}" class="btn btn-primary">🔍 Parcourir</a>
-                <a href="{% url 'decouvrir' %}" class="btn btn-secondary">📖 Découvrir</a>
+                <a href="{% url 'browse' %}" class="btn btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    Parcourir
+                </a>
+                <a href="{% url 'animated_gallery' %}" class="btn btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    CP Animées
+                </a>
+                <a href="{% url 'decouvrir' %}" class="btn btn-tertiary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                    Découvrir
+                </a>
             </div>
         </div>
     </section>
 </div>
 
 <script>
-// Video rotation - iterate through 50 videos
-const videoElement = document.getElementById('hero-video');
-const videoSource = document.getElementById('video-source');
-const totalVideos = 50;
-let currentVideoIndex = 0;
+// Animated videos for background diaporama
+const animatedVideos = [
+    {% for url in animated_videos %}
+    "{{ url }}"{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
 
-function getVideoUrl(index) {
-    return `https://collections.samathey.fr/static/video/Annimate_CPA_optimized_${index}.mp4`;
+// Fallback static video if no animated ones
+const fallbackVideo = "https://collections.samathey.fr/static/video/Annimate_CPA_optimized_0.mp4";
+
+class VideoCarousel {
+    constructor() {
+        this.videoElement = document.getElementById('hero-video');
+        this.videoSource = document.getElementById('video-source');
+        this.transition = document.getElementById('video-transition');
+        this.indicatorsContainer = document.getElementById('video-indicators');
+        
+        this.videos = animatedVideos.length > 0 ? animatedVideos : [fallbackVideo];
+        this.currentIndex = 0;
+        this.isTransitioning = false;
+        this.autoPlayInterval = null;
+        this.videoTimeout = null;
+        
+        this.init();
+    }
+    
+    init() {
+        // Shuffle videos for variety
+        this.shuffleVideos();
+        
+        // Limit to reasonable number
+        this.videos = this.videos.slice(0, 20);
+        
+        // Create indicators
+        this.createIndicators();
+        
+        // Load first video
+        this.loadVideo(0);
+        
+        // Set up event listeners
+        this.videoElement.addEventListener('ended', () => this.nextVideo());
+        this.videoElement.addEventListener('error', () => this.handleError());
+        
+        // Auto-advance every 15 seconds if video is still playing
+        this.startAutoAdvance();
+    }
+    
+    shuffleVideos() {
+        for (let i = this.videos.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.videos[i], this.videos[j]] = [this.videos[j], this.videos[i]];
+        }
+    }
+    
+    createIndicators() {
+        if (this.videos.length <= 1) return;
+        
+        // Only show up to 8 indicators
+        const maxIndicators = Math.min(this.videos.length, 8);
+        
+        for (let i = 0; i < maxIndicators; i++) {
+            const dot = document.createElement('button');
+            dot.className = 'video-dot';
+            dot.setAttribute('aria-label', `Video ${i + 1}`);
+            dot.addEventListener('click', () => this.goToVideo(i));
+            this.indicatorsContainer.appendChild(dot);
+        }
+        
+        this.updateIndicators();
+    }
+    
+    updateIndicators() {
+        const dots = this.indicatorsContainer.querySelectorAll('.video-dot');
+        const activeIndex = this.currentIndex % dots.length;
+        
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === activeIndex);
+        });
+    }
+    
+    loadVideo(index) {
+        if (this.isTransitioning) return;
+        
+        this.currentIndex = index;
+        const videoUrl = this.videos[index];
+        
+        // Fade transition
+        this.isTransitioning = true;
+        this.transition.classList.add('active');
+        
+        setTimeout(() => {
+            this.videoSource.src = videoUrl;
+            this.videoElement.load();
+            
+            const onCanPlay = () => {
+                this.videoElement.play().catch(() => {});
+                this.transition.classList.remove('active');
+                this.isTransitioning = false;
+                this.videoElement.removeEventListener('canplay', onCanPlay);
+            };
+            
+            this.videoElement.addEventListener('canplay', onCanPlay);
+            
+            // Timeout fallback
+            setTimeout(() => {
+                if (this.isTransitioning) {
+                    this.transition.classList.remove('active');
+                    this.isTransitioning = false;
+                }
+            }, 3000);
+            
+            this.updateIndicators();
+        }, 300);
+    }
+    
+    nextVideo() {
+        const nextIndex = (this.currentIndex + 1) % this.videos.length;
+        this.loadVideo(nextIndex);
+    }
+    
+    goToVideo(index) {
+        if (index !== this.currentIndex) {
+            this.loadVideo(index);
+            this.resetAutoAdvance();
+        }
+    }
+    
+    handleError() {
+        console.log('Video error, skipping to next');
+        // Remove problematic video
+        this.videos.splice(this.currentIndex, 1);
+        
+        if (this.videos.length === 0) {
+            this.videos = [fallbackVideo];
+        }
+        
+        this.nextVideo();
+    }
+    
+    startAutoAdvance() {
+        // Clear existing
+        this.stopAutoAdvance();
+        
+        // Advance every 20 seconds
+        this.autoPlayInterval = setInterval(() => {
+            this.nextVideo();
+        }, 20000);
+    }
+    
+    stopAutoAdvance() {
+        if (this.autoPlayInterval) {
+            clearInterval(this.autoPlayInterval);
+            this.autoPlayInterval = null;
+        }
+    }
+    
+    resetAutoAdvance() {
+        this.stopAutoAdvance();
+        this.startAutoAdvance();
+    }
 }
 
-function playNextVideo() {
-    currentVideoIndex = (currentVideoIndex + 1) % totalVideos;
-    videoSource.src = getVideoUrl(currentVideoIndex);
-    videoElement.load();
-    videoElement.play().catch(() => {});
-}
-
-// When current video ends, play next one
-videoElement.addEventListener('ended', playNextVideo);
-
-// Also rotate every 30 seconds in case video is looping
-setInterval(() => {
-    playNextVideo();
-}, 30000);
-
-// Handle video load errors - skip to next
-videoElement.addEventListener('error', () => {
-    console.log('Video error, skipping to next');
-    playNextVideo();
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    new VideoCarousel();
 });
 </script>
 
 <style>
 .home-page { overflow-x: hidden; }
 
+/* Hero Section */
 .hero-section {
-    position: relative; height: 100vh;
-    display: flex; align-items: center; justify-content: center;
+    position: relative; 
+    height: 100vh;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
 }
-.video-container { position: absolute; inset: 0; z-index: 0; }
-.hero-video { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.6); }
+
+.video-container { 
+    position: absolute; 
+    inset: 0; 
+    z-index: 0; 
+}
+
+.hero-video { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+    filter: brightness(0.55) saturate(1.1); 
+}
+
 .video-overlay {
-    position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(26,18,8,0.3) 0%, rgba(26,18,8,0.1) 50%, rgba(26,18,8,0.8) 100%);
+    position: absolute; 
+    inset: 0;
+    background: linear-gradient(
+        180deg, 
+        rgba(26,18,8,0.4) 0%, 
+        rgba(26,18,8,0.1) 30%,
+        rgba(26,18,8,0.1) 70%,
+        rgba(26,18,8,0.8) 100%
+    );
 }
-.hero-content { position: relative; z-index: 1; text-align: center; padding: 20px; max-width: 900px; }
+
+.video-transition {
+    position: absolute;
+    inset: 0;
+    background: #1a1208;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.video-transition.active {
+    opacity: 1;
+}
+
+/* Video Indicators */
+.video-indicators {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+}
+
+.video-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.video-dot:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: scale(1.2);
+}
+
+.video-dot.active {
+    background: #b5600b;
+    border-color: #b5600b;
+    transform: scale(1.3);
+}
+
+/* Hero Content */
+.hero-content { 
+    position: relative; 
+    z-index: 1; 
+    text-align: center; 
+    padding: 20px; 
+    max-width: 900px; 
+}
+
 .hero-title {
-    font-size: clamp(2rem, 5vw, 4rem); color: white;
-    text-shadow: 2px 2px 20px rgba(0,0,0,0.5); margin-bottom: 20px;
+    font-size: clamp(2rem, 5vw, 3.5rem); 
+    color: white;
+    text-shadow: 2px 2px 30px rgba(0,0,0,0.7); 
+    margin-bottom: 20px;
+    font-weight: 600;
 }
+
 .hero-subtitle {
-    font-size: clamp(1.1rem, 2.5vw, 1.6rem); color: rgba(255,255,255,0.9);
-    text-shadow: 1px 1px 10px rgba(0,0,0,0.5); margin-bottom: 40px; font-style: italic;
+    font-size: clamp(1.1rem, 2.5vw, 1.5rem); 
+    color: rgba(255,255,255,0.9);
+    text-shadow: 1px 1px 15px rgba(0,0,0,0.6); 
+    margin-bottom: 40px; 
+    font-style: italic;
 }
+
 .hero-cta {
-    display: inline-flex; align-items: center; gap: 12px;
+    display: inline-flex; 
+    align-items: center; 
+    gap: 12px;
     padding: 18px 40px;
     background: linear-gradient(135deg, #b5600b, #d1872c);
-    color: white; text-decoration: none; border-radius: 50px;
-    font-size: 1.2rem; font-weight: 600;
+    color: white; 
+    text-decoration: none; 
+    border-radius: 50px;
+    font-size: 1.2rem; 
+    font-weight: 600;
     transition: all 0.4s ease;
     box-shadow: 0 10px 40px rgba(181, 96, 11, 0.5);
 }
-.hero-cta:hover { transform: translateY(-5px) scale(1.05); }
 
-.scroll-indicator {
-    position: absolute; bottom: 40px; left: 50%;
-    transform: translateX(-50%); text-align: center;
-    color: rgba(255,255,255,0.7); z-index: 1;
+.hero-cta:hover { 
+    transform: translateY(-5px) scale(1.05); 
+    box-shadow: 0 15px 50px rgba(181, 96, 11, 0.6);
 }
-.scroll-indicator span { display: block; font-size: 0.9rem; margin-bottom: 10px; letter-spacing: 2px; text-transform: uppercase; }
-.scroll-arrow { animation: bounce 2s infinite; }
+
+.hero-cta svg {
+    transition: transform 0.3s ease;
+}
+
+.hero-cta:hover svg {
+    transform: translateX(5px);
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+    position: absolute; 
+    bottom: 40px; 
+    left: 50%;
+    transform: translateX(-50%); 
+    text-align: center;
+    color: rgba(255,255,255,0.7); 
+    z-index: 1;
+}
+
+.scroll-indicator span { 
+    display: block; 
+    font-size: 0.85rem; 
+    margin-bottom: 10px; 
+    letter-spacing: 2px; 
+    text-transform: uppercase; 
+}
+
+.scroll-arrow { 
+    animation: bounce 2s infinite; 
+}
+
+.scroll-arrow svg {
+    stroke: rgba(255, 255, 255, 0.7);
+}
+
 @keyframes bounce {
     0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
     40% { transform: translateY(10px); }
 }
 
+/* Welcome Section */
 .welcome-section {
     background: linear-gradient(180deg, #f5f0e8, #fff, #f5f0e8);
     padding: 100px 20px;
 }
-.welcome-container { max-width: 900px; margin: 0 auto; text-align: center; }
-.welcome-decoration { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 40px; }
-.deco-line { width: 80px; height: 2px; background: linear-gradient(90deg, transparent, #b5600b, transparent); }
-.deco-year { color: #b5600b; font-size: 1.1rem; font-weight: 600; letter-spacing: 3px; }
-.welcome-title { font-size: 2.5rem; color: #2d1f0d; margin-bottom: 40px; }
-.welcome-text { color: #5a4a3a; font-size: 1.15rem; line-height: 1.9; margin-bottom: 25px; text-align: justify; }
-.welcome-signature { color: #b5600b; font-size: 1.3rem; font-style: italic; margin: 40px 0; }
-.welcome-actions { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-.btn-primary, .btn-secondary {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 16px 35px; border-radius: 30px;
-    font-size: 1.1rem; font-weight: 600; text-decoration: none;
+
+.welcome-container { 
+    max-width: 900px; 
+    margin: 0 auto; 
+    text-align: center; 
+}
+
+.welcome-decoration { 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 20px; 
+    margin-bottom: 40px; 
+}
+
+.deco-line { 
+    width: 80px; 
+    height: 2px; 
+    background: linear-gradient(90deg, transparent, #b5600b, transparent); 
+}
+
+.deco-year { 
+    color: #b5600b; 
+    font-size: 1.1rem; 
+    font-weight: 600; 
+    letter-spacing: 3px; 
+}
+
+.welcome-title { 
+    font-size: 2.5rem; 
+    color: #2d1f0d; 
+    margin-bottom: 40px; 
+}
+
+.welcome-text { 
+    color: #5a4a3a; 
+    font-size: 1.15rem; 
+    line-height: 1.9; 
+    margin-bottom: 25px; 
+    text-align: justify; 
+}
+
+.welcome-signature { 
+    color: #b5600b; 
+    font-size: 1.3rem; 
+    font-style: italic; 
+    margin: 40px 0; 
+}
+
+.welcome-actions { 
+    display: flex; 
+    justify-content: center; 
+    gap: 15px; 
+    flex-wrap: wrap; 
+}
+
+.btn {
+    display: inline-flex; 
+    align-items: center; 
+    gap: 10px;
+    padding: 14px 28px; 
+    border-radius: 30px;
+    font-size: 1rem; 
+    font-weight: 600; 
+    text-decoration: none;
     transition: all 0.3s ease;
 }
+
+.btn svg {
+    flex-shrink: 0;
+}
+
 .btn-primary {
-    background: linear-gradient(135deg, #b5600b, #d1872c); color: white;
+    background: linear-gradient(135deg, #b5600b, #d1872c); 
+    color: white;
     box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
 }
-.btn-primary:hover { transform: translateY(-3px); }
-.btn-secondary { background: transparent; color: #b5600b; border: 2px solid #b5600b; }
-.btn-secondary:hover { background: #b5600b; color: white; }
+
+.btn-primary:hover { 
+    transform: translateY(-3px); 
+    box-shadow: 0 12px 35px rgba(181, 96, 11, 0.5);
+}
+
+.btn-secondary { 
+    background: transparent; 
+    color: #b5600b; 
+    border: 2px solid #b5600b; 
+}
+
+.btn-secondary:hover { 
+    background: #b5600b; 
+    color: white; 
+}
+
+.btn-tertiary {
+    background: rgba(181, 96, 11, 0.1);
+    color: #b5600b;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.btn-tertiary:hover {
+    background: rgba(181, 96, 11, 0.2);
+    border-color: #b5600b;
+}
 
 /* Animations */
 .animate-fade-in-down { animation: fadeInDown 0.8s ease forwards; }
@@ -190,10 +562,16 @@ videoElement.addEventListener('error', () => {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 @media (max-width: 768px) {
-    .hero-title { font-size: 2rem; }
+    .hero-title { font-size: 1.8rem; }
     .hero-cta { padding: 15px 30px; font-size: 1rem; }
     .welcome-section { padding: 60px 20px; }
     .welcome-title { font-size: 1.8rem; }
+    
+    .video-indicators { bottom: 80px; }
+    .video-dot { width: 8px; height: 8px; }
+    
+    .welcome-actions { flex-direction: column; align-items: center; }
+    .btn { width: 100%; max-width: 280px; justify-content: center; }
 }
 </style>
 {% endblock %}

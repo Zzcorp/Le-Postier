@@ -1,105 +1,446 @@
+<!-- templates/presentation.html -->
 {% extends 'base.html' %}
 {% load static %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/presentation.css' %}">
-<style>
-    /* Override white background */
-    body {
-        background-color: #202020 !important;
-    }
-</style>
-{% endblock %}
 
 {% block page_title %}Présentation{% endblock %}
 
 {% block content %}
-<div class="presentation-container">
-    <div class="presentation-header">
-        <h1 class="presentation-title">Présentation</h1>
-        <p class="presentation-date">1873 - 1914</p>
+<div class="presentation-page">
+    <!-- Decorative background -->
+    <div class="presentation-bg">
+        <div class="bg-pattern"></div>
     </div>
     
-    <div class="presentation-content">
-        <div class="presentation-section">
-            <div class="section-icon">
-                <img src="{% static 'images/boat_icon.png' %}" alt="Navigation">
+    <div class="presentation-container">
+        <!-- Header -->
+        <header class="presentation-header">
+            <div class="header-decoration">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#b5600b" stroke-width="1">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
             </div>
-            <h2 class="section-title">La Navigation Fluviale</h2>
-            <p class="section-text">
-                La période de la Belle Époque a vu l'apogée de la navigation fluviale en France. 
-                Les bateaux à vapeur sillonnaient la Seine et les autres cours d'eau, transportant 
-                passagers et marchandises dans une atmosphère d'insouciance et d'optimisme.
+            <h1 class="presentation-title">Présentation</h1>
+            <p class="presentation-date">1873 - 1914</p>
+            <div class="title-underline"></div>
+        </header>
+        
+        <!-- Content Cards -->
+        <div class="presentation-content">
+            <!-- Card 1: Navigation -->
+            <div class="presentation-card animate-fade-in-up">
+                <div class="card-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V2L2 8v12Z"/>
+                        <path d="M17 18h1"/>
+                        <path d="M12 18h1"/>
+                        <path d="M7 18h1"/>
+                    </svg>
+                </div>
+                <h2 class="card-title">La Navigation Fluviale</h2>
+                <p class="card-text">
+                    La période de la Belle Époque a vu l'apogée de la navigation fluviale en France. 
+                    Les bateaux à vapeur sillonnaient la Seine et les autres cours d'eau, transportant 
+                    passagers et marchandises dans une atmosphère d'insouciance et d'optimisme.
+                </p>
+            </div>
+            
+            <!-- Card 2: Collection -->
+            <div class="presentation-card animate-fade-in-up" style="animation-delay: 0.15s;">
+                <div class="card-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="m9 8 6 4-6 4V8z"/>
+                    </svg>
+                </div>
+                <h2 class="card-title">Notre Collection</h2>
+                <p class="card-text">
+                    Avec plus de 1860 cartes postales anciennes numérisées et cataloguées, notre collection 
+                    offre un voyage unique dans le temps. Chaque carte raconte une histoire, capture un moment 
+                    de vie au bord de l'eau, témoigne des progrès techniques extraordinaires de l'époque.
+                </p>
+            </div>
+            
+            <!-- Card 3: Heritage -->
+            <div class="presentation-card animate-fade-in-up" style="animation-delay: 0.3s;">
+                <div class="card-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M3 21h18"/>
+                        <path d="M5 21V7l7-4 7 4v14"/>
+                        <path d="M9 21v-6h6v6"/>
+                        <path d="M10 9h4"/>
+                        <path d="M12 9v3"/>
+                    </svg>
+                </div>
+                <h2 class="card-title">Un Patrimoine Préservé</h2>
+                <p class="card-text">
+                    Ces cartes postales constituent un témoignage précieux de notre patrimoine fluvial. 
+                    Elles nous permettent de redécouvrir des métiers disparus, des bateaux aujourd'hui 
+                    oubliés, et des paysages transformés par plus d'un siècle d'évolution.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Quote Box -->
+        <div class="highlight-box animate-fade-in" style="animation-delay: 0.45s;">
+            <svg class="quote-icon" width="32" height="32" viewBox="0 0 24 24" fill="#b5600b" opacity="0.3">
+                <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21c0 1 0 1 1 1zm12 0c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/>
+            </svg>
+            <p>
+                Ces images d'une époque révolue nous rappellent l'importance de préserver notre mémoire 
+                collective et de transmettre aux générations futures la richesse de notre patrimoine fluvial.
             </p>
         </div>
         
-        <div class="presentation-section">
-            <div class="section-icon">
-                <img src="{% static 'images/postcard_icon.png' %}" alt="Collection">
+        <!-- Timeline -->
+        <div class="timeline animate-fade-in" style="animation-delay: 0.6s;">
+            <h3 class="timeline-title">Chronologie</h3>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#b5600b">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </div>
+                <div class="timeline-date">1873</div>
+                <div class="timeline-content">
+                    Début de la période couverte par notre collection, marquée par le développement 
+                    de la navigation à vapeur.
+                </div>
             </div>
-            <h2 class="section-title">Notre Collection</h2>
-            <p class="section-text">
-                Avec plus de 1860 cartes postales anciennes numérisées et cataloguées, notre collection 
-                offre un voyage unique dans le temps. Chaque carte raconte une histoire, capture un moment 
-                de vie au bord de l'eau, témoigne des progrès techniques extraordinaires de l'époque.
-            </p>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#b5600b">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </div>
+                <div class="timeline-date">1889</div>
+                <div class="timeline-content">
+                    L'Exposition Universelle de Paris met en lumière les progrès techniques, 
+                    notamment dans la navigation fluviale.
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#b5600b">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </div>
+                <div class="timeline-date">1900</div>
+                <div class="timeline-content">
+                    Apogée de la Belle Époque, multiplication des cartes postales illustrées 
+                    et démocratisation de la correspondance.
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-marker">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#b5600b">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </div>
+                <div class="timeline-date">1914</div>
+                <div class="timeline-content">
+                    Fin de la Belle Époque avec le début de la Première Guerre mondiale, 
+                    marquant la fin d'une époque d'insouciance.
+                </div>
+            </div>
         </div>
         
-        <div class="presentation-section">
-            <div class="section-icon">
-                <img src="{% static 'images/history_icon.png' %}" alt="Histoire">
-            </div>
-            <h2 class="section-title">Un Patrimoine Préservé</h2>
-            <p class="section-text">
-                Ces cartes postales constituent un témoignage précieux de notre patrimoine fluvial. 
-                Elles nous permettent de redécouvrir des métiers disparus, des bateaux aujourd'hui 
-                oubliés, et des paysages transformés par plus d'un siècle d'évolution.
-            </p>
+        <!-- CTA -->
+        <div class="presentation-cta animate-fade-in-up" style="animation-delay: 0.75s;">
+            <a href="{% url 'browse' %}" class="discover-btn">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                Parcourir la collection
+            </a>
         </div>
     </div>
-    
-    <div class="highlight-box">
-        <p>
-            "Ces images d'une époque révolue nous rappellent l'importance de préserver notre mémoire 
-            collective et de transmettre aux générations futures la richesse de notre patrimoine fluvial."
-        </p>
-    </div>
-    
-    <div class="timeline">
-        <div class="timeline-item">
-            <div class="timeline-date">1873</div>
-            <div class="timeline-content">
-                Début de la période couverte par notre collection, marquée par le développement 
-                de la navigation à vapeur.
-            </div>
-        </div>
-        <div class="timeline-item">
-            <div class="timeline-date">1889</div>
-            <div class="timeline-content">
-                L'Exposition Universelle de Paris met en lumière les progrès techniques, 
-                notamment dans la navigation fluviale.
-            </div>
-        </div>
-        <div class="timeline-item">
-            <div class="timeline-date">1900</div>
-            <div class="timeline-content">
-                Apogée de la Belle Époque, multiplication des cartes postales illustrées 
-                et démocratisation de la correspondance.
-            </div>
-        </div>
-        <div class="timeline-item">
-            <div class="timeline-date">1914</div>
-            <div class="timeline-content">
-                Fin de la Belle Époque avec le début de la Première Guerre mondiale, 
-                marquant la fin d'une époque d'insouciance.
-            </div>
-        </div>
-    </div>
-    
-    <center>
-        <a href="{% url 'browse' %}" class="discover-btn">
-            Parcourir la collection
-        </a>
-    </center>
 </div>
+
+<style>
+.presentation-page {
+    min-height: 100vh;
+    position: relative;
+    padding: 80px 20px 60px;
+    background: #1a1208;
+}
+
+/* Background */
+.presentation-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(180deg, #1a1208 0%, #2d1f0d 50%, #1a1208 100%);
+}
+
+.bg-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        radial-gradient(circle at 20% 30%, rgba(181, 96, 11, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(181, 96, 11, 0.03) 0%, transparent 50%);
+}
+
+/* Container */
+.presentation-container {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* Header */
+.presentation-header {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.header-decoration {
+    margin-bottom: 25px;
+}
+
+.presentation-title {
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    color: white;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 20px rgba(0, 0, 0, 0.5);
+}
+
+.presentation-date {
+    font-size: 1.3rem;
+    color: #b5600b;
+    font-style: italic;
+    letter-spacing: 3px;
+    margin-bottom: 25px;
+}
+
+.title-underline {
+    width: 100px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #b5600b, transparent);
+    margin: 0 auto;
+}
+
+/* Cards */
+.presentation-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.presentation-card {
+    background: linear-gradient(135deg, rgba(40, 30, 20, 0.9), rgba(30, 20, 15, 0.95));
+    border-radius: 20px;
+    padding: 35px;
+    border: 1px solid rgba(181, 96, 11, 0.25);
+    transition: all 0.4s ease;
+}
+
+.presentation-card:hover {
+    transform: translateY(-5px);
+    border-color: #b5600b;
+    box-shadow: 0 15px 40px rgba(181, 96, 11, 0.25);
+}
+
+.card-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.2), rgba(181, 96, 11, 0.1));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 25px;
+    border: 2px solid rgba(181, 96, 11, 0.3);
+}
+
+.card-icon svg {
+    stroke: #ffc168;
+}
+
+.card-title {
+    font-size: 1.5rem;
+    color: #b5600b;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.card-text {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.8;
+    font-size: 1.05rem;
+    text-align: justify;
+}
+
+/* Quote Box */
+.highlight-box {
+    position: relative;
+    background: rgba(181, 96, 11, 0.08);
+    border-left: 4px solid #b5600b;
+    padding: 30px 35px;
+    margin: 50px 0;
+    border-radius: 0 15px 15px 0;
+}
+
+.quote-icon {
+    position: absolute;
+    top: 20px;
+    left: 25px;
+}
+
+.highlight-box p {
+    color: rgba(255, 255, 255, 0.9);
+    font-style: italic;
+    font-size: 1.1rem;
+    line-height: 1.8;
+    margin: 0;
+    padding-left: 35px;
+}
+
+/* Timeline */
+.timeline {
+    margin: 60px 0;
+    padding-left: 30px;
+}
+
+.timeline-title {
+    color: #b5600b;
+    font-size: 1.4rem;
+    margin-bottom: 35px;
+    padding-left: 10px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 35px;
+    border-left: 2px solid rgba(181, 96, 11, 0.3);
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+    border-left-color: transparent;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -11px;
+    top: 0;
+}
+
+.timeline-marker svg {
+    filter: drop-shadow(0 0 8px rgba(181, 96, 11, 0.5));
+}
+
+.timeline-date {
+    color: #ffc168;
+    font-weight: 700;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+}
+
+.timeline-content {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.7;
+    font-size: 1rem;
+}
+
+/* CTA */
+.presentation-cta {
+    text-align: center;
+    margin-top: 50px;
+}
+
+.discover-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 40px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+    text-decoration: none;
+    border-radius: 35px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    transition: all 0.4s ease;
+    box-shadow: 0 8px 30px rgba(181, 96, 11, 0.4);
+}
+
+.discover-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(181, 96, 11, 0.5);
+}
+
+.discover-btn svg {
+    transition: transform 0.3s ease;
+}
+
+.discover-btn:hover svg {
+    transform: scale(1.1);
+}
+
+/* Animations */
+.animate-fade-in { animation: fadeIn 0.8s ease forwards; opacity: 0; }
+.animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; opacity: 0; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(25px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Responsive */
+@media (min-width: 768px) {
+    .presentation-content {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .presentation-card {
+        padding: 30px 25px;
+    }
+}
+
+@media (max-width: 600px) {
+    .presentation-header {
+        margin-bottom: 40px;
+    }
+    
+    .presentation-card {
+        padding: 25px 20px;
+    }
+    
+    .card-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .card-title {
+        font-size: 1.3rem;
+    }
+    
+    .timeline {
+        padding-left: 15px;
+    }
+    
+    .timeline-item {
+        padding-left: 30px;
+    }
+    
+    .highlight-box {
+        padding: 25px 20px;
+    }
+    
+    .highlight-box p {
+        padding-left: 0;
+    }
+    
+    .quote-icon {
+        position: static;
+        display: block;
+        margin-bottom: 15px;
+    }
+}
+</style>
 {% endblock %}

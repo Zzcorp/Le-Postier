@@ -27,13 +27,10 @@
         </button>
         
         <div class="cinema-screen">
-            <!-- Static Image -->
             <img id="cinemaImage" src="" alt="Diaporama" class="cinema-media">
-            <!-- Video (for animated) -->
             <video id="cinemaVideo" muted loop playsinline class="cinema-media" style="display:none;">
                 <source src="" type="video/mp4">
             </video>
-            <!-- Loading indicator -->
             <div class="cinema-loading" id="cinemaLoading">
                 <div class="cinema-spinner"></div>
             </div>
@@ -69,7 +66,6 @@
             </button>
         </div>
         
-        <!-- Mode Selector -->
         <div class="cinema-mode-selector">
             <button class="mode-btn active" data-mode="static" onclick="setCinemaMode('static')">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -81,8 +77,7 @@
             </button>
             <button class="mode-btn" data-mode="animated" onclick="setCinemaMode('animated')">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="23 7 16 12 23 17 23 7"/>
-                    <rect x="1" y="5" width="15" height="14" rx="2"/>
+                    <polygon points="5 3 19 12 5 21 5 3"/>
                 </svg>
                 Animées
             </button>
@@ -103,10 +98,39 @@
     </div>
 </div>
 
-<!-- River Background -->
+<!-- ENHANCED River Background with Waves -->
 <div class="river-background" id="river-background">
     <div class="river-gradient"></div>
+    
+    <!-- SVG Waves Layer -->
+    <svg class="waves-svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+        <defs>
+            <linearGradient id="waveGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:rgba(181,96,11,0.08)"/>
+                <stop offset="50%" style="stop-color:rgba(209,135,44,0.12)"/>
+                <stop offset="100%" style="stop-color:rgba(181,96,11,0.08)"/>
+            </linearGradient>
+            <linearGradient id="waveGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:rgba(255,193,104,0.05)"/>
+                <stop offset="50%" style="stop-color:rgba(181,96,11,0.08)"/>
+                <stop offset="100%" style="stop-color:rgba(255,193,104,0.05)"/>
+            </linearGradient>
+        </defs>
+        <path class="wave wave-1" fill="url(#waveGradient1)" d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
+        <path class="wave wave-2" fill="url(#waveGradient2)" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,213.3C672,224,768,224,864,208C960,192,1056,160,1152,165.3C1248,171,1344,213,1392,234.7L1440,256L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
+        <path class="wave wave-3" fill="url(#waveGradient1)" d="M0,288L48,272C96,256,192,224,288,229.3C384,235,480,277,576,277.3C672,277,768,235,864,218.7C960,203,1056,213,1152,229.3C1248,245,1344,267,1392,277.3L1440,288L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
+    </svg>
+    
+    <!-- Top Waves -->
+    <svg class="waves-svg waves-top" viewBox="0 0 1440 320" preserveAspectRatio="none">
+        <path class="wave wave-1" fill="url(#waveGradient2)" d="M0,64L48,80C96,96,192,128,288,128C384,128,480,96,576,90.7C672,85,768,107,864,122.7C960,139,1056,149,1152,138.7C1248,128,1344,96,1392,80L1440,64L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"/>
+    </svg>
+    
+    <!-- Floating particles -->
     <div class="river-particles" id="river-particles"></div>
+    
+    <!-- Light ripples -->
+    <div class="ripples-container" id="ripples-container"></div>
 </div>
 
 <div class="browse-page">
@@ -165,11 +189,14 @@
         </button>
     </div>
 
-    <!-- Floating Words Section -->
-    <div class="floating-words-section" id="floating-words-section">
-        <div class="words-container" id="words-container"></div>
-        <div class="section-hint">
-            <p>Cliquez sur un mot pour rechercher</p>
+    <!-- REDESIGNED Keyword Tags Section -->
+    <div class="keywords-section" id="keywords-section">
+        <div class="keywords-header">
+            <h3>Explorez par thème</h3>
+            <p>Cliquez sur un mot-clé pour filtrer</p>
+        </div>
+        <div class="keywords-cloud" id="keywords-cloud">
+            <!-- Keywords will be populated by JS -->
         </div>
     </div>
 
@@ -207,23 +234,20 @@
                     </div>
                     {% endif %}
                     
-                    <!-- Animated badge with link -->
                     {% if postcard.animated_url %}
                     <a href="{% url 'animated_gallery' %}?highlight={{ postcard.id }}" 
                        class="animated-badge" 
                        title="Voir l'animation"
                        onclick="event.stopPropagation();">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8 5v14l11-7z"/>
                         </svg>
-                        <span>Animée</span>
                     </a>
                     {% endif %}
                 </div>
                 
                 <div class="card-overlay">
                     <div class="card-actions">
-                        <!-- View Detail -->
                         <button class="action-btn" onclick="showDetail({{ postcard.id }})" title="Voir le détail">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -231,7 +255,6 @@
                             </svg>
                         </button>
                         
-                        <!-- Like -->
                         <button class="action-btn like-btn {% if postcard.id in user_likes %}liked{% endif %}" 
                                 onclick="toggleLike(event, {{ postcard.id }})" 
                                 title="J'aime"
@@ -241,7 +264,6 @@
                             </svg>
                         </button>
                         
-                        <!-- Zoom -->
                         <button class="action-btn" onclick="showZoom({{ postcard.id }})" title="Agrandir">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"/>
@@ -249,7 +271,6 @@
                             </svg>
                         </button>
                         
-                        <!-- Animation (if available) -->
                         {% if postcard.animated_url %}
                         <button class="action-btn action-video" onclick="playAnimation(event, {{ postcard.id }})" title="Voir l'animation">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -293,7 +314,6 @@
         </svg>
     </button>
     
-    <!-- Flip button (verso) - NEW SOBER ICON -->
     <button class="popup-flip" id="popup-flip" onclick="togglePostcardSide()" title="Voir le verso">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 7v6h6"/>
@@ -303,7 +323,6 @@
         </svg>
     </button>
     
-    <!-- Navigation -->
     <button class="popup-nav popup-prev" id="popup-prev" onclick="previousImage()" title="Précédent">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="m15 18-6-6 6-6"/>
@@ -335,7 +354,6 @@
                 </svg>
             </button>
             
-            <!-- Link to animated gallery -->
             <a class="popup-action-btn popup-animated-link" id="popup-animated-link" href="#" title="Galerie animée" style="display:none;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="2" width="20" height="20" rx="2.18"/>
@@ -358,7 +376,7 @@
     <img id="popup-zoom-image" src="" alt="">
 </div>
 
-<!-- Animation Popup - OPTIMIZED -->
+<!-- Animation Popup -->
 <div class="popup-modal popup-video-modal" id="popup-video">
     <button class="popup-close" onclick="closeVideoPopup()" title="Fermer">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -404,13 +422,31 @@ const allPostcardsData = [
     {% endfor %}
 ];
 
-const searchWords = [
-    'Seine', 'Marne', 'Bateau', 'Pont', 'Écluse', 'Péniche',
-    'Navigation', 'Fleuve', 'Rivière', 'Port', 'Quai', 'Berge',
-    'Vapeur', 'Marinier', 'Halage', 'Remorqueur', 'Toueur',
-    'Crue', 'Inondation', 'Paris', 'Bords', 'Eau', 'Canaux',
-    'Passeur', 'Lavoir', 'Moulin', 'Barrage', 'Croisière',
-    {% for theme in themes %}'{{ theme.display_name|escapejs }}',{% endfor %}
+// ENHANCED search keywords with synonyms and related terms
+const searchKeywords = [
+    { word: 'Seine', related: ['fleuve', 'rivière', 'eau', 'paris'] },
+    { word: 'Marne', related: ['rivière', 'eau', 'bords'] },
+    { word: 'Bateau', related: ['navire', 'embarcation', 'vapeur', 'péniche'] },
+    { word: 'Pont', related: ['passerelle', 'ouvrage', 'traversée'] },
+    { word: 'Écluse', related: ['canal', 'navigation', 'barrage'] },
+    { word: 'Péniche', related: ['bateau', 'transport', 'fluvial'] },
+    { word: 'Navigation', related: ['fluvial', 'maritime', 'bateau'] },
+    { word: 'Port', related: ['quai', 'berge', 'accostage'] },
+    { word: 'Quai', related: ['berge', 'port', 'bord'] },
+    { word: 'Vapeur', related: ['bateau', 'navire', 'machine'] },
+    { word: 'Marinier', related: ['marin', 'batelier', 'navigateur'] },
+    { word: 'Remorqueur', related: ['bateau', 'toueur', 'traction'] },
+    { word: 'Crue', related: ['inondation', 'eau', 'débordement'] },
+    { word: 'Inondation', related: ['crue', 'eau', 'catastrophe'] },
+    { word: 'Paris', related: ['seine', 'capitale', 'ville'] },
+    { word: 'Lavoir', related: ['linge', 'lavandière', 'eau'] },
+    { word: 'Moulin', related: ['eau', 'meunier', 'farine'] },
+    { word: 'Croisière', related: ['bateau', 'tourisme', 'promenade'] },
+    { word: 'Berge', related: ['rive', 'bord', 'quai'] },
+    { word: 'Halage', related: ['chemin', 'traction', 'péniche'] },
+    {% for theme in themes %}
+    { word: '{{ theme.display_name|escapejs }}', related: [] },
+    {% endfor %}
 ];
 
 let filteredPostcards = [...allPostcardsData];
@@ -419,17 +455,251 @@ let currentView = 'front';
 let currentPostcardId = null;
 
 // =============================================
-// CINEMA / DIAPORAMA - OPTIMIZED
+// ENHANCED SEARCH SYSTEM
 // =============================================
-let cinemaMode = 'mixed'; // 'static', 'animated', 'mixed'
+class SearchEngine {
+    constructor() {
+        this.searchInput = document.getElementById('searchInput');
+        this.clearBtn = document.getElementById('clearBtn');
+        this.init();
+    }
+    
+    init() {
+        this.searchInput.addEventListener('input', (e) => this.handleInput(e));
+        this.searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.performSearch(this.searchInput.value);
+            }
+        });
+    }
+    
+    handleInput(e) {
+        const query = e.target.value.trim();
+        this.clearBtn.style.display = query ? 'flex' : 'none';
+        
+        if (!query) {
+            this.resetSearch();
+            return;
+        }
+        
+        // Real-time search with debounce effect
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+            this.performSearch(query);
+        }, 150);
+    }
+    
+    performSearch(query) {
+        if (!query.trim()) {
+            this.resetSearch();
+            return;
+        }
+        
+        const searchTerms = this.expandSearchTerms(query.toLowerCase());
+        const cards = document.querySelectorAll('.postcard-card');
+        let visibleCount = 0;
+        
+        cards.forEach(card => {
+            const title = (card.dataset.title || '').toLowerCase();
+            const keywords = (card.dataset.keywords || '').toLowerCase();
+            const number = card.dataset.number || '';
+            
+            // Combine all searchable text
+            const searchText = `${title} ${keywords} ${number}`;
+            
+            // Check if ANY of the expanded search terms match
+            const matches = searchTerms.some(term => {
+                // Exact match
+                if (searchText.includes(term)) return true;
+                
+                // Partial match (for partial word input)
+                if (term.length >= 2) {
+                    const words = searchText.split(/\s+/);
+                    return words.some(word => word.startsWith(term) || word.includes(term));
+                }
+                
+                return false;
+            });
+            
+            card.style.display = matches ? '' : 'none';
+            if (matches) visibleCount++;
+        });
+        
+        // Update filtered postcards array
+        filteredPostcards = allPostcardsData.filter(p => {
+            const searchText = `${p.title} ${p.keywords} ${p.number}`.toLowerCase();
+            return searchTerms.some(term => searchText.includes(term));
+        });
+        
+        this.updateUI(query, visibleCount);
+        
+        // Hide keywords section when searching
+        document.getElementById('keywords-section').style.display = 'none';
+    }
+    
+    expandSearchTerms(query) {
+        const terms = [query];
+        const queryWords = query.split(/\s+/).filter(w => w.length >= 2);
+        
+        // Add individual words
+        queryWords.forEach(word => {
+            if (!terms.includes(word)) terms.push(word);
+        });
+        
+        // Find related terms from keywords
+        searchKeywords.forEach(kw => {
+            const kwLower = kw.word.toLowerCase();
+            
+            // If query matches keyword or keyword contains query
+            if (kwLower.includes(query) || query.includes(kwLower)) {
+                if (!terms.includes(kwLower)) terms.push(kwLower);
+                
+                // Add related terms
+                kw.related.forEach(related => {
+                    if (!terms.includes(related)) terms.push(related);
+                });
+            }
+            
+            // Check individual words
+            queryWords.forEach(word => {
+                if (kwLower.includes(word) || word.includes(kwLower.substring(0, 3))) {
+                    if (!terms.includes(kwLower)) terms.push(kwLower);
+                }
+            });
+        });
+        
+        // Add common variations
+        terms.forEach(term => {
+            // Remove accents for matching
+            const noAccent = term.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (!terms.includes(noAccent)) terms.push(noAccent);
+        });
+        
+        return [...new Set(terms)];
+    }
+    
+    updateUI(query, count) {
+        document.getElementById('visible-count').textContent = count;
+        document.getElementById('noResults').style.display = count === 0 ? 'block' : 'none';
+        
+        document.getElementById('searchInfo').innerHTML = `
+            <p class="search-results-text">
+                <span class="result-count">${count}</span> résultat${count !== 1 ? 's' : ''} pour 
+                "<span class="result-query">${query}</span>"
+            </p>
+        `;
+    }
+    
+    resetSearch() {
+        document.querySelectorAll('.postcard-card').forEach(card => {
+            card.style.display = '';
+        });
+        
+        filteredPostcards = [...allPostcardsData];
+        
+        document.getElementById('visible-count').textContent = allPostcardsData.length;
+        document.getElementById('noResults').style.display = 'none';
+        document.getElementById('clearBtn').style.display = 'none';
+        document.getElementById('searchInfo').innerHTML = '';
+        document.getElementById('keywords-section').style.display = 'block';
+    }
+}
+
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchInput').focus();
+    window.searchEngine.resetSearch();
+}
+
+// =============================================
+// REDESIGNED KEYWORDS CLOUD
+// =============================================
+class KeywordsCloud {
+    constructor() {
+        this.container = document.getElementById('keywords-cloud');
+        this.section = document.getElementById('keywords-section');
+        this.searchInput = document.getElementById('searchInput');
+        
+        if (!this.container) return;
+        
+        this.init();
+    }
+    
+    init() {
+        this.renderKeywords();
+    }
+    
+    renderKeywords() {
+        // Group keywords by popularity/importance
+        const primaryKeywords = ['Seine', 'Marne', 'Bateau', 'Péniche', 'Navigation', 'Paris'];
+        const secondaryKeywords = ['Pont', 'Écluse', 'Port', 'Quai', 'Vapeur', 'Croisière'];
+        const tertiaryKeywords = ['Crue', 'Inondation', 'Lavoir', 'Moulin', 'Berge', 'Halage', 'Remorqueur', 'Marinier'];
+        
+        let html = '';
+        
+        // Primary keywords (larger)
+        primaryKeywords.forEach(word => {
+            html += this.createKeywordTag(word, 'primary');
+        });
+        
+        // Secondary keywords (medium)
+        secondaryKeywords.forEach(word => {
+            html += this.createKeywordTag(word, 'secondary');
+        });
+        
+        // Tertiary keywords (smaller)
+        tertiaryKeywords.forEach(word => {
+            html += this.createKeywordTag(word, 'tertiary');
+        });
+        
+        // Add theme keywords
+        {% for theme in themes %}
+        html += this.createKeywordTag('{{ theme.display_name|escapejs }}', 'theme');
+        {% endfor %}
+        
+        this.container.innerHTML = html;
+        
+        // Add click handlers
+        this.container.querySelectorAll('.keyword-tag').forEach(tag => {
+            tag.addEventListener('click', () => this.onKeywordClick(tag));
+        });
+    }
+    
+    createKeywordTag(word, type) {
+        return `<button class="keyword-tag keyword-${type}" data-word="${word}">${word}</button>`;
+    }
+    
+    onKeywordClick(tag) {
+        const word = tag.dataset.word;
+        
+        // Animate click
+        tag.classList.add('clicked');
+        
+        // Set search input and trigger search
+        this.searchInput.value = word;
+        window.searchEngine.performSearch(word);
+        
+        // Scroll to results
+        setTimeout(() => {
+            document.getElementById('results-section').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }, 200);
+    }
+}
+
+// =============================================
+// CINEMA / DIAPORAMA
+// =============================================
+let cinemaMode = 'mixed';
 let cinemaPostcards = [];
 let cinemaIndex = 0;
 let cinemaPlaying = false;
 let cinemaInterval = null;
 const CINEMA_INTERVAL_MS = 4000;
 
-// Preload queue for smooth transitions
-let preloadQueue = [];
 let preloadedImages = new Map();
 let preloadedVideos = new Map();
 
@@ -445,9 +715,7 @@ function openCinema() {
     document.getElementById('cinemaModal').classList.add('active');
     document.body.style.overflow = 'hidden';
     
-    // Preload first few items
     preloadCinemaItems(0, 3);
-    
     updateCinemaDisplay();
 }
 
@@ -456,13 +724,11 @@ function closeCinema() {
     document.getElementById('cinemaModal').classList.remove('active');
     document.body.style.overflow = '';
     
-    // Stop and clear video
     const video = document.getElementById('cinemaVideo');
     video.pause();
     video.removeAttribute('src');
     video.load();
     
-    // Clear preload cache to free memory
     preloadedImages.clear();
     preloadedVideos.clear();
 }
@@ -498,7 +764,6 @@ function setCinemaMode(mode) {
     buildCinemaList();
     cinemaIndex = 0;
     
-    // Clear preload cache
     preloadedImages.clear();
     preloadedVideos.clear();
     
@@ -523,13 +788,11 @@ function preloadCinemaItems(startIndex, count) {
                           && postcard.has_video && postcard.video_url;
         
         if (showVideo && !preloadedVideos.has(postcard.video_url)) {
-            // Preload video metadata only (not full video)
             const video = document.createElement('video');
             video.preload = 'metadata';
             video.src = postcard.video_url;
             preloadedVideos.set(postcard.video_url, video);
         } else if (!showVideo && !preloadedImages.has(postcard.grande_url || postcard.vignette_url)) {
-            // Preload image
             const img = new Image();
             const url = postcard.grande_url || postcard.vignette_url;
             img.src = url;
@@ -546,27 +809,22 @@ function updateCinemaDisplay() {
     const video = document.getElementById('cinemaVideo');
     const loading = document.getElementById('cinemaLoading');
     
-    // Update info
     document.getElementById('cinemaTitle').textContent = postcard.title;
     document.getElementById('cinemaNumber').textContent = 'N° ' + postcard.number;
     document.getElementById('cinemaCounter').textContent = `${cinemaIndex + 1} / ${cinemaPostcards.length}`;
     
-    // Update progress
     const progress = ((cinemaIndex + 1) / cinemaPostcards.length) * 100;
     document.getElementById('cinemaProgressBar').style.width = progress + '%';
     
-    // Determine what to show
     const showVideo = (cinemaMode === 'animated' || cinemaMode === 'mixed') 
                       && postcard.has_video && postcard.video_url;
     
-    // Show loading briefly
     loading.style.display = 'flex';
     
     if (showVideo) {
         img.style.display = 'none';
         video.style.display = 'block';
         
-        // Use preloaded or load fresh
         video.src = postcard.video_url;
         video.load();
         
@@ -579,14 +837,12 @@ function updateCinemaDisplay() {
         video.addEventListener('canplay', onCanPlay);
         
         video.onerror = () => {
-            // Fallback to image on error
             loading.style.display = 'none';
             video.style.display = 'none';
             img.style.display = 'block';
             img.src = postcard.grande_url || postcard.vignette_url;
         };
         
-        // Timeout fallback
         setTimeout(() => {
             if (loading.style.display !== 'none') {
                 loading.style.display = 'none';
@@ -600,7 +856,6 @@ function updateCinemaDisplay() {
         
         const imageUrl = postcard.grande_url || postcard.vignette_url;
         
-        // Check if preloaded
         if (preloadedImages.has(imageUrl) && preloadedImages.get(imageUrl).complete) {
             img.src = imageUrl;
             loading.style.display = 'none';
@@ -617,7 +872,6 @@ function updateCinemaDisplay() {
         }
     }
     
-    // Preload next items
     preloadCinemaItems(cinemaIndex + 1, 2);
 }
 
@@ -632,7 +886,7 @@ function cinemaNext() {
     if (cinemaIndex < cinemaPostcards.length - 1) {
         cinemaIndex++;
     } else if (cinemaPlaying) {
-        cinemaIndex = 0; // Loop
+        cinemaIndex = 0;
     }
     updateCinemaDisplay();
 }
@@ -665,252 +919,62 @@ function stopCinemaPlay() {
 }
 
 // =============================================
-// FLOATING WORDS
+// WAVES & RIPPLES ANIMATION
 // =============================================
-class FloatingWordsManager {
+class WavesAnimation {
     constructor() {
-        this.container = document.getElementById('words-container');
-        this.section = document.getElementById('floating-words-section');
-        this.searchInput = document.getElementById('searchInput');
+        this.ripplesContainer = document.getElementById('ripples-container');
+        this.particlesContainer = document.getElementById('river-particles');
         
-        if (!this.container || !this.section) return;
-        
-        this.words = [];
-        this.isActive = true;
-        this.spawnTimer = null;
+        if (!this.ripplesContainer) return;
         
         this.init();
     }
     
     init() {
-        this.spawnInitialWords();
-        this.startSpawning();
-        this.searchInput.addEventListener('input', () => this.checkVisibility());
-        this.checkVisibility();
+        this.createParticles();
+        this.startRipples();
     }
     
-    spawnInitialWords() {
-        for (let i = 0; i < 6; i++) {
-            setTimeout(() => {
-                if (this.isActive) this.spawnWord();
-            }, i * 400);
+    createParticles() {
+        if (!this.particlesContainer) return;
+        
+        for (let i = 0; i < 15; i++) {
+            const p = document.createElement('div');
+            p.className = 'river-particle';
+            p.style.cssText = `
+                width: ${2 + Math.random() * 3}px;
+                height: ${2 + Math.random() * 3}px;
+                top: ${Math.random() * 100}%;
+                animation-duration: ${20 + Math.random() * 20}s;
+                animation-delay: -${Math.random() * 20}s;
+            `;
+            this.particlesContainer.appendChild(p);
         }
     }
     
-    startSpawning() {
-        this.spawnTimer = setInterval(() => {
-            if (this.isActive && this.words.length < 10) {
-                this.spawnWord();
+    startRipples() {
+        // Create occasional ripples
+        setInterval(() => {
+            if (Math.random() > 0.7) {
+                this.createRipple();
             }
-        }, 2500);
+        }, 2000);
     }
     
-    stopSpawning() {
-        if (this.spawnTimer) {
-            clearInterval(this.spawnTimer);
-            this.spawnTimer = null;
-        }
-    }
-    
-    spawnWord() {
-        const word = document.createElement('button');
-        word.className = 'floating-word';
-        word.type = 'button';
-        
-        const text = searchWords[Math.floor(Math.random() * searchWords.length)];
-        word.textContent = text;
-        word.dataset.word = text;
-        
-        const yPos = 10 + Math.random() * 70;
-        const duration = 20 + Math.random() * 15;
-        const scale = 0.75 + Math.random() * 0.5;
-        const delay = Math.random() * 2;
-        
-        word.style.cssText = `
-            top: ${yPos}%;
-            right: -300px;
-            font-size: ${scale}rem;
-            animation: floatAcross ${duration}s linear ${delay}s forwards;
-            opacity: 0;
+    createRipple() {
+        const ripple = document.createElement('div');
+        ripple.className = 'ripple';
+        ripple.style.cssText = `
+            left: ${10 + Math.random() * 80}%;
+            top: ${20 + Math.random() * 60}%;
         `;
         
-        word.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.onWordClick(word, text);
-        });
+        this.ripplesContainer.appendChild(ripple);
         
-        this.container.appendChild(word);
-        this.words.push(word);
-        
-        setTimeout(() => this.removeWord(word), (duration + delay) * 1000);
-    }
-    
-    onWordClick(wordElement, text) {
-        wordElement.classList.add('clicked');
-        this.searchInput.value = text;
-        this.performSearch(text);
-        setTimeout(() => this.removeWord(wordElement), 400);
-    }
-    
-    performSearch(query) {
-        const lowerQuery = query.toLowerCase();
-        const cards = document.querySelectorAll('.postcard-card');
-        let visibleCount = 0;
-        
-        cards.forEach(card => {
-            const title = (card.dataset.title || '').toLowerCase();
-            const keywords = card.dataset.keywords || '';
-            const number = card.dataset.number || '';
-            const searchText = `${title} ${keywords} ${number}`;
-            const matches = searchText.includes(lowerQuery);
-            
-            card.style.display = matches ? '' : 'none';
-            if (matches) visibleCount++;
-        });
-        
-        filteredPostcards = allPostcardsData.filter(p => {
-            const searchText = `${p.title} ${p.keywords} ${p.number}`.toLowerCase();
-            return searchText.includes(lowerQuery);
-        });
-        
-        document.getElementById('visible-count').textContent = visibleCount;
-        document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
-        document.getElementById('clearBtn').style.display = 'block';
-        
-        document.getElementById('searchInfo').innerHTML = `
-            <p class="search-results-text">
-                <span class="result-count">${visibleCount}</span> résultat${visibleCount !== 1 ? 's' : ''} pour 
-                "<span class="result-query">${query}</span>"
-            </p>
-        `;
-        
-        this.hide();
-        
-        setTimeout(() => {
-            document.getElementById('results-section').scrollIntoView({ 
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }, 300);
-    }
-    
-    removeWord(word) {
-        const index = this.words.indexOf(word);
-        if (index > -1) this.words.splice(index, 1);
-        if (word.parentNode) word.remove();
-    }
-    
-    checkVisibility() {
-        const hasInput = this.searchInput.value.trim().length > 0;
-        
-        if (hasInput) {
-            this.hide();
-        } else {
-            this.show();
-        }
-    }
-    
-    hide() {
-        if (!this.isActive) return;
-        this.isActive = false;
-        this.stopSpawning();
-        this.section.classList.add('hiding');
-        
-        this.words.forEach(word => {
-            word.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-            word.style.opacity = '0';
-            word.style.transform = 'translateY(-20px) scale(0.8)';
-        });
-        
-        setTimeout(() => {
-            this.section.style.display = 'none';
-            this.container.innerHTML = '';
-            this.words = [];
-        }, 500);
-    }
-    
-    show() {
-        if (this.isActive) return;
-        this.isActive = true;
-        this.section.style.display = 'block';
-        this.section.offsetHeight;
-        this.section.classList.remove('hiding');
-        this.section.classList.add('showing');
-        
-        setTimeout(() => {
-            this.spawnInitialWords();
-            this.startSpawning();
-        }, 100);
-        
-        setTimeout(() => this.section.classList.remove('showing'), 600);
+        setTimeout(() => ripple.remove(), 4000);
     }
 }
-
-// =============================================
-// SEARCH
-// =============================================
-function clearSearch() {
-    const input = document.getElementById('searchInput');
-    input.value = '';
-    input.focus();
-    
-    document.querySelectorAll('.postcard-card').forEach(card => {
-        card.style.display = '';
-    });
-    
-    filteredPostcards = [...allPostcardsData];
-    
-    document.getElementById('visible-count').textContent = allPostcardsData.length;
-    document.getElementById('noResults').style.display = 'none';
-    document.getElementById('clearBtn').style.display = 'none';
-    document.getElementById('searchInfo').innerHTML = '';
-    
-    if (window.floatingWords) window.floatingWords.show();
-}
-
-document.getElementById('searchInput').addEventListener('input', function(e) {
-    const query = e.target.value.trim();
-    
-    document.getElementById('clearBtn').style.display = query ? 'flex' : 'none';
-    
-    if (!query) {
-        clearSearch();
-        return;
-    }
-    
-    const lowerQuery = query.toLowerCase();
-    const cards = document.querySelectorAll('.postcard-card');
-    let visibleCount = 0;
-    
-    cards.forEach(card => {
-        const title = (card.dataset.title || '').toLowerCase();
-        const keywords = card.dataset.keywords || '';
-        const number = card.dataset.number || '';
-        const searchText = `${title} ${keywords} ${number}`;
-        const matches = searchText.includes(lowerQuery);
-        
-        card.style.display = matches ? '' : 'none';
-        if (matches) visibleCount++;
-    });
-    
-    filteredPostcards = allPostcardsData.filter(p => {
-        const searchText = `${p.title} ${p.keywords} ${p.number}`.toLowerCase();
-        return searchText.includes(lowerQuery);
-    });
-    
-    document.getElementById('visible-count').textContent = visibleCount;
-    document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
-    
-    document.getElementById('searchInfo').innerHTML = `
-        <p class="search-results-text">
-            <span class="result-count">${visibleCount}</span> résultat${visibleCount !== 1 ? 's' : ''} pour 
-            "<span class="result-query">${query}</span>"
-        </p>
-    `;
-    
-    if (window.floatingWords && query) window.floatingWords.hide();
-});
 
 // =============================================
 // POPUPS
@@ -929,10 +993,8 @@ function showDetail(id) {
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
     document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
     
-    // Show/hide video button
     document.getElementById('popup-video-btn').style.display = postcard.has_video ? 'flex' : 'none';
     
-    // Show/hide animated gallery link
     const animatedLink = document.getElementById('popup-animated-link');
     if (postcard.has_video) {
         animatedLink.style.display = 'flex';
@@ -941,10 +1003,8 @@ function showDetail(id) {
         animatedLink.style.display = 'none';
     }
     
-    // Show/hide flip button based on dos availability
     document.getElementById('popup-flip').style.display = postcard.dos_url ? 'flex' : 'none';
     
-    // Check liked state
     const cardLikeBtn = document.querySelector(`.like-btn[data-id="${id}"]`);
     const popupLikeBtn = document.getElementById('popup-like-btn');
     popupLikeBtn.classList.toggle('liked', cardLikeBtn?.classList.contains('liked'));
@@ -978,16 +1038,13 @@ function playAnimation(event, id) {
     document.getElementById('popup-video-title').textContent = postcard.title;
     document.getElementById('popup-video-number').textContent = 'N° ' + postcard.number;
     
-    // Show loading
     loading.style.display = 'flex';
     video.style.opacity = '0';
     
-    // Clear previous source
     video.pause();
     video.removeAttribute('src');
     video.load();
     
-    // Set new source with optimized loading
     const source = video.querySelector('source');
     source.src = postcard.video_url;
     video.load();
@@ -1005,7 +1062,6 @@ function playAnimation(event, id) {
         loading.innerHTML = '<p style="color: #ff6b6b;">Erreur de chargement</p>';
     };
     
-    // Timeout fallback
     setTimeout(() => {
         if (loading.style.display !== 'none') {
             loading.style.display = 'none';
@@ -1089,7 +1145,6 @@ function updatePopup() {
     document.getElementById('popup-flip').style.display = postcard.dos_url ? 'flex' : 'none';
     document.getElementById('popup-flip').classList.remove('flipped');
     
-    // Update animated link
     const animatedLink = document.getElementById('popup-animated-link');
     if (postcard.has_video) {
         animatedLink.style.display = 'flex';
@@ -1113,11 +1168,8 @@ function closeAllPopups() {
     document.getElementById('popup-video').classList.remove('active');
     document.body.style.overflow = '';
     
-    // Stop video if playing
     const video = document.getElementById('popup-video-player');
-    if (video) {
-        video.pause();
-    }
+    if (video) video.pause();
 }
 
 // =============================================
@@ -1167,7 +1219,7 @@ function togglePopupLike() {
 }
 
 // =============================================
-// IMAGE LOADING - OPTIMIZED
+// IMAGE LOADING
 // =============================================
 class ImageLoader {
     constructor() {
@@ -1192,7 +1244,6 @@ class ImageLoader {
         const src = img.dataset.src;
         if (!src) return;
         
-        // Use native loading for better performance
         img.src = src;
         
         img.onload = () => {
@@ -1241,30 +1292,8 @@ class LoadingManager {
     }
 }
 
-// River particles
-class RiverBackground {
-    constructor() {
-        const container = document.getElementById('river-particles');
-        if (!container) return;
-        
-        for (let i = 0; i < 20; i++) {
-            const p = document.createElement('div');
-            p.className = 'river-particle';
-            p.style.cssText = `
-                width: ${2 + Math.random() * 3}px;
-                height: ${2 + Math.random() * 3}px;
-                top: ${Math.random() * 100}%;
-                animation-duration: ${15 + Math.random() * 15}s;
-                animation-delay: -${Math.random() * 15}s;
-            `;
-            container.appendChild(p);
-        }
-    }
-}
-
 // Keyboard
 document.addEventListener('keydown', (e) => {
-    // Cinema modal
     if (document.getElementById('cinemaModal').classList.contains('active')) {
         if (e.key === 'ArrowLeft') cinemaPrev();
         else if (e.key === 'ArrowRight') cinemaNext();
@@ -1273,13 +1302,11 @@ document.addEventListener('keydown', (e) => {
         return;
     }
     
-    // Video popup
     if (document.getElementById('popup-video').classList.contains('active')) {
         if (e.key === 'Escape') closeVideoPopup();
         return;
     }
     
-    // Detail/Zoom popups
     if (document.getElementById('popup-detail').classList.contains('active')) {
         if (e.key === 'ArrowLeft') previousImage();
         else if (e.key === 'ArrowRight') nextImage();
@@ -1294,13 +1321,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingManager = new LoadingManager();
     loadingManager.start();
     
-    window.floatingWords = new FloatingWordsManager();
-    new RiverBackground();
+    window.searchEngine = new SearchEngine();
+    new KeywordsCloud();
+    new WavesAnimation();
     new ImageLoader();
     
     if (document.getElementById('searchInput').value) {
         document.getElementById('clearBtn').style.display = 'flex';
-        if (window.floatingWords) window.floatingWords.hide();
+        document.getElementById('keywords-section').style.display = 'none';
     }
     
     window.addEventListener('load', () => loadingManager.hide());
@@ -1332,11 +1360,165 @@ document.addEventListener('DOMContentLoaded', () => {
 .loading-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #b5600b, #ffc168); transition: width 0.1s; }
 
 /* ========================================
-   BIG CINEMA LAUNCHER BUTTON
+   ENHANCED RIVER BACKGROUND WITH WAVES
+   ======================================== */
+.river-background {
+    position: fixed; inset: 0; z-index: 0;
+    background: linear-gradient(180deg, #1a1208 0%, #2d1f0d 30%, #3d2a12 50%, #2d1f0d 70%, #1a1208 100%);
+    overflow: hidden;
+}
+
+.river-gradient {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 30%, rgba(255, 180, 50, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(181, 96, 11, 0.05) 0%, transparent 50%);
+}
+
+/* SVG Waves */
+.waves-svg {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    min-height: 200px;
+}
+
+.waves-svg.waves-top {
+    top: 0;
+    bottom: auto;
+    height: 20%;
+    min-height: 100px;
+    transform: scaleY(-1);
+}
+
+.wave {
+    animation: wave-flow 25s ease-in-out infinite;
+}
+
+.wave-1 {
+    animation-delay: 0s;
+    opacity: 0.4;
+}
+
+.wave-2 {
+    animation-delay: -7s;
+    opacity: 0.3;
+}
+
+.wave-3 {
+    animation-delay: -14s;
+    opacity: 0.2;
+}
+
+@keyframes wave-flow {
+    0%, 100% {
+        transform: translateX(0) translateY(0);
+    }
+    25% {
+        transform: translateX(-2%) translateY(5px);
+    }
+    50% {
+        transform: translateX(0) translateY(-3px);
+    }
+    75% {
+        transform: translateX(2%) translateY(5px);
+    }
+}
+
+/* Floating particles */
+.river-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.river-particle {
+    position: absolute; right: -20px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 200, 100, 0.6) 0%, rgba(181, 96, 11, 0.3) 60%, transparent 100%);
+    animation: particle-flow linear infinite;
+}
+@keyframes particle-flow {
+    0% { transform: translateX(0); opacity: 0; }
+    5% { opacity: 0.5; }
+    95% { opacity: 0.3; }
+    100% { transform: translateX(calc(-100vw - 50px)); opacity: 0; }
+}
+
+/* Ripples */
+.ripples-container {
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+}
+
+.ripple {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    border: 1px solid rgba(181, 96, 11, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    animation: ripple-expand 4s ease-out forwards;
+}
+
+@keyframes ripple-expand {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0.5;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(3);
+        opacity: 0;
+    }
+}
+
+/* ========================================
+   BROWSE PAGE
+   ======================================== */
+.browse-page { position: relative; z-index: 1; min-height: 100vh; padding-top: 70px; }
+
+/* Search */
+.search-section { padding: 20px 20px 10px; text-align: center; }
+.search-form { max-width: 500px; margin: 0 auto; }
+.search-box {
+    display: flex; align-items: center;
+    background: rgba(255,255,255,0.95);
+    border-radius: 40px; overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transition: box-shadow 0.3s;
+}
+.search-box:focus-within { box-shadow: 0 6px 30px rgba(181, 96, 11, 0.4); }
+
+#searchInput {
+    flex: 1; padding: 14px 20px; border: none; background: transparent;
+    font-size: 1rem; color: #333; outline: none;
+}
+#searchInput::placeholder { color: #999; }
+
+.clear-btn {
+    width: 36px; height: 36px; margin-right: 4px;
+    background: rgba(0,0,0,0.1); border: none; border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.clear-btn:hover { background: rgba(0,0,0,0.2); }
+.clear-btn svg { stroke: #666; }
+
+.search-submit {
+    width: 50px; height: 50px; margin: 3px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+}
+.search-submit:hover { transform: scale(1.05); }
+.search-submit svg { stroke: white; }
+
+.search-info { margin-top: 12px; }
+.search-results-text { color: rgba(255,255,255,0.8); font-size: 0.9rem; }
+.result-count { color: #ffc168; font-weight: 600; }
+.result-query { color: #b5600b; }
+
+/* ========================================
+   BIG CINEMA BUTTON
    ======================================== */
 .cinema-launcher {
     max-width: 600px;
-    margin: 30px auto;
+    margin: 25px auto;
     padding: 0 20px;
 }
 
@@ -1345,10 +1527,10 @@ document.addEventListener('DOMContentLoaded', () => {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 20px 30px;
-    background: linear-gradient(135deg, rgba(181, 96, 11, 0.15), rgba(181, 96, 11, 0.05));
-    border: 2px solid rgba(181, 96, 11, 0.4);
-    border-radius: 20px;
+    padding: 18px 25px;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.12), rgba(181, 96, 11, 0.05));
+    border: 2px solid rgba(181, 96, 11, 0.35);
+    border-radius: 18px;
     cursor: pointer;
     transition: all 0.4s ease;
     position: relative;
@@ -1364,88 +1546,129 @@ document.addEventListener('DOMContentLoaded', () => {
     transition: opacity 0.4s ease;
 }
 
-.cinema-big-btn:hover::before {
-    opacity: 1;
-}
+.cinema-big-btn:hover::before { opacity: 1; }
 
 .cinema-big-btn:hover {
     border-color: #b5600b;
-    transform: translateY(-3px);
-    box-shadow: 0 15px 40px rgba(181, 96, 11, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(181, 96, 11, 0.35);
 }
 
 .cinema-btn-icon {
-    position: relative;
-    z-index: 1;
-    width: 60px;
-    height: 60px;
-    background: rgba(181, 96, 11, 0.3);
-    border-radius: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative; z-index: 1;
+    width: 55px; height: 55px;
+    background: rgba(181, 96, 11, 0.25);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
     transition: all 0.4s ease;
 }
 
-.cinema-big-btn:hover .cinema-btn-icon {
-    background: rgba(255, 255, 255, 0.2);
+.cinema-big-btn:hover .cinema-btn-icon { background: rgba(255, 255, 255, 0.2); }
+
+.cinema-btn-icon svg { stroke: #ffc168; transition: stroke 0.4s ease; }
+.cinema-big-btn:hover .cinema-btn-icon svg { stroke: white; }
+
+.cinema-btn-text { position: relative; z-index: 1; flex: 1; text-align: left; }
+.cinema-btn-title { display: block; color: white; font-size: 1.3rem; font-weight: 600; margin-bottom: 3px; }
+.cinema-btn-subtitle { display: block; color: rgba(255, 255, 255, 0.55); font-size: 0.85rem; }
+.cinema-big-btn:hover .cinema-btn-subtitle { color: rgba(255, 255, 255, 0.9); }
+
+.cinema-btn-arrow { position: relative; z-index: 1; transition: transform 0.4s ease; }
+.cinema-btn-arrow svg { stroke: #b5600b; transition: stroke 0.4s ease; }
+.cinema-big-btn:hover .cinema-btn-arrow { transform: translateX(5px); }
+.cinema-big-btn:hover .cinema-btn-arrow svg { stroke: white; }
+
+/* ========================================
+   REDESIGNED KEYWORDS SECTION
+   ======================================== */
+.keywords-section {
+    max-width: 900px;
+    margin: 0 auto 30px;
+    padding: 0 20px;
 }
 
-.cinema-btn-icon svg {
-    stroke: #ffc168;
-    transition: stroke 0.4s ease;
+.keywords-header {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-.cinema-big-btn:hover .cinema-btn-icon svg {
-    stroke: white;
-}
-
-.cinema-btn-text {
-    position: relative;
-    z-index: 1;
-    flex: 1;
-    text-align: left;
-}
-
-.cinema-btn-title {
-    display: block;
+.keywords-header h3 {
     color: white;
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin-bottom: 4px;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
 }
 
-.cinema-btn-subtitle {
-    display: block;
-    color: rgba(255, 255, 255, 0.6);
+.keywords-header p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+}
+
+.keywords-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.keyword-tag {
+    padding: 8px 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 25px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.keyword-tag:hover {
+    background: rgba(181, 96, 11, 0.4);
+    border-color: #b5600b;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.keyword-tag.clicked {
+    animation: tagClick 0.3s ease forwards;
+}
+
+@keyframes tagClick {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); background: #b5600b; }
+    100% { transform: scale(1); }
+}
+
+/* Primary keywords - larger */
+.keyword-primary {
+    font-size: 1rem;
+    padding: 10px 22px;
+    background: rgba(181, 96, 11, 0.2);
+    border-color: rgba(181, 96, 11, 0.4);
+    font-weight: 500;
+}
+
+/* Secondary keywords - medium */
+.keyword-secondary {
     font-size: 0.9rem;
 }
 
-.cinema-big-btn:hover .cinema-btn-subtitle {
-    color: rgba(255, 255, 255, 0.9);
+/* Tertiary keywords - smaller */
+.keyword-tertiary {
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    color: rgba(255, 255, 255, 0.7);
 }
 
-.cinema-btn-arrow {
-    position: relative;
-    z-index: 1;
-    transition: transform 0.4s ease;
-}
-
-.cinema-btn-arrow svg {
-    stroke: #b5600b;
-    transition: stroke 0.4s ease;
-}
-
-.cinema-big-btn:hover .cinema-btn-arrow {
-    transform: translateX(5px);
-}
-
-.cinema-big-btn:hover .cinema-btn-arrow svg {
-    stroke: white;
+/* Theme keywords */
+.keyword-theme {
+    background: rgba(209, 135, 44, 0.15);
+    border-color: rgba(209, 135, 44, 0.3);
+    font-style: italic;
 }
 
 /* ========================================
-   CINEMA / DIAPORAMA MODAL
+   CINEMA MODAL
    ======================================== */
 .cinema-modal {
     position: fixed; inset: 0; z-index: 5000;
@@ -1532,126 +1755,6 @@ document.addEventListener('DOMContentLoaded', () => {
 .cinema-progress-bar { height: 100%; background: linear-gradient(90deg, #b5600b, #ffc168); border-radius: 2px; transition: width 0.3s; width: 0%; }
 
 /* ========================================
-   RIVER BACKGROUND
-   ======================================== */
-.river-background {
-    position: fixed; inset: 0; z-index: 0;
-    background: linear-gradient(180deg, #1a1208 0%, #2d1f0d 30%, #3d2a12 50%, #2d1f0d 70%, #1a1208 100%);
-}
-.river-gradient {
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 20% 30%, rgba(255, 180, 50, 0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 70%, rgba(181, 96, 11, 0.06) 0%, transparent 50%);
-}
-.river-particles { position: absolute; inset: 0; overflow: hidden; }
-.river-particle {
-    position: absolute; right: -20px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 200, 100, 0.7) 0%, rgba(181, 96, 11, 0.3) 60%, transparent 100%);
-    animation: particle-flow linear infinite;
-}
-@keyframes particle-flow {
-    0% { transform: translateX(0); opacity: 0; }
-    5% { opacity: 0.6; }
-    95% { opacity: 0.4; }
-    100% { transform: translateX(calc(-100vw - 50px)); opacity: 0; }
-}
-
-/* ========================================
-   BROWSE PAGE
-   ======================================== */
-.browse-page { position: relative; z-index: 1; min-height: 100vh; padding-top: 70px; }
-
-/* Search */
-.search-section { padding: 20px 20px 10px; text-align: center; }
-.search-form { max-width: 500px; margin: 0 auto; }
-.search-box {
-    display: flex; align-items: center;
-    background: rgba(255,255,255,0.95);
-    border-radius: 40px; overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    transition: box-shadow 0.3s;
-}
-.search-box:focus-within { box-shadow: 0 6px 30px rgba(181, 96, 11, 0.4); }
-
-#searchInput {
-    flex: 1; padding: 14px 20px; border: none; background: transparent;
-    font-size: 1rem; color: #333; outline: none;
-}
-#searchInput::placeholder { color: #999; }
-
-.clear-btn {
-    width: 36px; height: 36px; margin-right: 4px;
-    background: rgba(0,0,0,0.1); border: none; border-radius: 50%;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
-}
-.clear-btn:hover { background: rgba(0,0,0,0.2); }
-.clear-btn svg { stroke: #666; }
-
-.search-submit {
-    width: 50px; height: 50px; margin: 3px;
-    background: linear-gradient(135deg, #b5600b, #d1872c);
-    border: none; border-radius: 50%; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.3s;
-}
-.search-submit:hover { transform: scale(1.05); }
-.search-submit svg { stroke: white; }
-
-.search-info { margin-top: 12px; }
-.search-results-text { color: rgba(255,255,255,0.8); font-size: 0.9rem; }
-.result-count { color: #ffc168; font-weight: 600; }
-.result-query { color: #b5600b; }
-
-/* ========================================
-   FLOATING WORDS
-   ======================================== */
-.floating-words-section {
-    position: relative; height: 200px; overflow: hidden;
-    margin: 20px 0;
-}
-.floating-words-section.hiding { opacity: 0; transition: opacity 0.4s; }
-.floating-words-section.showing { opacity: 1; }
-
-.words-container { position: absolute; inset: 0; }
-
-.floating-word {
-    position: absolute;
-    padding: 8px 16px;
-    background: rgba(181, 96, 11, 0.2);
-    border: 1px solid rgba(181, 96, 11, 0.4);
-    border-radius: 20px;
-    color: rgba(255,255,255,0.9);
-    cursor: pointer;
-    transition: all 0.3s;
-    white-space: nowrap;
-}
-.floating-word:hover {
-    background: #b5600b;
-    border-color: #b5600b;
-    transform: scale(1.1) !important;
-    z-index: 10;
-}
-.floating-word.clicked {
-    animation: wordClick 0.4s ease forwards;
-}
-@keyframes wordClick {
-    to { transform: scale(0.5); opacity: 0; }
-}
-@keyframes floatAcross {
-    from { transform: translateX(0); opacity: 0; }
-    5% { opacity: 1; }
-    95% { opacity: 1; }
-    to { transform: translateX(calc(-100vw - 300px)); opacity: 0; }
-}
-
-.section-hint {
-    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-    text-align: center;
-}
-.section-hint p { color: rgba(255,255,255,0.4); font-size: 0.8rem; font-style: italic; }
-
-/* ========================================
    RESULTS GRID
    ======================================== */
 .results-section { padding: 20px; max-width: 1400px; margin: 0 auto; }
@@ -1696,14 +1799,13 @@ document.addEventListener('DOMContentLoaded', () => {
     background: rgba(0, 0, 0, 0.3);
 }
 
-/* Animated badge - CLICKABLE LINK */
 .animated-badge {
     position: absolute; top: 8px; right: 8px;
-    display: flex; align-items: center; gap: 4px;
-    padding: 4px 10px;
+    display: flex; align-items: center; gap: 3px;
+    padding: 4px 8px;
     background: linear-gradient(135deg, #b5600b, #d1872c);
-    border-radius: 12px;
-    color: white; font-size: 0.7rem; font-weight: 600;
+    border-radius: 10px;
+    color: white; font-size: 0.65rem; font-weight: 600;
     text-decoration: none;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     transition: all 0.3s;
@@ -1725,9 +1827,7 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 .postcard-card:hover .card-overlay { opacity: 1; }
 
-.card-actions {
-    display: flex; gap: 8px; margin-bottom: 10px;
-}
+.card-actions { display: flex; gap: 8px; margin-bottom: 10px; }
 .action-btn {
     width: 36px; height: 36px;
     background: rgba(255,255,255,0.15);
@@ -1745,7 +1845,6 @@ document.addEventListener('DOMContentLoaded', () => {
 .card-title { color: white; font-size: 0.85rem; margin-bottom: 4px; line-height: 1.3; }
 .card-number { color: #b5600b; font-size: 0.75rem; }
 
-/* No Results */
 .no-results {
     grid-column: 1 / -1;
     text-align: center; padding: 60px 20px;
@@ -1764,7 +1863,7 @@ document.addEventListener('DOMContentLoaded', () => {
 .browse-footer { text-align: center; padding: 30px; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
 
 /* ========================================
-   POPUPS - SOBER ICONS
+   POPUPS
    ======================================== */
 .popup-overlay {
     position: fixed; inset: 0; z-index: 3000;
@@ -1793,7 +1892,6 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 .popup-close:hover { background: #b5600b; border-color: #b5600b; transform: rotate(90deg); }
 
-/* Flip button - SOBER REFRESH/ROTATE ICON */
 .popup-flip {
     position: absolute; top: -45px; left: 0;
     width: 40px; height: 40px;
@@ -1849,7 +1947,6 @@ document.addEventListener('DOMContentLoaded', () => {
 #popup-title { color: white; font-size: 1rem; margin: 0; flex: 1; }
 #popup-number { color: rgba(255,255,255,0.8); font-size: 0.85rem; }
 
-/* Zoom popup */
 .popup-zoom-modal { background: transparent; }
 #popup-zoom-image {
     max-width: 90vw; max-height: 90vh;
@@ -1858,21 +1955,14 @@ document.addEventListener('DOMContentLoaded', () => {
     cursor: zoom-in;
 }
 
-/* Video popup - OPTIMIZED */
 .popup-video-modal {
     width: 90vw; max-width: 900px;
     background: linear-gradient(165deg, #1f1a15, #0d0906);
     border-radius: 16px; overflow: hidden;
     border: 1px solid rgba(181, 96, 11, 0.3);
 }
-.video-container {
-    position: relative; width: 100%;
-    background: #000;
-}
-#popup-video-player {
-    width: 100%; max-height: 60vh; display: block;
-    background: #000;
-}
+.video-container { position: relative; width: 100%; background: #000; }
+#popup-video-player { width: 100%; max-height: 60vh; display: block; background: #000; }
 .video-loading {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
@@ -1905,6 +1995,10 @@ document.addEventListener('DOMContentLoaded', () => {
     .cinema-btn-icon svg { width: 36px; height: 36px; }
     .cinema-btn-title { font-size: 1.2rem; }
     
+    .keywords-cloud { gap: 8px; }
+    .keyword-tag { padding: 6px 14px; font-size: 0.85rem; }
+    .keyword-primary { padding: 8px 18px; font-size: 0.95rem; }
+    
     .postcards-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
     
     .popup-nav { display: none; }
@@ -1916,13 +2010,15 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 @media (max-width: 480px) {
-    .floating-words-section { height: 150px; }
     .postcards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .card-actions { gap: 5px; }
     .action-btn { width: 32px; height: 32px; }
     
     .cinema-big-btn { flex-direction: column; text-align: center; }
     .cinema-btn-arrow { display: none; }
+    
+    .keywords-section { margin-bottom: 20px; }
+    .keyword-tertiary { display: none; }
 }
 </style>
 {% endblock %}
