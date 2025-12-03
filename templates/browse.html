@@ -566,8 +566,8 @@ class FloatingKeywords {
             element.textContent = kw.word;
             element.dataset.word = kw.word;
             
-            // Random starting position (spread across and beyond container width)
-            const startX = Math.random() * 200 + 100; // Start from right side
+            // FIXED: Start from more reasonable positions (spread across visible area)
+            const startX = -10 + Math.random() * 110; // Start from -10% to 100% (visible area)
             const startY = 10 + Math.random() * 80; // Vertical spread (10-90%)
             
             // Random speed based on size (larger = slower, like real floating objects)
@@ -583,8 +583,8 @@ class FloatingKeywords {
             const rotationRange = 5 + Math.random() * 10;
             const rotationSpeed = 0.5 + Math.random() * 1;
             
-            // Random delay for staggered start
-            const delay = index * 0.8 + Math.random() * 2;
+            // FIXED: Reduced delay for faster initial appearance
+            const delay = index * 0.3 + Math.random() * 0.5;
             
             const keywordObj = {
                 element,
