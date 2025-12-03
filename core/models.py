@@ -27,6 +27,15 @@ class CustomUser(AbstractUser):
     last_visit_date = models.DateField(null=True, blank=True, verbose_name="Dernière visite (date)")
     last_intro_seen = models.DateField(null=True, blank=True, verbose_name="Dernière intro vue")
 
+    # NEW: Signature field
+    signature_image = models.ImageField(
+        upload_to='signatures/',
+        blank=True,
+        null=True,
+        verbose_name="Signature"
+    )
+    bio = models.TextField(blank=True, max_length=500, verbose_name="Biographie")
+
     def can_view_rare(self):
         return self.category in ['subscribed_verified', 'postman', 'viewer'] or self.is_staff
 
@@ -35,6 +44,12 @@ class CustomUser(AbstractUser):
 
     def has_seen_intro_today(self):
         return self.last_intro_seen == timezone.now().date()
+
+    def get_display_image(self):
+        """Return signature image or default avatar"""
+        if self.signature_image:
+            return self.signature_image.url
+        return None
 
     class Meta:
         verbose_name = "Utilisateur"
@@ -331,3 +346,78 @@ class IntroSeen(models.Model):
         verbose_name = "Intro vue"
         verbose_name_plural = "Intros vues"
         unique_together = ['session_key', 'date_seen']
+
+
+class SentPostcard(models.Model):
+    """Postcards sent between users"""
+    VISIBILITY_CHOICES = [
+        ('private', 'Privé - Destinataire uniquement'),
+        ('public', 'Public - Visible par tous'),
+    ]
+
+    sender = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='sent_postcards'
+    )
+    recipient = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='received_postcards',
+        null=True,
+        blank=True  # Null if public postcard
+    )
+
+    # The postcard image used
+    postcard = models.ForeignKey(
+        Postcard,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    custom_image_url = models.URLField(max_length=500, blank=True)  # Or custom image
+
+    message = models.TextField(max_length=1000, verbose_name="Message")
+    visibility = models.CharField(
+        max_length=20,
+        choices=VISIBILITY_CHOICES,
+        default='private'
+    )
+
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Carte postale envoyée"
+        verbose_name_plural = "Cartes postales envoyées"
+
+    def __str__(self):
+        if self.recipient:
+            return f"De {self.sender.username} à {self.recipient.username}"
+        return f"Carte publique de {self.sender.username}"
+
+    def get_image_url(self):
+        if self.postcard and self.postcard.grande_url:
+            return self.postcard.grande_url
+        return self.custom_image_url or ''
+
+
+class PostcardComment(models.Model):
+    """Comments on public postcards"""
+    sent_postcard = models.ForeignKey(
+        SentPostcard,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE
+    )
+    message = models.TextField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = "Commentaire"
+        verbose_name_plural = "Commentaires"

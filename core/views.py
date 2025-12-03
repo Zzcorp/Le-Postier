@@ -965,3 +965,264 @@ def admin_next_postcard_number(request):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+from .models import SentPostcard, PostcardComment
+
+
+@login_required
+def la_poste(request):
+    """La Poste - Social hub for sending postcards"""
+    # Get user's received postcards
+    received = SentPostcard.objects.filter(
+        recipient=request.user
+    ).select_related('sender', 'postcard')[:20]
+
+    # Get user's sent postcards
+    sent = SentPostcard.objects.filter(
+        sender=request.user
+    ).select_related('recipient', 'postcard')[:20]
+
+    # Get public postcards (wall)
+    public_postcards = SentPostcard.objects.filter(
+        visibility='public'
+    ).select_related('sender', 'postcard').prefetch_related('comments')[:30]
+
+    # Get unread count
+    unread_count = SentPostcard.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).count()
+
+    # Get available postcards for sending
+    available_postcards = Postcard.objects.exclude(
+        vignette_url=''
+    ).exclude(vignette_url__isnull=True)[:50]
+
+    context = {
+        'received_postcards': received,
+        'sent_postcards': sent,
+        'public_postcards': public_postcards,
+        'unread_count': unread_count,
+        'available_postcards': available_postcards,
+    }
+
+    return render(request, 'la_poste.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def send_postcard(request):
+    """Send a postcard to another user or post publicly"""
+    try:
+        data = json.loads(request.body)
+
+        message = data.get('message', '').strip()
+        if not message or len(message) < 5:
+            return JsonResponse({'error': 'Message trop court (min 5 caractères)'}, status=400)
+
+        visibility = data.get('visibility', 'private')
+        recipient_username = data.get('recipient')
+        postcard_id = data.get('postcard_id')
+
+        # Get recipient if private
+        recipient = None
+        if visibility == 'private':
+            if not recipient_username:
+                return JsonResponse({'error': 'Destinataire requis pour un envoi privé'}, status=400)
+            try:
+                recipient = CustomUser.objects.get(username=recipient_username)
+            except CustomUser.DoesNotExist:
+                return JsonResponse({'error': 'Utilisateur non trouvé'}, status=404)
+
+            if recipient == request.user:
+                return JsonResponse({'error': 'Vous ne pouvez pas vous envoyer une carte'}, status=400)
+
+        # Get postcard if specified
+        postcard = None
+        if postcard_id:
+            try:
+                postcard = Postcard.objects.get(id=postcard_id)
+            except Postcard.DoesNotExist:
+                pass
+
+        # Create sent postcard
+        sent_postcard = SentPostcard.objects.create(
+            sender=request.user,
+            recipient=recipient,
+            postcard=postcard,
+            message=message,
+            visibility=visibility
+        )
+
+        return JsonResponse({
+            'success': True,
+            'postcard_id': sent_postcard.id,
+            'message': 'Carte postale envoyée!' if visibility == 'private' else 'Carte publiée!'
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def get_user_postcards(request):
+    """Get user's received and sent postcards"""
+    tab = request.GET.get('tab', 'received')
+
+    if tab == 'received':
+        postcards = SentPostcard.objects.filter(
+            recipient=request.user
+        ).select_related('sender', 'postcard')
+    else:
+        postcards = SentPostcard.objects.filter(
+            sender=request.user
+        ).select_related('recipient', 'postcard')
+
+    data = [{
+        'id': p.id,
+        'sender': p.sender.username,
+        'sender_signature': p.sender.signature_image.url if p.sender.signature_image else None,
+        'recipient': p.recipient.username if p.recipient else None,
+        'message': p.message,
+        'image_url': p.get_image_url(),
+        'postcard_title': p.postcard.title if p.postcard else None,
+        'visibility': p.visibility,
+        'is_read': p.is_read,
+        'created_at': p.created_at.strftime('%d/%m/%Y %H:%M'),
+    } for p in postcards[:50]]
+
+    return JsonResponse({'postcards': data})
+
+
+@login_required
+def get_public_postcards(request):
+    """Get public postcards (wall)"""
+    postcards = SentPostcard.objects.filter(
+        visibility='public'
+    ).select_related('sender', 'postcard').prefetch_related(
+        'comments', 'comments__user'
+    )[:50]
+
+    data = [{
+        'id': p.id,
+        'sender': p.sender.username,
+        'sender_signature': p.sender.signature_image.url if p.sender.signature_image else None,
+        'message': p.message,
+        'image_url': p.get_image_url(),
+        'postcard_title': p.postcard.title if p.postcard else None,
+        'created_at': p.created_at.strftime('%d/%m/%Y %H:%M'),
+        'comments': [{
+            'user': c.user.username,
+            'message': c.message,
+            'created_at': c.created_at.strftime('%d/%m/%Y %H:%M'),
+        } for c in p.comments.all()[:10]],
+        'comment_count': p.comments.count(),
+    } for p in postcards]
+
+    return JsonResponse({'postcards': data})
+
+
+@login_required
+@require_http_methods(["POST"])
+def mark_postcard_read(request, postcard_id):
+    """Mark a received postcard as read"""
+    try:
+        postcard = SentPostcard.objects.get(id=postcard_id, recipient=request.user)
+        postcard.is_read = True
+        postcard.save(update_fields=['is_read'])
+        return JsonResponse({'success': True})
+    except SentPostcard.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
+
+
+@login_required
+@require_http_methods(["POST"])
+def add_comment(request, postcard_id):
+    """Add comment to a public postcard"""
+    try:
+        postcard = SentPostcard.objects.get(id=postcard_id, visibility='public')
+        data = json.loads(request.body)
+        message = data.get('message', '').strip()
+
+        if not message or len(message) < 2:
+            return JsonResponse({'error': 'Commentaire trop court'}, status=400)
+
+        comment = PostcardComment.objects.create(
+            sent_postcard=postcard,
+            user=request.user,
+            message=message
+        )
+
+        return JsonResponse({
+            'success': True,
+            'comment': {
+                'user': comment.user.username,
+                'message': comment.message,
+                'created_at': comment.created_at.strftime('%d/%m/%Y %H:%M'),
+            }
+        })
+    except SentPostcard.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
+
+
+@login_required
+def search_users(request):
+    """Search users for autocomplete"""
+    query = request.GET.get('q', '').strip()
+
+    if len(query) < 2:
+        return JsonResponse({'users': []})
+
+    users = CustomUser.objects.filter(
+        username__icontains=query
+    ).exclude(
+        id=request.user.id
+    ).values('username', 'category')[:10]
+
+    return JsonResponse({'users': list(users)})
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_profile(request):
+    """Update user profile"""
+    try:
+        data = json.loads(request.body)
+
+        if 'bio' in data:
+            request.user.bio = data['bio'][:500]
+            request.user.save(update_fields=['bio'])
+
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def upload_signature(request):
+    """Upload user signature image"""
+    try:
+        if 'signature' not in request.FILES:
+            return JsonResponse({'error': 'No file provided'}, status=400)
+
+        file = request.FILES['signature']
+
+        # Validate file
+        if file.size > 2 * 1024 * 1024:  # 2MB limit
+            return JsonResponse({'error': 'File too large'}, status=400)
+
+        if not file.content_type.startswith('image/'):
+            return JsonResponse({'error': 'Invalid file type'}, status=400)
+
+        # Save the file
+        request.user.signature_image = file
+        request.user.save(update_fields=['signature_image'])
+
+        return JsonResponse({
+            'success': True,
+            'url': request.user.signature_image.url
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)

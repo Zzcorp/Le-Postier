@@ -17,6 +17,17 @@ urlpatterns = [
     path('profil/', views.profile, name='profile'),
     path('logout/', views.logout_view, name='logout'),
 
+    # La Poste - Social Hub
+    path('la-poste/', views.la_poste, name='la_poste'),
+    path('api/la-poste/send/', views.send_postcard, name='send_postcard'),
+    path('api/la-poste/postcards/', views.get_user_postcards, name='get_user_postcards'),
+    path('api/la-poste/public/', views.get_public_postcards, name='get_public_postcards'),
+    path('api/la-poste/<int:postcard_id>/read/', views.mark_postcard_read, name='mark_postcard_read'),
+    path('api/la-poste/<int:postcard_id>/comment/', views.add_comment, name='add_comment'),
+    path('api/users/search/', views.search_users, name='search_users'),
+    path('api/profile/update/', views.update_profile, name='update_profile'),
+    path('api/profile/signature/', views.upload_signature, name='upload_signature'),
+    
     # Image proxy routes
     path('images/<str:image_type>/<str:number>.jpg', views.serve_postcard_image, name='serve_image'),
     path('api/check-images/', views.check_ftp_images, name='check_images'),
