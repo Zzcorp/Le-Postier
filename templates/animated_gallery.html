@@ -5,6 +5,22 @@
 {% block page_title %}CP Animées{% endblock %}
 
 {% block content %}
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-content">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+        </div>
+        <p class="loading-text">Chargement des animations...</p>
+        <div class="loading-progress">
+            <div class="loading-bar" id="loading-bar"></div>
+        </div>
+        <p class="loading-count" id="loading-count">0 / {{ total_count }}</p>
+    </div>
+</div>
+
 <div class="animated-gallery-page">
     <!-- Header -->
     <header class="gallery-header">
@@ -49,8 +65,9 @@
                        muted 
                        loop 
                        playsinline
-                       poster="{{ postcard.vignette_url }}">
-                    <source src="{{ postcard.get_animated_urls.0 }}" type="video/mp4">
+                       preload="none"
+                       poster="{{ postcard.vignette_url }}"
+                       data-src="{{ postcard.get_animated_urls.0 }}">
                 </video>
                 <div class="video-overlay">
                     <button class="play-btn" onclick="openAnimatedModal({{ postcard.id }})">
@@ -60,7 +77,6 @@
                     </button>
                 </div>
                 
-                <!-- Multiple videos indicator -->
                 {% if postcard.get_animated_urls|length > 1 %}
                 <div class="multi-video-badge">
                     {{ postcard.get_animated_urls|length }} vidéos
@@ -96,7 +112,7 @@
     </div>
 </div>
 
-<!-- Animated Postcard Modal -->
+<!-- Animated Postcard Modal - SCROLLABLE -->
 <div class="animated-modal" id="animatedModal">
     <div class="modal-backdrop" onclick="closeAnimatedModal()"></div>
     <div class="modal-container">
@@ -106,43 +122,46 @@
             </svg>
         </button>
         
-        <div class="modal-video-section">
-            <video id="modalVideo" controls autoplay loop>
-                <source src="" type="video/mp4">
-            </video>
-            
-            <!-- Video selector for multiple videos -->
-            <div class="video-selector" id="videoSelector" style="display:none;">
-                <span>Vidéos disponibles:</span>
-                <div class="video-tabs" id="videoTabs"></div>
-            </div>
-        </div>
-        
-        <div class="modal-info-section">
-            <span class="modal-number" id="modalNumber"></span>
-            <h2 class="modal-title" id="modalTitle"></h2>
-            
-            <div class="modal-actions">
-                <button class="modal-like-btn" id="modalLikeBtn" onclick="toggleModalLike()">
-                    <span class="heart-icon">❤️</span>
-                    <span class="like-text">J'aime</span>
-                    <span class="like-count" id="modalLikeCount">0</span>
-                </button>
+        <!-- Scrollable Content -->
+        <div class="modal-scroll-content">
+            <div class="modal-video-section">
+                <video id="modalVideo" controls autoplay loop>
+                    <source src="" type="video/mp4">
+                </video>
                 
-                <button class="modal-suggest-btn" onclick="showSuggestForm()">
-                    💡 Suggérer une animation
-                </button>
+                <!-- Video selector for multiple videos -->
+                <div class="video-selector" id="videoSelector" style="display:none;">
+                    <span>Vidéos disponibles:</span>
+                    <div class="video-tabs" id="videoTabs"></div>
+                </div>
             </div>
             
-            <!-- Suggestion Form -->
-            <div class="suggest-form-container" id="suggestFormContainer" style="display:none;">
-                <h4>Proposer une idée d'animation</h4>
-                <textarea id="suggestionText" placeholder="Décrivez l'animation que vous imaginez pour cette carte postale..." maxlength="500"></textarea>
-                <div class="form-actions">
-                    <button class="cancel-btn" onclick="hideSuggestForm()">Annuler</button>
-                    <button class="submit-btn" onclick="submitSuggestion()">Envoyer</button>
+            <div class="modal-info-section">
+                <span class="modal-number" id="modalNumber"></span>
+                <h2 class="modal-title" id="modalTitle"></h2>
+                
+                <div class="modal-actions">
+                    <button class="modal-like-btn" id="modalLikeBtn" onclick="toggleModalLike()">
+                        <span class="heart-icon">❤️</span>
+                        <span class="like-text">J'aime</span>
+                        <span class="like-count" id="modalLikeCount">0</span>
+                    </button>
+                    
+                    <button class="modal-suggest-btn" onclick="showSuggestForm()">
+                        💡 Suggérer une animation
+                    </button>
                 </div>
-                <p class="char-count"><span id="charCount">0</span>/500 caractères</p>
+                
+                <!-- Suggestion Form -->
+                <div class="suggest-form-container" id="suggestFormContainer" style="display:none;">
+                    <h4>Proposer une idée d'animation</h4>
+                    <textarea id="suggestionText" placeholder="Décrivez l'animation que vous imaginez pour cette carte postale..." maxlength="500"></textarea>
+                    <div class="form-actions">
+                        <button class="cancel-btn" onclick="hideSuggestForm()">Annuler</button>
+                        <button class="submit-btn" onclick="submitSuggestion()">Envoyer</button>
+                    </div>
+                    <p class="char-count"><span id="charCount">0</span>/500 caractères</p>
+                </div>
             </div>
         </div>
     </div>
@@ -163,20 +182,97 @@ const csrfToken = '{{ csrf_token }}';
 let currentPostcardId = null;
 let currentAnimatedUrls = [];
 let currentVideoIndex = 0;
+let loadedCount = 0;
+const totalCount = {{ total_count }};
+
+// Loading Management
+class LoadingManager {
+    constructor() {
+        this.overlay = document.getElementById('loading-overlay');
+        this.bar = document.getElementById('loading-bar');
+        this.countEl = document.getElementById('loading-count');
+        this.startTime = Date.now();
+        this.minDisplayTime = 1500; // Minimum display time
+    }
+    
+    start() {
+        let progress = 0;
+        const tick = () => {
+            progress += (100 - progress) * 0.05;
+            this.bar.style.width = progress + '%';
+            if (progress < 90) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+    
+    updateCount(loaded, total) {
+        this.countEl.textContent = `${loaded} / ${total}`;
+        const progress = (loaded / total) * 100;
+        this.bar.style.width = Math.max(progress, parseFloat(this.bar.style.width) || 0) + '%';
+    }
+    
+    hide() {
+        const elapsed = Date.now() - this.startTime;
+        const remaining = Math.max(0, this.minDisplayTime - elapsed);
+        
+        setTimeout(() => {
+            this.bar.style.width = '100%';
+            setTimeout(() => {
+                this.overlay.classList.add('hidden');
+            }, 300);
+        }, remaining);
+    }
+}
+
+const loadingManager = new LoadingManager();
+loadingManager.start();
+
+// Lazy load videos
+function initLazyLoading() {
+    const cards = document.querySelectorAll('.animated-card');
+    let loaded = 0;
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const card = entry.target;
+                const video = card.querySelector('.card-video');
+                const src = video.dataset.src;
+                
+                if (src && !video.src) {
+                    video.src = src;
+                    loaded++;
+                    loadingManager.updateCount(loaded, totalCount);
+                }
+                
+                observer.unobserve(card);
+            }
+        });
+    }, { rootMargin: '200px' });
+    
+    cards.forEach(card => observer.observe(card));
+    
+    // Hide loading when enough cards are ready
+    setTimeout(() => loadingManager.hide(), 2000);
+}
 
 // Initialize card hover effects
-document.querySelectorAll('.animated-card').forEach(card => {
-    const video = card.querySelector('.card-video');
-    
-    card.addEventListener('mouseenter', () => {
-        video.play().catch(() => {});
+function initHoverEffects() {
+    document.querySelectorAll('.animated-card').forEach(card => {
+        const video = card.querySelector('.card-video');
+        
+        card.addEventListener('mouseenter', () => {
+            if (video.src) {
+                video.play().catch(() => {});
+            }
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            video.pause();
+            video.currentTime = 0;
+        });
     });
-    
-    card.addEventListener('mouseleave', () => {
-        video.pause();
-        video.currentTime = 0;
-    });
-});
+}
 
 // Sort gallery
 function sortGallery(sortBy) {
@@ -213,22 +309,19 @@ function openAnimatedModal(postcardId) {
     document.getElementById('modalTitle').textContent = card.dataset.title;
     document.getElementById('modalLikeCount').textContent = card.dataset.likes;
     
-    // Check if liked
     const likeBtn = card.querySelector('.like-btn');
     document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn.classList.contains('liked'));
     
-    // Set video source
     const video = document.getElementById('modalVideo');
     video.src = currentAnimatedUrls[0];
     video.load();
     video.play().catch(() => {});
     
-    // Show video selector if multiple videos
     const selector = document.getElementById('videoSelector');
     const tabs = document.getElementById('videoTabs');
     
     if (currentAnimatedUrls.length > 1) {
-        selector.style.display = 'block';
+        selector.style.display = 'flex';
         tabs.innerHTML = currentAnimatedUrls.map((url, i) => `
             <button class="video-tab ${i === 0 ? 'active' : ''}" onclick="switchVideo(${i})">
                 Vidéo ${i + 1}
@@ -269,16 +362,13 @@ async function toggleLike(postcardId, isAnimated = true) {
         
         const response = await fetch(`/api/postcard/${postcardId}/like/`, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken
-            },
+            headers: { 'X-CSRFToken': csrfToken },
             body: formData
         });
         
         const data = await response.json();
         
         if (data.success) {
-            // Update card button
             const card = document.querySelector(`[data-id="${postcardId}"]`);
             if (card) {
                 const likeBtn = card.querySelector('.like-btn');
@@ -288,7 +378,6 @@ async function toggleLike(postcardId, isAnimated = true) {
                 card.dataset.likes = data.likes_count;
             }
             
-            // Update modal if open
             if (currentPostcardId === postcardId) {
                 document.getElementById('modalLikeBtn').classList.toggle('liked', data.liked);
                 document.getElementById('modalLikeCount').textContent = data.likes_count;
@@ -309,6 +398,9 @@ function toggleModalLike() {
 function showSuggestForm() {
     document.getElementById('suggestFormContainer').style.display = 'block';
     document.getElementById('suggestionText').focus();
+    
+    // Scroll to form
+    document.getElementById('suggestFormContainer').scrollIntoView({ behavior: 'smooth' });
 }
 
 function hideSuggestForm() {
@@ -335,9 +427,7 @@ async function submitSuggestion() {
         
         const response = await fetch(`/api/postcard/${currentPostcardId}/suggest/`, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken
-            },
+            headers: { 'X-CSRFToken': csrfToken },
             body: formData
         });
         
@@ -371,16 +461,110 @@ document.addEventListener('keydown', (e) => {
         closeSuccessModal();
     }
 });
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    initLazyLoading();
+    initHoverEffects();
+});
+
+window.addEventListener('load', () => {
+    loadingManager.hide();
+});
 </script>
 
 <style>
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: linear-gradient(135deg, #1a1208, #0d0906);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease;
+}
+
+.loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-spinner {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 30px;
+}
+
+.spinner-ring {
+    position: absolute;
+    inset: 0;
+    border: 3px solid transparent;
+    border-radius: 50%;
+}
+
+.spinner-ring:nth-child(1) {
+    border-top-color: #b5600b;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-ring:nth-child(2) {
+    inset: 8px;
+    border-right-color: #d1872c;
+    animation: spin 1.5s linear infinite reverse;
+}
+
+.spinner-ring:nth-child(3) {
+    inset: 16px;
+    border-bottom-color: #ffc168;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+.loading-progress {
+    width: 250px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.loading-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #b5600b, #ffc168);
+    transition: width 0.2s;
+}
+
+.loading-count {
+    color: #b5600b;
+    font-size: 0.9rem;
+    margin-top: 15px;
+}
+
+/* Main Page */
 .animated-gallery-page {
     min-height: 100vh;
     background: linear-gradient(180deg, #0d0906 0%, #1a1208 30%, #2d1f0d 70%, #1a1208 100%);
     padding-bottom: 60px;
 }
 
-/* Header */
 .gallery-header {
     padding: 100px 20px 50px;
     text-align: center;
@@ -604,7 +788,7 @@ document.addEventListener('keydown', (e) => {
     background: rgba(181, 96, 11, 0.4);
 }
 
-/* Modal */
+/* Modal - SCROLLABLE */
 .animated-modal {
     position: fixed;
     inset: 0;
@@ -612,6 +796,7 @@ document.addEventListener('keydown', (e) => {
     display: none;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 
 .animated-modal.active {
@@ -627,8 +812,8 @@ document.addEventListener('keydown', (e) => {
 
 .modal-container {
     position: relative;
-    width: 95%;
-    max-width: 1000px;
+    width: 100%;
+    max-width: 900px;
     max-height: 90vh;
     background: linear-gradient(165deg, #1f1a15 0%, #0d0906 100%);
     border-radius: 20px;
@@ -660,13 +845,21 @@ document.addEventListener('keydown', (e) => {
     transform: rotate(90deg) scale(1.1);
 }
 
+/* Scrollable content area */
+.modal-scroll-content {
+    overflow-y: auto;
+    max-height: 90vh;
+    scroll-behavior: smooth;
+}
+
 .modal-video-section {
     background: #000;
+    flex-shrink: 0;
 }
 
 .modal-video-section video {
     width: 100%;
-    max-height: 60vh;
+    max-height: 50vh;
     display: block;
 }
 
@@ -687,6 +880,7 @@ document.addEventListener('keydown', (e) => {
 .video-tabs {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .video-tab {
@@ -792,6 +986,7 @@ document.addEventListener('keydown', (e) => {
     color: white;
     font-size: 1rem;
     resize: vertical;
+    font-family: inherit;
 }
 
 .suggest-form-container textarea:focus {
@@ -903,7 +1098,7 @@ document.addEventListener('keydown', (e) => {
 .animate-fade-in-down { animation: fadeInDown 0.8s ease forwards; }
 .animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; }
 .animate-fade-in { animation: fadeIn 0.8s ease forwards; }
-[class*="animate-"] { opacity: 0; }
+[class*="animate-"]:not(.loading-overlay) { opacity: 0; }
 .delay-1 { animation-delay: 0.1s; }
 .delay-2 { animation-delay: 0.2s; }
 .delay-3 { animation-delay: 0.3s; }
@@ -929,6 +1124,10 @@ document.addEventListener('keydown', (e) => {
     
     .modal-actions {
         flex-direction: column;
+    }
+    
+    .modal-video-section video {
+        max-height: 40vh;
     }
 }
 </style>

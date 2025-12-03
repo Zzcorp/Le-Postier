@@ -621,27 +621,120 @@ function clearSearch() {
 class FloatingWords {
     constructor() {
         this.container = document.getElementById('words-container');
+        this.section = document.getElementById('floating-words-section');
         if (!this.container) return;
         
         this.maxWords = 12;
         this.activeWords = 0;
+        this.isVisible = true;
+        this.spawnInterval = null;
         
         this.init();
+        this.setupVisibilityControl();
     }
     
     init() {
+        // Initial spawn
         for (let i = 0; i < 5; i++) {
             setTimeout(() => this.spawnWord(), i * 350);
         }
         
-        setInterval(() => {
-            if (this.activeWords < this.maxWords) {
+        // Continuous spawning
+        this.startSpawning();
+    }
+    
+    startSpawning() {
+        if (this.spawnInterval) return;
+        
+        this.spawnInterval = setInterval(() => {
+            if (this.activeWords < this.maxWords && this.isVisible) {
                 this.spawnWord();
             }
         }, 2000);
     }
     
+    stopSpawning() {
+        if (this.spawnInterval) {
+            clearInterval(this.spawnInterval);
+            this.spawnInterval = null;
+        }
+    }
+    
+    setupVisibilityControl() {
+        const searchInput = document.getElementById('searchInput');
+        if (!searchInput) return;
+        
+        // Check visibility based on search state
+        const checkVisibility = () => {
+            const hasInput = searchInput.value.trim().length > 0;
+            const visibleCards = document.querySelectorAll('.postcard-card[style*="display: none"]').length;
+            const totalCards = document.querySelectorAll('.postcard-card').length;
+            const hasFiltered = visibleCards > 0 || hasInput;
+            
+            if (hasFiltered && this.isVisible) {
+                this.hideSection();
+            } else if (!hasFiltered && !this.isVisible) {
+                this.showSection();
+            }
+        };
+        
+        // Listen to input changes
+        searchInput.addEventListener('input', () => {
+            setTimeout(checkVisibility, 200);
+        });
+        
+        // Initial check
+        checkVisibility();
+    }
+    
+    hideSection() {
+        this.isVisible = false;
+        this.section.classList.add('hiding');
+        
+        // Fade out existing words
+        const words = this.container.querySelectorAll('.floating-word');
+        words.forEach((word, i) => {
+            word.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            word.style.opacity = '0';
+            word.style.transform = 'translateY(-20px) scale(0.8)';
+        });
+        
+        // Hide section after animation
+        setTimeout(() => {
+            this.section.style.display = 'none';
+            this.stopSpawning();
+            // Clear words
+            this.container.innerHTML = '';
+            this.activeWords = 0;
+        }, 600);
+    }
+    
+    showSection() {
+        this.isVisible = true;
+        this.section.style.display = 'block';
+        
+        // Trigger reflow
+        this.section.offsetHeight;
+        
+        this.section.classList.remove('hiding');
+        this.section.classList.add('showing');
+        
+        // Spawn new words with animation
+        setTimeout(() => {
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => this.spawnWord(), i * 200);
+            }
+            this.startSpawning();
+        }, 100);
+        
+        setTimeout(() => {
+            this.section.classList.remove('showing');
+        }, 800);
+    }
+    
     spawnWord() {
+        if (!this.isVisible) return;
+        
         const wordEl = document.createElement('button');
         wordEl.className = 'floating-word';
         wordEl.type = 'button';
@@ -659,15 +752,15 @@ class FloatingWords {
             --scale: ${scale};
         `;
         
-        // FIXED: Proper click handler that adds word to search
+        // Click handler - NO BLINK, just add to search
         wordEl.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             
-            // Add click animation
+            // Smooth click animation (no blink)
             wordEl.classList.add('clicked');
             
-            // Add word to search input and filter
+            // Add word to search
             if (liveSearch) {
                 liveSearch.addWord(wordText);
             }
@@ -676,6 +769,7 @@ class FloatingWords {
         this.container.appendChild(wordEl);
         this.activeWords++;
         
+        // Remove after animation
         setTimeout(() => {
             if (wordEl.parentNode) {
                 wordEl.remove();
@@ -1405,6 +1499,119 @@ document.addEventListener('DOMContentLoaded', () => {
     .floating-word { padding: 8px 16px; font-size: calc(0.8rem * var(--scale, 1)); }
     .postcards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .cinema-mode-toggle { flex-direction: column; }
+}
+/* Updated Floating Words Styles - NO BLINK */
+.floating-words-section {
+    position: relative;
+    height: 320px;
+    margin: 15px 20px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.25);
+    backdrop-filter: blur(5px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.floating-words-section.hiding {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.floating-words-section.showing {
+    animation: sectionFadeIn 0.8s ease forwards;
+}
+
+@keyframes sectionFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.words-container {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.floating-word {
+    position: absolute;
+    right: -250px;
+    padding: 12px 24px;
+    font-family: 'Georgia', serif;
+    font-style: italic;
+    font-size: calc(1rem * var(--scale, 1));
+    color: rgba(255, 240, 220, 0.95);
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.4), rgba(139, 69, 19, 0.3));
+    border: 1px solid rgba(255, 180, 100, 0.4);
+    border-radius: 30px;
+    cursor: pointer;
+    white-space: nowrap;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    animation: word-drift var(--duration, 20s) linear forwards;
+    transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+    z-index: 10;
+}
+
+/* Hover effect - NO BLINK/PULSE */
+.floating-word:hover {
+    background: linear-gradient(135deg, rgba(255, 160, 50, 0.95), rgba(181, 96, 11, 0.9));
+    color: white;
+    transform: scale(1.25) translateY(-5px);
+    box-shadow: 0 15px 40px rgba(255, 160, 50, 0.5);
+    animation-play-state: paused;
+    z-index: 100;
+}
+
+/* Click effect - smooth fade out */
+.floating-word.clicked {
+    animation: word-click 0.4s ease forwards;
+    pointer-events: none;
+}
+
+@keyframes word-click {
+    0% { 
+        transform: scale(1.25); 
+        opacity: 1;
+    }
+    100% { 
+        transform: scale(1.5) translateY(-30px); 
+        opacity: 0;
+    }
+}
+
+@keyframes word-drift {
+    0% { 
+        transform: translateX(0); 
+        opacity: 0; 
+    }
+    3% { 
+        opacity: 1; 
+    }
+    97% { 
+        opacity: 1; 
+    }
+    100% { 
+        transform: translateX(calc(-100vw - 300px)); 
+        opacity: 0; 
+    }
+}
+
+.section-hint {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+}
+
+.section-hint p {
+    color: rgba(255, 200, 150, 0.6);
+    font-style: italic;
 }
 </style>
 {% endblock %}

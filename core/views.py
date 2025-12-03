@@ -940,3 +940,28 @@ def check_ftp_images(request):
         raise Http404()
 
     return JsonResponse({'message': 'Check FTP images endpoint'})
+
+
+@user_passes_test(is_admin)
+def admin_next_postcard_number(request):
+    """Get the next available postcard number"""
+    try:
+        # Get the highest number
+        last_postcard = Postcard.objects.order_by('-number').first()
+
+        if last_postcard:
+            # Extract numeric part and increment
+            num_str = ''.join(filter(str.isdigit, str(last_postcard.number)))
+            if num_str:
+                next_num = int(num_str) + 1
+            else:
+                next_num = 1
+        else:
+            next_num = 1
+
+        return JsonResponse({
+            'next_number': next_num,
+            'formatted': str(next_num).zfill(6)
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

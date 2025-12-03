@@ -11,6 +11,79 @@
         <h1>🎛️ Tableau de Bord</h1>
         <p>Bienvenue, <strong>{{ user.username }}</strong></p>
     </div>
+    <!-- Add/Edit Postcard Modal -->
+    <div id="postcard-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closePostcardModal()">&times;</span>
+            <h2 id="postcard-modal-title">Ajouter une Carte Postale</h2>
+            <form id="postcard-form" onsubmit="savePostcard(event)">
+                <input type="hidden" id="postcard-id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Numéro * <small>(auto-généré si vide)</small></label>
+                        <input type="text" id="postcard-number" placeholder="Ex: 001234">
+                        <small class="form-hint" id="next-number-hint"></small>
+                    </div>
+                    <div class="form-group">
+                        <label>Rareté</label>
+                        <select id="postcard-rarity">
+                            <option value="common">Commune</option>
+                            <option value="rare">Rare</option>
+                            <option value="very_rare">Très Rare</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Titre *</label>
+                    <input type="text" id="postcard-title" required placeholder="Titre de la carte postale">
+                </div>
+                
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="postcard-description" rows="3" placeholder="Description optionnelle"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Mots-clés <small>(séparés par virgules)</small></label>
+                    <input type="text" id="postcard-keywords" placeholder="Ex: seine, bateau, paris">
+                </div>
+                
+                <div class="form-section-title">URLs des images</div>
+                
+                <div class="form-group">
+                    <label>URL Vignette</label>
+                    <input type="url" id="postcard-vignette-url" placeholder="https://...">
+                </div>
+                
+                <div class="form-group">
+                    <label>URL Grande</label>
+                    <input type="url" id="postcard-grande-url" placeholder="https://...">
+                </div>
+                
+                <div class="form-group">
+                    <label>URL Dos</label>
+                    <input type="url" id="postcard-dos-url" placeholder="https://...">
+                </div>
+                
+                <div class="form-group">
+                    <label>URL Zoom</label>
+                    <input type="url" id="postcard-zoom-url" placeholder="https://...">
+                </div>
+                
+                <div class="form-group">
+                    <label>URL Animation(s) <small>(séparées par virgules si plusieurs)</small></label>
+                    <input type="text" id="postcard-animated-url" placeholder="https://...">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closePostcardModal()">Annuler</button>
+                    <button type="submit" class="btn-primary">💾 Sauvegarder</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Quick Stats Row -->
     <div class="quick-stats">
@@ -599,9 +672,308 @@ function showNotification(message, type) {
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
+let nextPostcardNumber = 1;
+
+async function loadNextPostcardNumber() {
+    try {
+        const response = await fetch('/api/admin/postcards/next-number/');
+        const data = await response.json();
+        nextPostcardNumber = data.next_number;
+        document.getElementById('next-number-hint').textContent = `Prochain numéro suggéré: ${String(nextPostcardNumber).padStart(6, '0')}`;
+    } catch (error) {
+        console.log('Could not fetch next number');
+    }
+}
+
+function showAddPostcardModal() {
+    document.getElementById('postcard-modal-title').textContent = 'Ajouter une Carte Postale';
+    document.getElementById('postcard-form').reset();
+    document.getElementById('postcard-id').value = '';
+    
+    // Set auto-generated number
+    const autoNumber = String(nextPostcardNumber).padStart(6, '0');
+    document.getElementById('postcard-number').value = autoNumber;
+    document.getElementById('postcard-number').placeholder = autoNumber;
+    
+    // Auto-fill URLs based on number
+    updateAutoUrls(autoNumber);
+    
+    document.getElementById('postcard-modal').style.display = 'flex';
+}
+
+function updateAutoUrls(number) {
+    const baseUrl = 'https://collections.samathey.fr/collection_cp/cartes';
+    const paddedNum = String(number).padStart(6, '0');
+    
+    document.getElementById('postcard-vignette-url').placeholder = `${baseUrl}/Vignette/${paddedNum}.jpg`;
+    document.getElementById('postcard-grande-url').placeholder = `${baseUrl}/Grande/${paddedNum}.jpg`;
+    document.getElementById('postcard-dos-url').placeholder = `${baseUrl}/Dos/${paddedNum}.jpg`;
+    document.getElementById('postcard-zoom-url').placeholder = `${baseUrl}/Zoom/${paddedNum}.jpg`;
+}
+
+document.getElementById('postcard-number').addEventListener('input', function() {
+    updateAutoUrls(this.value);
+});
+
+function closePostcardModal() {
+    document.getElementById('postcard-modal').style.display = 'none';
+}
+
+async function editPostcard(id) {
+    try {
+        const response = await fetch(`/api/admin/postcard/${id}/`);
+        const p = await response.json();
+        
+        document.getElementById('postcard-modal-title').textContent = 'Modifier la Carte N° ' + p.number;
+        document.getElementById('postcard-id').value = p.id;
+        document.getElementById('postcard-number').value = p.number;
+        document.getElementById('postcard-title').value = p.title;
+        document.getElementById('postcard-description').value = p.description || '';
+        document.getElementById('postcard-keywords').value = p.keywords || '';
+        document.getElementById('postcard-rarity').value = p.rarity;
+        document.getElementById('postcard-vignette-url').value = p.vignette_url || '';
+        document.getElementById('postcard-grande-url').value = p.grande_url || '';
+        document.getElementById('postcard-dos-url').value = p.dos_url || '';
+        document.getElementById('postcard-zoom-url').value = p.zoom_url || '';
+        document.getElementById('postcard-animated-url').value = p.animated_url || '';
+        
+        document.getElementById('postcard-modal').style.display = 'flex';
+    } catch (error) {
+        alert('Erreur: ' + error.message);
+    }
+}
+
+async function savePostcard(event) {
+    event.preventDefault();
+    
+    const id = document.getElementById('postcard-id').value;
+    let number = document.getElementById('postcard-number').value.trim();
+    
+    // Auto-generate number if empty
+    if (!number) {
+        number = String(nextPostcardNumber).padStart(6, '0');
+    }
+    
+    const title = document.getElementById('postcard-title').value.trim();
+    
+    if (!title) {
+        alert('Le titre est requis');
+        return;
+    }
+    
+    const data = {
+        number: number,
+        title: title,
+        description: document.getElementById('postcard-description').value.trim(),
+        keywords: document.getElementById('postcard-keywords').value.trim(),
+        rarity: document.getElementById('postcard-rarity').value,
+        vignette_url: document.getElementById('postcard-vignette-url').value.trim(),
+        grande_url: document.getElementById('postcard-grande-url').value.trim(),
+        dos_url: document.getElementById('postcard-dos-url').value.trim(),
+        zoom_url: document.getElementById('postcard-zoom-url').value.trim(),
+        animated_url: document.getElementById('postcard-animated-url').value.trim(),
+    };
+    
+    try {
+        const url = id ? `/api/admin/postcard/${id}/` : '/api/admin/postcards/';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            closePostcardModal();
+            loadPostcards();
+            loadNextPostcardNumber();
+            showNotification(id ? 'Carte mise à jour!' : 'Carte créée!', 'success');
+        } else {
+            alert('Erreur: ' + (result.error || 'Erreur serveur'));
+        }
+    } catch (error) {
+        alert('Erreur: ' + error.message);
+    }
+}
+
+async function deletePostcard(id) {
+    if (!confirm('Supprimer cette carte postale ?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/postcard/${id}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': csrfToken }
+        });
+        
+        if (response.ok) {
+            const row = document.querySelector(`tr[data-postcard-id="${id}"]`);
+            if (row) row.remove();
+            showNotification('Carte supprimée!', 'success');
+        } else {
+            throw new Error('Erreur serveur');
+        }
+    } catch (error) {
+        alert('Erreur: ' + error.message);
+    }
+}
+
+// Load next number on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadNextPostcardNumber();
+});
+
+// Close modal on outside click
+document.getElementById('postcard-modal').addEventListener('click', function(e) {
+    if (e.target === this) closePostcardModal();
+});
 </script>
 
 <style>
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.8);
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: linear-gradient(165deg, #252525, #1a1a1a);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 28px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: #ff6b6b;
+}
+
+.modal-content h2 {
+    color: #b5600b;
+    margin-bottom: 25px;
+    padding-right: 40px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.form-group label small {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: normal;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid rgba(181, 96, 11, 0.4);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #b5600b;
+    box-shadow: 0 0 15px rgba(181, 96, 11, 0.2);
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.form-hint {
+    display: block;
+    color: #b5600b;
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+.form-section-title {
+    color: #d1872c;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 25px 0 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+    justify-content: flex-end;
+}
+
+.btn-secondary {
+    padding: 12px 25px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+}
+
 /* Admin Dashboard Enhanced Styles */
 .admin-container {
     padding: 80px 20px 40px;

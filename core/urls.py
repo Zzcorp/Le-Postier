@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/admin/postcard/<int:postcard_id>/', views.admin_postcard_detail, name='admin_postcard_detail'),
     path('api/admin/suggestions/', views.admin_suggestions_api, name='admin_suggestions_api'),
     path('api/admin/suggestion/<int:suggestion_id>/', views.admin_suggestion_detail, name='admin_suggestion_detail'),
+    path('api/admin/postcards/next-number/', views.admin_next_postcard_number, name='admin_next_postcard_number'),
 
     # API endpoints
     path('api/postcard/<int:postcard_id>/', views.get_postcard_detail, name='postcard_detail'),
