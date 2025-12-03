@@ -1,7 +1,6 @@
 <!-- templates/partials/navbar.html -->
 {% load static %}
 
-<!-- Main Navigation Bar -->
 <header class="main-header">
     <nav class="navbar">
         <!-- Logo/Title -->
@@ -21,6 +20,12 @@
                     <img src="{% static 'images/Loupe_icone.png' %}" alt="Rechercher">
                 </a>
             </li>
+            <!-- NEW: Animated Gallery Icon -->
+            <li>
+                <a href="{% url 'animated_gallery' %}" class="nav-link nav-icon" title="CP Animées">
+                    <img src="{% static 'images/cinema.png' %}" alt="CP Animées" class="cinema-icon">
+                </a>
+            </li>
             <li>
                 <a href="{% url 'contact' %}" class="nav-link nav-icon" title="Contact">
                     <img src="{% static 'images/Carte_postale.png' %}" alt="Contact">
@@ -37,7 +42,6 @@
                 <div class="dropdown-menu" id="account-dropdown">
                     <div class="dropdown-arrow"></div>
                     {% if user.is_authenticated %}
-                    <!-- Logged in user menu -->
                     <div class="dropdown-user-header">
                         <div class="dropdown-avatar">{{ user.username|slice:":1"|upper }}</div>
                         <div class="dropdown-user-info">
@@ -66,7 +70,6 @@
                         Déconnexion
                     </a>
                     {% else %}
-                    <!-- Guest menu -->
                     <a href="{% url 'login' %}" class="dropdown-item">
                         <span class="dropdown-icon">🔑</span>
                         Se connecter
@@ -82,14 +85,12 @@
         
         <!-- Mobile Menu -->
         <div class="nav-mobile">
-            <!-- Mobile Account Button -->
             <button class="nav-icon nav-account-btn mobile-account" onclick="toggleAccountDropdown(event)">
                 <img src="{% static 'images/Connect_Icone.png' %}" alt="Compte">
                 {% if user.is_authenticated %}
                 <span class="nav-account-indicator"></span>
                 {% endif %}
             </button>
-            <!-- Burger Menu Button -->
             <button class="burger-btn" onclick="toggleMobileMenu()" aria-label="Menu" aria-expanded="false">
                 <span></span>
                 <span></span>
@@ -117,6 +118,11 @@
         <a href="{% url 'browse' %}" class="mobile-nav-link">
             <span class="mobile-nav-icon">🔍</span>
             Rechercher
+        </a>
+        <!-- NEW: Animated Gallery Link -->
+        <a href="{% url 'animated_gallery' %}" class="mobile-nav-link">
+            <span class="mobile-nav-icon">🎬</span>
+            CP Animées
         </a>
         <a href="{% url 'contact' %}" class="mobile-nav-link">
             <span class="mobile-nav-icon">✉️</span>
@@ -162,14 +168,9 @@
     </nav>
 </div>
 
-<!-- Overlay for mobile menu -->
 <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
 
 <script>
-// =============================================
-// NAVIGATION DROPDOWN & MOBILE MENU
-// =============================================
-
 let accountDropdownOpen = false;
 let mobileMenuOpen = false;
 
@@ -190,10 +191,7 @@ function toggleAccountDropdown(event) {
         btn.setAttribute('aria-expanded', 'false');
     }
     
-    // Close mobile menu if open
-    if (mobileMenuOpen) {
-        closeMobileMenu();
-    }
+    if (mobileMenuOpen) closeMobileMenu();
 }
 
 function toggleMobileMenu() {
@@ -213,10 +211,7 @@ function toggleMobileMenu() {
         closeMobileMenu();
     }
     
-    // Close account dropdown if open
-    if (accountDropdownOpen) {
-        closeAccountDropdown();
-    }
+    if (accountDropdownOpen) closeAccountDropdown();
 }
 
 function closeMobileMenu() {
@@ -241,9 +236,7 @@ function closeAccountDropdown() {
     accountDropdownOpen = false;
 }
 
-// Close dropdowns when clicking outside
 document.addEventListener('click', function(e) {
-    // Close account dropdown
     if (accountDropdownOpen) {
         const dropdown = document.getElementById('account-dropdown');
         const accountBtns = document.querySelectorAll('.nav-account-btn');
@@ -256,7 +249,6 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Close on escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         if (accountDropdownOpen) closeAccountDropdown();
@@ -264,7 +256,6 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Handle window resize
 window.addEventListener('resize', function() {
     if (window.innerWidth > 900 && mobileMenuOpen) {
         closeMobileMenu();
@@ -273,9 +264,6 @@ window.addEventListener('resize', function() {
 </script>
 
 <style>
-/* ========================================
-   NAVBAR - MAIN STYLES
-   ======================================== */
 .main-header {
     position: fixed;
     top: 0;
@@ -297,7 +285,6 @@ window.addEventListener('resize', function() {
     margin: 0 auto;
 }
 
-/* Brand */
 .nav-brand a {
     text-decoration: none;
     display: flex;
@@ -312,7 +299,6 @@ window.addEventListener('resize', function() {
     letter-spacing: 0.3px;
 }
 
-/* Desktop Menu */
 .nav-menu {
     display: flex;
     align-items: center;
@@ -353,11 +339,15 @@ window.addEventListener('resize', function() {
     transition: transform 0.3s ease;
 }
 
+/* Cinema icon specific styling */
+.nav-icon .cinema-icon {
+    height: 24px;
+}
+
 .nav-icon:hover img {
     transform: scale(1.15);
 }
 
-/* Account button & indicator */
 .nav-account-btn {
     position: relative;
     font-family: inherit;
@@ -381,9 +371,6 @@ window.addEventListener('resize', function() {
     50% { transform: scale(1.2); opacity: 0.85; }
 }
 
-/* ========================================
-   DROPDOWN MENU
-   ======================================== */
 .nav-dropdown {
     position: relative;
 }
@@ -395,9 +382,7 @@ window.addEventListener('resize', function() {
     width: 260px;
     background: linear-gradient(165deg, #1f1f1f 0%, #171717 100%);
     border-radius: 16px;
-    box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(181, 96, 11, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(181, 96, 11, 0.3);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px) scale(0.95);
@@ -424,7 +409,6 @@ window.addEventListener('resize', function() {
     border-top: 1px solid rgba(181, 96, 11, 0.3);
 }
 
-/* Dropdown user header */
 .dropdown-user-header {
     display: flex;
     align-items: center;
@@ -467,10 +451,8 @@ window.addEventListener('resize', function() {
 .dropdown-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    margin: 0;
 }
 
-/* Dropdown items */
 .dropdown-item {
     display: flex;
     align-items: center;
@@ -511,9 +493,7 @@ window.addEventListener('resize', function() {
     background: linear-gradient(135deg, rgba(181, 96, 11, 0.4), rgba(181, 96, 11, 0.2));
 }
 
-/* ========================================
-   MOBILE NAVIGATION
-   ======================================== */
+/* Mobile */
 .nav-mobile {
     display: none;
     align-items: center;
@@ -559,7 +539,6 @@ window.addEventListener('resize', function() {
     transform: translateY(-9.5px) rotate(-45deg);
 }
 
-/* Mobile Menu Panel */
 .mobile-menu-panel {
     position: fixed;
     top: 0;
@@ -667,7 +646,6 @@ window.addEventListener('resize', function() {
     border: 1px solid rgba(181, 96, 11, 0.3);
 }
 
-/* Mobile Menu Overlay */
 .mobile-menu-overlay {
     position: fixed;
     inset: 0;
@@ -684,9 +662,6 @@ window.addEventListener('resize', function() {
     visibility: visible;
 }
 
-/* ========================================
-   RESPONSIVE BREAKPOINTS
-   ======================================== */
 @media (max-width: 900px) {
     .nav-menu {
         display: none;

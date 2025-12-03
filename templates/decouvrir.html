@@ -17,7 +17,7 @@
         <div class="paintings-grid">
             {% for painting in paintings %}
             <div class="painting-item animate-fade-in-up" 
-                data-video="{{ painting.video_url }}"
+                data-video-id="{{ painting.video_id }}"
                 data-title="{{ painting.title }}"
                 onclick="openVideoModal(this)"
                 style="animation-delay: {{ forloop.counter }}00ms;">
@@ -27,7 +27,12 @@
                 </div>
                 <div class="painting-info">
                     <h3>{{ painting.title }}</h3>
-                    <span class="play-indicator">▶ Voir la vidéo</span>
+                    <span class="play-indicator">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Voir la vidéo
+                    </span>
                 </div>
             </div>
             {% endfor %}
@@ -45,28 +50,85 @@
             </button>
             <h2 id="modalTitle"></h2>
             <div class="video-wrapper">
-                <iframe id="videoFrame" 
-                        src="" 
-                        frameborder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
-                </iframe>
+                <div id="youtube-player"></div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+let player = null;
+let playerReady = false;
+
+// YouTube API ready callback
+function onYouTubeIframeAPIReady() {
+    playerReady = true;
+}
+
+function openVideoModal(element) {
+    const videoId = element.dataset.videoId;
+    const title = element.dataset.title;
+    
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('videoModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Create or update player
+    if (player) {
+        player.loadVideoById(videoId);
+    } else {
+        player = new YT.Player('youtube-player', {
+            height: '100%',
+            width: '100%',
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 1,
+                'rel': 0,
+                'modestbranding': 1,
+                'origin': window.location.origin
+            },
+            events: {
+                'onError': function(event) {
+                    console.log('YouTube Error:', event.data);
+                    // Show fallback link
+                    document.getElementById('youtube-player').innerHTML = `
+                        <div class="video-error">
+                            <p>Impossible de charger la vidéo ici.</p>
+                            <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="watch-on-youtube">
+                                Regarder sur YouTube
+                            </a>
+                        </div>
+                    `;
+                }
+            }
+        });
+    }
+}
+
+function closeVideoModal() {
+    if (player && typeof player.stopVideo === 'function') {
+        player.stopVideo();
+    }
+    document.getElementById('videoModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Close on escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeVideoModal();
+});
+</script>
+
 <style>
-/* ========================================
-   DÉCOUVRIR PAGE STYLES
-   ======================================== */
 .decouvrir-page {
     min-height: 100vh;
     background: linear-gradient(180deg, #1a1208 0%, #2d1f0d 50%, #1a1208 100%);
     padding-bottom: 60px;
 }
 
-/* Page Header */
 .page-header {
     text-align: center;
     padding: 120px 20px 60px;
@@ -85,7 +147,6 @@
     font-style: italic;
 }
 
-/* Paintings Gallery */
 .paintings-gallery {
     max-width: 1400px;
     margin: 0 auto;
@@ -98,7 +159,6 @@
     gap: 40px;
 }
 
-/* Painting Item */
 .painting-item {
     position: relative;
     cursor: pointer;
@@ -112,19 +172,13 @@
 
 .painting-frame {
     position: relative;
-    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.5),
-        0 0 0 4px rgba(181, 96, 11, 0.3);
-    transition: all 0.4s ease;
+    /* No border or box-shadow */
 }
 
 .painting-item:hover .painting-frame {
-    box-shadow: 
-        0 30px 80px rgba(181, 96, 11, 0.4),
-        0 0 0 4px #b5600b,
-        0 0 60px rgba(181, 96, 11, 0.3);
+    /* Subtle glow on hover */
+    filter: drop-shadow(0 10px 30px rgba(181, 96, 11, 0.4));
 }
 
 .painting-frame img {
@@ -155,18 +209,20 @@
     opacity: 1;
 }
 
-/* Painting Info */
+/* Info overlay - OVER the painting */
 .painting-info {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 30px 20px 20px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
-    border-radius: 0 0 12px 12px;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
     opacity: 0;
     transform: translateY(20px);
     transition: all 0.4s ease;
+    z-index: 10;
 }
 
 .painting-item:hover .painting-info {
@@ -176,9 +232,9 @@
 
 .painting-info h3 {
     color: white;
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     margin-bottom: 10px;
-    text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+    text-shadow: none;
 }
 
 .play-indicator {
@@ -261,19 +317,50 @@
 
 .video-wrapper {
     position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    padding-bottom: 56.25%;
     height: 0;
     overflow: hidden;
     border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    background: #000;
 }
 
-.video-wrapper iframe {
+.video-wrapper iframe,
+.video-wrapper #youtube-player {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
+}
+
+.video-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+}
+
+.video-error p {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+.watch-on-youtube {
+    display: inline-block;
+    padding: 15px 30px;
+    background: #ff0000;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.watch-on-youtube:hover {
+    background: #cc0000;
+    transform: scale(1.05);
 }
 
 /* Responsive */
@@ -302,53 +389,15 @@
         font-size: 1.3rem;
     }
 }
+
+/* Animations */
+.animate-fade-in-down { animation: fadeInDown 0.8s ease forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; }
+.animate-scale-in { animation: scaleIn 0.5s ease forwards; }
+[class*="animate-"] { opacity: 0; }
+
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 </style>
-
-<script>
-function openVideoModal(element) {
-    const videoUrl = element.dataset.video;
-    const title = element.dataset.title;
-    
-    // Convert YouTube URL to embed format
-    let embedUrl = videoUrl;
-    if (videoUrl.includes('youtube.com/watch')) {
-        const videoId = new URL(videoUrl).searchParams.get('v');
-        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    } else if (videoUrl.includes('youtu.be')) {
-        const videoId = videoUrl.split('/').pop().split('?')[0];
-        embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    }
-    
-    document.getElementById('modalTitle').textContent = title;
-    document.getElementById('videoFrame').src = embedUrl;
-    document.getElementById('videoModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeVideoModal() {
-    document.getElementById('videoFrame').src = '';
-    document.getElementById('videoModal').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-// Close on escape
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeVideoModal();
-});
-
-// Animate on scroll
-document.addEventListener('DOMContentLoaded', () => {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-            }
-        });
-    }, { threshold: 0.1 });
-    
-    document.querySelectorAll('[class*="animate-"]').forEach(el => {
-        observer.observe(el);
-    });
-});
-</script>
 {% endblock %}

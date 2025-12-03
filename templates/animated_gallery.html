@@ -1,0 +1,935 @@
+<!-- templates/animated_gallery.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}CP Animées{% endblock %}
+
+{% block content %}
+<div class="animated-gallery-page">
+    <!-- Header -->
+    <header class="gallery-header">
+        <div class="header-content">
+            <h1 class="animate-fade-in-down">🎬 Cartes Postales Animées</h1>
+            <p class="animate-fade-in-up delay-1">Découvrez notre collection de cartes postales prenant vie</p>
+            <div class="header-stats animate-fade-in-up delay-2">
+                <span class="stat-item">
+                    <strong>{{ total_count }}</strong> animations disponibles
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Filter/Sort Options -->
+    <div class="gallery-controls animate-fade-in delay-3">
+        <div class="sort-options">
+            <button class="sort-btn active" data-sort="popular" onclick="sortGallery('popular')">
+                ❤️ Plus aimées
+            </button>
+            <button class="sort-btn" data-sort="recent" onclick="sortGallery('recent')">
+                🕐 Récentes
+            </button>
+            <button class="sort-btn" data-sort="number" onclick="sortGallery('number')">
+                🔢 Par numéro
+            </button>
+        </div>
+    </div>
+
+    <!-- Gallery Grid -->
+    <div class="animated-grid" id="animated-grid">
+        {% for postcard in postcards %}
+        <div class="animated-card" 
+             data-id="{{ postcard.id }}"
+             data-number="{{ postcard.number }}"
+             data-likes="{{ postcard.likes_count }}"
+             data-title="{{ postcard.title }}"
+             data-animated-urls="{{ postcard.animated_url }}">
+            
+            <div class="card-video-container">
+                <video class="card-video" 
+                       muted 
+                       loop 
+                       playsinline
+                       poster="{{ postcard.vignette_url }}">
+                    <source src="{{ postcard.get_animated_urls.0 }}" type="video/mp4">
+                </video>
+                <div class="video-overlay">
+                    <button class="play-btn" onclick="openAnimatedModal({{ postcard.id }})">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Multiple videos indicator -->
+                {% if postcard.get_animated_urls|length > 1 %}
+                <div class="multi-video-badge">
+                    {{ postcard.get_animated_urls|length }} vidéos
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="card-info">
+                <span class="card-number">N° {{ postcard.number }}</span>
+                <h3 class="card-title">{{ postcard.title|truncatechars:40 }}</h3>
+                
+                <div class="card-actions">
+                    <button class="like-btn {% if postcard.id in user_likes %}liked{% endif %}" 
+                            onclick="toggleLike({{ postcard.id }}, true)"
+                            data-postcard-id="{{ postcard.id }}">
+                        <span class="heart-icon">❤️</span>
+                        <span class="like-count">{{ postcard.likes_count }}</span>
+                    </button>
+                    
+                    <button class="suggest-btn" onclick="openSuggestModal({{ postcard.id }}, '{{ postcard.number }}')">
+                        💡 Suggérer
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-results">
+            <div class="no-results-icon">🎬</div>
+            <h3>Aucune animation disponible</h3>
+            <p>Les cartes postales animées seront bientôt disponibles.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Animated Postcard Modal -->
+<div class="animated-modal" id="animatedModal">
+    <div class="modal-backdrop" onclick="closeAnimatedModal()"></div>
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeAnimatedModal()">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+        </button>
+        
+        <div class="modal-video-section">
+            <video id="modalVideo" controls autoplay loop>
+                <source src="" type="video/mp4">
+            </video>
+            
+            <!-- Video selector for multiple videos -->
+            <div class="video-selector" id="videoSelector" style="display:none;">
+                <span>Vidéos disponibles:</span>
+                <div class="video-tabs" id="videoTabs"></div>
+            </div>
+        </div>
+        
+        <div class="modal-info-section">
+            <span class="modal-number" id="modalNumber"></span>
+            <h2 class="modal-title" id="modalTitle"></h2>
+            
+            <div class="modal-actions">
+                <button class="modal-like-btn" id="modalLikeBtn" onclick="toggleModalLike()">
+                    <span class="heart-icon">❤️</span>
+                    <span class="like-text">J'aime</span>
+                    <span class="like-count" id="modalLikeCount">0</span>
+                </button>
+                
+                <button class="modal-suggest-btn" onclick="showSuggestForm()">
+                    💡 Suggérer une animation
+                </button>
+            </div>
+            
+            <!-- Suggestion Form -->
+            <div class="suggest-form-container" id="suggestFormContainer" style="display:none;">
+                <h4>Proposer une idée d'animation</h4>
+                <textarea id="suggestionText" placeholder="Décrivez l'animation que vous imaginez pour cette carte postale..." maxlength="500"></textarea>
+                <div class="form-actions">
+                    <button class="cancel-btn" onclick="hideSuggestForm()">Annuler</button>
+                    <button class="submit-btn" onclick="submitSuggestion()">Envoyer</button>
+                </div>
+                <p class="char-count"><span id="charCount">0</span>/500 caractères</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Suggestion Success Modal -->
+<div class="success-modal" id="successModal">
+    <div class="success-content">
+        <div class="success-icon">✅</div>
+        <h3>Merci pour votre suggestion !</h3>
+        <p>Votre idée a été enregistrée et sera examinée par notre équipe.</p>
+        <button onclick="closeSuccessModal()">Fermer</button>
+    </div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+let currentPostcardId = null;
+let currentAnimatedUrls = [];
+let currentVideoIndex = 0;
+
+// Initialize card hover effects
+document.querySelectorAll('.animated-card').forEach(card => {
+    const video = card.querySelector('.card-video');
+    
+    card.addEventListener('mouseenter', () => {
+        video.play().catch(() => {});
+    });
+    
+    card.addEventListener('mouseleave', () => {
+        video.pause();
+        video.currentTime = 0;
+    });
+});
+
+// Sort gallery
+function sortGallery(sortBy) {
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sort === sortBy);
+    });
+    
+    const grid = document.getElementById('animated-grid');
+    const cards = Array.from(grid.querySelectorAll('.animated-card'));
+    
+    cards.sort((a, b) => {
+        if (sortBy === 'popular') {
+            return parseInt(b.dataset.likes) - parseInt(a.dataset.likes);
+        } else if (sortBy === 'number') {
+            return a.dataset.number.localeCompare(b.dataset.number);
+        }
+        return 0;
+    });
+    
+    cards.forEach(card => grid.appendChild(card));
+}
+
+// Open animated modal
+function openAnimatedModal(postcardId) {
+    const card = document.querySelector(`[data-id="${postcardId}"]`);
+    if (!card) return;
+    
+    currentPostcardId = postcardId;
+    const urlsString = card.dataset.animatedUrls;
+    currentAnimatedUrls = urlsString.split(',').filter(u => u.trim());
+    currentVideoIndex = 0;
+    
+    document.getElementById('modalNumber').textContent = 'N° ' + card.dataset.number;
+    document.getElementById('modalTitle').textContent = card.dataset.title;
+    document.getElementById('modalLikeCount').textContent = card.dataset.likes;
+    
+    // Check if liked
+    const likeBtn = card.querySelector('.like-btn');
+    document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn.classList.contains('liked'));
+    
+    // Set video source
+    const video = document.getElementById('modalVideo');
+    video.src = currentAnimatedUrls[0];
+    video.load();
+    video.play().catch(() => {});
+    
+    // Show video selector if multiple videos
+    const selector = document.getElementById('videoSelector');
+    const tabs = document.getElementById('videoTabs');
+    
+    if (currentAnimatedUrls.length > 1) {
+        selector.style.display = 'block';
+        tabs.innerHTML = currentAnimatedUrls.map((url, i) => `
+            <button class="video-tab ${i === 0 ? 'active' : ''}" onclick="switchVideo(${i})">
+                Vidéo ${i + 1}
+            </button>
+        `).join('');
+    } else {
+        selector.style.display = 'none';
+    }
+    
+    document.getElementById('animatedModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAnimatedModal() {
+    document.getElementById('modalVideo').pause();
+    document.getElementById('animatedModal').classList.remove('active');
+    document.body.style.overflow = '';
+    hideSuggestForm();
+}
+
+function switchVideo(index) {
+    currentVideoIndex = index;
+    const video = document.getElementById('modalVideo');
+    video.src = currentAnimatedUrls[index];
+    video.load();
+    video.play().catch(() => {});
+    
+    document.querySelectorAll('.video-tab').forEach((tab, i) => {
+        tab.classList.toggle('active', i === index);
+    });
+}
+
+// Like functionality
+async function toggleLike(postcardId, isAnimated = true) {
+    try {
+        const formData = new FormData();
+        formData.append('is_animated', isAnimated);
+        
+        const response = await fetch(`/api/postcard/${postcardId}/like/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update card button
+            const card = document.querySelector(`[data-id="${postcardId}"]`);
+            if (card) {
+                const likeBtn = card.querySelector('.like-btn');
+                const likeCount = likeBtn.querySelector('.like-count');
+                likeBtn.classList.toggle('liked', data.liked);
+                likeCount.textContent = data.likes_count;
+                card.dataset.likes = data.likes_count;
+            }
+            
+            // Update modal if open
+            if (currentPostcardId === postcardId) {
+                document.getElementById('modalLikeBtn').classList.toggle('liked', data.liked);
+                document.getElementById('modalLikeCount').textContent = data.likes_count;
+            }
+        }
+    } catch (error) {
+        console.error('Like error:', error);
+    }
+}
+
+function toggleModalLike() {
+    if (currentPostcardId) {
+        toggleLike(currentPostcardId, true);
+    }
+}
+
+// Suggestion functionality
+function showSuggestForm() {
+    document.getElementById('suggestFormContainer').style.display = 'block';
+    document.getElementById('suggestionText').focus();
+}
+
+function hideSuggestForm() {
+    document.getElementById('suggestFormContainer').style.display = 'none';
+    document.getElementById('suggestionText').value = '';
+    document.getElementById('charCount').textContent = '0';
+}
+
+document.getElementById('suggestionText').addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length;
+});
+
+async function submitSuggestion() {
+    const description = document.getElementById('suggestionText').value.trim();
+    
+    if (description.length < 10) {
+        alert('Veuillez entrer une description plus détaillée (minimum 10 caractères).');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('description', description);
+        
+        const response = await fetch(`/api/postcard/${currentPostcardId}/suggest/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            hideSuggestForm();
+            document.getElementById('successModal').classList.add('active');
+        } else {
+            alert(data.error || 'Une erreur est survenue.');
+        }
+    } catch (error) {
+        console.error('Suggestion error:', error);
+        alert('Une erreur est survenue.');
+    }
+}
+
+function openSuggestModal(postcardId, number) {
+    openAnimatedModal(postcardId);
+    setTimeout(showSuggestForm, 300);
+}
+
+function closeSuccessModal() {
+    document.getElementById('successModal').classList.remove('active');
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeAnimatedModal();
+        closeSuccessModal();
+    }
+});
+</script>
+
+<style>
+.animated-gallery-page {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0d0906 0%, #1a1208 30%, #2d1f0d 70%, #1a1208 100%);
+    padding-bottom: 60px;
+}
+
+/* Header */
+.gallery-header {
+    padding: 100px 20px 50px;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(181, 96, 11, 0.1) 0%, transparent 100%);
+}
+
+.header-content h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: white;
+    margin-bottom: 15px;
+}
+
+.header-content p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+.header-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.stat-item {
+    color: #d1872c;
+    font-size: 1rem;
+}
+
+.stat-item strong {
+    color: #ffc168;
+    font-size: 1.3rem;
+}
+
+/* Controls */
+.gallery-controls {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px 30px;
+}
+
+.sort-options {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.sort-btn {
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.95rem;
+}
+
+.sort-btn:hover {
+    background: rgba(181, 96, 11, 0.3);
+    border-color: #b5600b;
+}
+
+.sort-btn.active {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-color: #b5600b;
+}
+
+/* Grid */
+.animated-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Card */
+.animated-card {
+    background: linear-gradient(135deg, rgba(40, 30, 20, 0.9), rgba(30, 20, 15, 0.95));
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(181, 96, 11, 0.2);
+    transition: all 0.4s ease;
+}
+
+.animated-card:hover {
+    transform: translateY(-8px);
+    border-color: #b5600b;
+    box-shadow: 0 20px 50px rgba(181, 96, 11, 0.3);
+}
+
+.card-video-container {
+    position: relative;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    background: #000;
+}
+
+.card-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.animated-card:hover .video-overlay {
+    opacity: 1;
+}
+
+.play-btn {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s;
+}
+
+.play-btn:hover {
+    transform: scale(1.1);
+}
+
+.multi-video-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(181, 96, 11, 0.9);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.card-info {
+    padding: 20px;
+}
+
+.card-number {
+    color: #b5600b;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.card-title {
+    color: white;
+    font-size: 1rem;
+    margin: 8px 0 15px;
+    line-height: 1.4;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.like-btn, .suggest-btn {
+    flex: 1;
+    padding: 10px 15px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.like-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.like-btn:hover {
+    background: rgba(255, 100, 100, 0.2);
+    border-color: rgba(255, 100, 100, 0.5);
+}
+
+.like-btn.liked {
+    background: rgba(255, 100, 100, 0.3);
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+}
+
+.like-btn.liked .heart-icon {
+    animation: heartBeat 0.6s ease;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+.suggest-btn {
+    background: rgba(181, 96, 11, 0.2);
+    color: #ffc168;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.suggest-btn:hover {
+    background: rgba(181, 96, 11, 0.4);
+}
+
+/* Modal */
+.animated-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.animated-modal.active {
+    display: flex;
+}
+
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.modal-container {
+    position: relative;
+    width: 95%;
+    max-width: 1000px;
+    max-height: 90vh;
+    background: linear-gradient(165deg, #1f1a15 0%, #0d0906 100%);
+    border-radius: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s;
+}
+
+.modal-close:hover {
+    transform: rotate(90deg) scale(1.1);
+}
+
+.modal-video-section {
+    background: #000;
+}
+
+.modal-video-section video {
+    width: 100%;
+    max-height: 60vh;
+    display: block;
+}
+
+.video-selector {
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.video-selector span {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.video-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.video-tab {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+}
+
+.video-tab:hover {
+    background: rgba(181, 96, 11, 0.3);
+}
+
+.video-tab.active {
+    background: #b5600b;
+    border-color: #b5600b;
+}
+
+.modal-info-section {
+    padding: 25px;
+}
+
+.modal-number {
+    color: #b5600b;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.modal-title {
+    color: white;
+    font-size: 1.4rem;
+    margin: 10px 0 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.modal-like-btn, .modal-suggest-btn {
+    padding: 14px 25px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-like-btn {
+    background: rgba(255, 100, 100, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 100, 100, 0.3);
+}
+
+.modal-like-btn:hover {
+    background: rgba(255, 100, 100, 0.3);
+}
+
+.modal-like-btn.liked {
+    background: rgba(255, 100, 100, 0.4);
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+}
+
+.modal-suggest-btn {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+}
+
+.modal-suggest-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Suggest Form */
+.suggest-form-container {
+    margin-top: 25px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.suggest-form-container h4 {
+    color: #ffc168;
+    margin-bottom: 15px;
+}
+
+.suggest-form-container textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    font-size: 1rem;
+    resize: vertical;
+}
+
+.suggest-form-container textarea:focus {
+    outline: none;
+    border-color: #b5600b;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.cancel-btn, .submit-btn {
+    padding: 12px 25px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+}
+
+.cancel-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+}
+
+.char-count {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
+
+/* Success Modal */
+.success-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.success-modal.active {
+    display: flex;
+}
+
+.success-content {
+    background: linear-gradient(165deg, #2d1f0d, #1a1208);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    border: 1px solid #b5600b;
+}
+
+.success-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.success-content h3 {
+    color: #ffc168;
+    margin-bottom: 10px;
+}
+
+.success-content p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 25px;
+}
+
+.success-content button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+/* No Results */
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.no-results-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.no-results h3 {
+    color: white;
+    margin-bottom: 10px;
+}
+
+.no-results p {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Animations */
+.animate-fade-in-down { animation: fadeInDown 0.8s ease forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; }
+.animate-fade-in { animation: fadeIn 0.8s ease forwards; }
+[class*="animate-"] { opacity: 0; }
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .animated-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    .modal-container {
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

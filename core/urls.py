@@ -1,12 +1,16 @@
+# core/urls.py
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
+    # Main pages
     path('', views.home, name='home'),
+    path('intro/', views.intro, name='intro'),
     path('decouvrir/', views.decouvrir, name='decouvrir'),
     path('presentation/', views.presentation, name='presentation'),
     path('parcourir/', views.browse, name='browse'),
+    path('cp-animes/', views.animated_gallery, name='animated_gallery'),
     path('contact/', views.contact, name='contact'),
     path('inscription/', views.register, name='register'),
     path('connexion/', views.login_view, name='login'),
@@ -24,10 +28,14 @@ urlpatterns = [
     path('api/admin/user/<int:user_id>/', views.admin_user_detail, name='admin_user_detail'),
     path('api/admin/postcards/', views.admin_postcards_api, name='admin_postcards_api'),
     path('api/admin/postcard/<int:postcard_id>/', views.admin_postcard_detail, name='admin_postcard_detail'),
+    path('api/admin/suggestions/', views.admin_suggestions_api, name='admin_suggestions_api'),
+    path('api/admin/suggestion/<int:suggestion_id>/', views.admin_suggestion_detail, name='admin_suggestion_detail'),
 
     # API endpoints
     path('api/postcard/<int:postcard_id>/', views.get_postcard_detail, name='postcard_detail'),
     path('api/postcard/<int:postcard_id>/zoom/', views.zoom_postcard, name='postcard_zoom'),
+    path('api/postcard/<int:postcard_id>/like/', views.like_postcard, name='postcard_like'),
+    path('api/postcard/<int:postcard_id>/suggest/', views.suggest_animation, name='suggest_animation'),
 
     # Legacy
     path('admin/update-user/<int:user_id>/', views.update_user_category, name='update_user_category'),

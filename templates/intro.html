@@ -1,3 +1,4 @@
+<!-- templates/intro.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -5,11 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Le Postier - Chargement</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             background: linear-gradient(135deg, #1a1a1a 0%, #202020 100%);
@@ -22,7 +19,6 @@
             font-family: "Bookman Old Style", serif;
         }
         
-        /* River particles background - already floating */
         .river-container {
             position: absolute;
             width: 100%;
@@ -44,25 +40,12 @@
             animation: flow 8s linear infinite;
         }
         
-        .wave:nth-child(2) {
-            animation-delay: -2s;
-            opacity: 0.5;
-            animation-duration: 10s;
-        }
-        
-        .wave:nth-child(3) {
-            animation-delay: -4s;
-            opacity: 0.3;
-            animation-duration: 12s;
-        }
+        .wave:nth-child(2) { animation-delay: -2s; opacity: 0.5; animation-duration: 10s; }
+        .wave:nth-child(3) { animation-delay: -4s; opacity: 0.3; animation-duration: 12s; }
         
         @keyframes flow {
-            from {
-                transform: translateX(-50%) translateY(0);
-            }
-            to {
-                transform: translateX(0%) translateY(0);
-            }
+            from { transform: translateX(-50%); }
+            to { transform: translateX(0%); }
         }
         
         .particle {
@@ -76,23 +59,12 @@
         }
         
         @keyframes float-particle {
-            from {
-                transform: translate(-100px, 0) scale(0.5);
-                opacity: 0;
-            }
-            2% {
-                opacity: 1;
-            }
-            98% {
-                opacity: 1;
-            }
-            to {
-                transform: translate(calc(100vw + 100px), 0) scale(0.5);
-                opacity: 0;
-            }
+            from { transform: translate(-100px, 0) scale(0.5); opacity: 0; }
+            2% { opacity: 1; }
+            98% { opacity: 1; }
+            to { transform: translate(calc(100vw + 100px), 0) scale(0.5); opacity: 0; }
         }
         
-        /* Logo container */
         .intro-content {
             position: relative;
             z-index: 10;
@@ -101,14 +73,8 @@
         }
         
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         .logo {
@@ -126,17 +92,10 @@
         }
         
         @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 10px 40px rgba(181, 96, 11, 0.4);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 15px 50px rgba(181, 96, 11, 0.6);
-            }
+            0%, 100% { transform: scale(1); box-shadow: 0 10px 40px rgba(181, 96, 11, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 15px 50px rgba(181, 96, 11, 0.6); }
         }
         
-        /* Fish SVG Logo */
         .fish-logo {
             width: 120px;
             height: 80px;
@@ -146,18 +105,10 @@
         }
         
         @keyframes swim {
-            0%, 100% {
-                transform: translateX(0) rotate(0deg);
-            }
-            25% {
-                transform: translateX(-5px) rotate(-2deg);
-            }
-            50% {
-                transform: translateX(0) rotate(0deg);
-            }
-            75% {
-                transform: translateX(5px) rotate(2deg);
-            }
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-5px) rotate(-2deg); }
+            50% { transform: translateX(0) rotate(0deg); }
+            75% { transform: translateX(5px) rotate(2deg); }
         }
         
         .site-name {
@@ -169,18 +120,11 @@
         }
         
         @keyframes glow {
-            0%, 100% {
-                text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
-            }
-            50% {
-                text-shadow: 2px 2px 20px rgba(181, 96, 11, 0.8);
-            }
+            0%, 100% { text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5); }
+            50% { text-shadow: 2px 2px 20px rgba(181, 96, 11, 0.8); }
         }
         
-        /* Loading animation */
-        .loading-container {
-            margin-top: 40px;
-        }
+        .loading-container { margin-top: 40px; }
         
         .loading-bar {
             width: 300px;
@@ -189,7 +133,6 @@
             border-radius: 3px;
             overflow: hidden;
             margin: 0 auto;
-            position: relative;
         }
         
         .loading-progress {
@@ -200,23 +143,8 @@
             width: 0%;
         }
         
-        @keyframes loading {
-            from {
-                width: 0%;
-            }
-            to {
-                width: 100%;
-            }
-        }
-        
-        @keyframes shimmer {
-            from {
-                background-position: -200% 0;
-            }
-            to {
-                background-position: 200% 0;
-            }
-        }
+        @keyframes loading { from { width: 0%; } to { width: 100%; } }
+        @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
         
         .loading-text {
             margin-top: 15px;
@@ -250,26 +178,16 @@
     
     <div class="intro-content">
         <div class="logo">
-            <!-- Fish SVG -->
             <svg class="fish-logo" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
-                <!-- Fish body -->
                 <ellipse cx="50" cy="40" rx="35" ry="20" fill="white"/>
-                <!-- Fish tail -->
                 <path d="M 20 40 L 5 25 L 5 55 Z" fill="white"/>
-                <!-- Fish fin top -->
                 <path d="M 50 20 L 45 5 L 55 5 Z" fill="white"/>
-                <!-- Fish fin bottom -->
                 <path d="M 50 60 L 45 75 L 55 75 Z" fill="white"/>
-                <!-- Fish eye -->
                 <circle cx="65" cy="38" r="5" fill="#b5600b"/>
                 <circle cx="67" cy="36" r="2" fill="white"/>
-                <!-- Fish mouth -->
                 <path d="M 80 40 Q 85 42 80 44" stroke="#b5600b" stroke-width="2" fill="none"/>
-                <!-- Fish scales detail -->
                 <path d="M 30 35 Q 35 33 40 35" stroke="#b5600b" stroke-width="1" fill="none" opacity="0.5"/>
                 <path d="M 30 45 Q 35 47 40 45" stroke="#b5600b" stroke-width="1" fill="none" opacity="0.5"/>
-                <path d="M 40 30 Q 45 28 50 30" stroke="#b5600b" stroke-width="1" fill="none" opacity="0.5"/>
-                <path d="M 40 50 Q 45 52 50 50" stroke="#b5600b" stroke-width="1" fill="none" opacity="0.5"/>
             </svg>
         </div>
         <h1 class="site-name">Le Postier</h1>
@@ -284,37 +202,21 @@
     </div>
     
     <script>
-        // Create particles - all already floating from left
+        // Create particles
         const particlesContainer = document.getElementById('particles-container');
         for (let i = 0; i < 40; i++) {
             const particle = document.createElement('div');
             particle.className = 'particle';
-            
-            // Distribute particles across the screen height
-            const yPosition = Math.random() * 100;
-            particle.style.top = yPosition + '%';
-            
-            // Start particles at different horizontal positions (including off-screen left)
-            const xPosition = -100 + Math.random() * (window.innerWidth + 200);
-            particle.style.left = xPosition + 'px';
-            
-            // Vary animation duration for natural flow
-            const duration = 10 + Math.random() * 10; // 10-20 seconds
-            particle.style.animationDuration = duration + 's';
-            
-            // Stagger animation start
-            const delay = Math.random() * duration;
-            particle.style.animationDelay = delay + 's';
-            
-            // Vary particle size
-            const size = 4 + Math.random() * 4; // 4-8px
-            particle.style.width = size + 'px';
-            particle.style.height = size + 'px';
-            
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.left = (-100 + Math.random() * (window.innerWidth + 200)) + 'px';
+            particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+            particle.style.animationDelay = (Math.random() * 10) + 's';
+            particle.style.width = (4 + Math.random() * 4) + 'px';
+            particle.style.height = particle.style.width;
             particlesContainer.appendChild(particle);
         }
         
-        // Loading progress animation
+        // Loading progress
         let progress = 0;
         const loadingPercentage = document.getElementById('loading-percentage');
         const loadingInfo = document.getElementById('loading-info');
@@ -328,21 +230,17 @@
         ];
         
         const progressInterval = setInterval(() => {
-            progress += 100/30; // 30 steps for 3 seconds
-            
+            progress += 100/30;
             if (progress > 100) {
                 progress = 100;
                 clearInterval(progressInterval);
             }
-            
             loadingPercentage.textContent = Math.floor(progress) + '%';
-            
-            // Update loading message based on progress
             const messageIndex = Math.floor((progress / 100) * loadingMessages.length);
             if (messageIndex < loadingMessages.length) {
                 loadingInfo.textContent = loadingMessages[messageIndex];
             }
-        }, 100); // Update every 100ms for 3 seconds total
+        }, 100);
         
         // Redirect after 3 seconds
         setTimeout(() => {
