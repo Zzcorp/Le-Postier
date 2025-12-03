@@ -58,8 +58,8 @@ class Postcard(models.Model):
     grande_url = models.URLField(max_length=500, blank=True, verbose_name="URL Grande")
     dos_url = models.URLField(max_length=500, blank=True, verbose_name="URL Dos")
     zoom_url = models.URLField(max_length=500, blank=True, verbose_name="URL Zoom")
-    # Can store multiple URLs comma-separated
-    animated_url = models.TextField(max_length=2000, blank=True, verbose_name="URL Animation(s)")
+    # Legacy field - keep for backward compatibility, but use PostcardVideo model instead
+    animated_url = models.TextField(max_length=2000, blank=True, verbose_name="URL Animation(s) (legacy)")
 
     rarity = models.CharField(max_length=20, choices=RARITY_CHOICES, default='common', verbose_name="Rareté")
 
@@ -89,14 +89,35 @@ class Postcard(models.Model):
         return [k.strip() for k in self.keywords.split(',') if k.strip()]
 
     def get_animated_urls(self):
-        """Return list of animated URLs"""
-        if not self.animated_url:
-            return []
-        return [url.strip() for url in self.animated_url.split(',') if url.strip()]
+        """Return list of animated video URLs from related PostcardVideo model"""
+        video_urls = list(self.videos.values_list('video_url', flat=True))
+        if video_urls:
+            return video_urls
+        # Fallback to legacy field
+        if self.animated_url:
+            return [url.strip() for url in self.animated_url.split(',') if url.strip()]
+        return []
 
     def has_animation(self):
         """Check if postcard has any animation"""
-        return bool(self.animated_url)
+        return self.videos.exists() or bool(self.animated_url)
+
+    def get_first_video_url(self):
+        """Get first video URL for preview"""
+        first = self.videos.first()
+        if first:
+            return first.video_url
+        # Fallback to legacy field
+        urls = self.get_animated_urls()
+        return urls[0] if urls else None
+
+    def video_count(self):
+        """Get number of videos"""
+        count = self.videos.count()
+        if count > 0:
+            return count
+        # Fallback to legacy field
+        return len(self.get_animated_urls())
 
     # Properties to access images (for template compatibility)
     @property
@@ -116,6 +137,26 @@ class Postcard(models.Model):
         return type('obj', (object,), {'url': self.zoom_url})()
 
 
+class PostcardVideo(models.Model):
+    """Store individual animated videos for postcards"""
+    postcard = models.ForeignKey(
+        Postcard,
+        on_delete=models.CASCADE,
+        related_name='videos'
+    )
+    video_url = models.URLField(max_length=500, verbose_name="URL Vidéo")
+    order = models.PositiveIntegerField(default=0, verbose_name="Ordre")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['postcard', 'order']
+        verbose_name = "Vidéo animée"
+        verbose_name_plural = "Vidéos animées"
+
+    def __str__(self):
+        return f"{self.postcard.number} - Video {self.order}"
+
+
 class PostcardLike(models.Model):
     """Track likes on postcards"""
     postcard = models.ForeignKey(Postcard, on_delete=models.CASCADE, related_name='likes')
@@ -128,10 +169,6 @@ class PostcardLike(models.Model):
     class Meta:
         verbose_name = "Like"
         verbose_name_plural = "Likes"
-        unique_together = [
-            ['postcard', 'user', 'is_animated_like'],
-            ['postcard', 'session_key', 'is_animated_like'],
-        ]
 
     def __str__(self):
         return f"Like on {self.postcard.number}"
