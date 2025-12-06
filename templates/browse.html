@@ -268,23 +268,37 @@
     <div class="results-section" id="results-section">
         <div class="postcards-grid" id="postcards-grid">
             {% for postcard in postcards %}
-            <div class="postcard-card" 
-                 data-id="{{ postcard.id }}"
-                 data-number="{{ postcard.number }}"
-                 data-title="{{ postcard.title|escapejs }}"
-                 data-keywords="{{ postcard.keywords|lower }}"
-                 data-vignette="{{ postcard.vignette_url }}"
-                 data-grande="{{ postcard.grande_url }}"
-                 data-dos="{{ postcard.dos_url }}"
-                 data-has-video="{% if postcard.animated_url %}true{% else %}false{% endif %}"
-                 data-video-url="{{ postcard.get_first_video_url|default:'' }}">
+            <div class="<div class="postcard-card" 
+                data-id="{{ postcard.id }}"
+                data-number="{{ postcard.number }}"
+                data-title="{{ postcard.title|escapejs }}"
+                data-keywords="{{ postcard.keywords|lower }}"
+                data-vignette="{{ postcard.vignette_url }}"
+                data-grande="{{ postcard.grande_url }}"
+                data-dos="{{ postcard.dos_url }}"
+                data-rarity="{{ postcard.rarity }}"
+                data-has-video="{% if postcard.animated_url %}true{% else %}false{% endif %}"
+                data-video-url="{{ postcard.get_first_video_url|default:'' }}"
+                onclick="showDetail({{ postcard.id }})">
                 
                 <div class="card-image-wrapper">
-                    {% if postcard.vignette_url %}
+                    {% if postcard.rarity == 'very_rare' and not user.is_authenticated or postcard.rarity == 'very_rare' and not user.can_view_very_rare %}
+                    <!-- Show member card for very rare postcards -->
+                    <img class="card-image loaded" 
+                        src="{% static 'images/Carte_Membre_4.jpeg' %}" 
+                        alt="Carte réservée aux membres">
+                    <div class="restricted-badge">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        Réservé
+                    </div>
+                    {% elif postcard.vignette_url %}
                     <img class="card-image" 
-                         data-src="{{ postcard.vignette_url }}" 
-                         alt="{{ postcard.title }}"
-                         loading="lazy">
+                        data-src="{{ postcard.vignette_url }}" 
+                        alt="{{ postcard.title }}"
+                        loading="lazy">
                     <div class="card-placeholder">
                         <div class="placeholder-spinner"></div>
                     </div>
@@ -300,9 +314,9 @@
                     
                     {% if postcard.animated_url %}
                     <a href="{% url 'animated_gallery' %}?highlight={{ postcard.id }}" 
-                       class="animated-badge" 
-                       title="Voir l'animation"
-                       onclick="event.stopPropagation();">
+                    class="animated-badge" 
+                    title="Voir l'animation"
+                    onclick="event.stopPropagation();">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8 5v14l11-7z"/>
                         </svg>
@@ -312,7 +326,7 @@
                 
                 <div class="card-overlay">
                     <div class="card-actions">
-                        <button class="action-btn" onclick="showDetail({{ postcard.id }})" title="Voir le détail">
+                        <button class="action-btn" onclick="event.stopPropagation(); showDetail({{ postcard.id }})" title="Voir le détail">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>
@@ -328,7 +342,7 @@
                             </svg>
                         </button>
                         
-                        <button class="action-btn" onclick="showZoom({{ postcard.id }})" title="Agrandir">
+                        <button class="action-btn" onclick="event.stopPropagation(); showZoom({{ postcard.id }})" title="Agrandir">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"/>
                                 <path d="m21 21-4.35-4.35M11 8v6M8 11h6"/>
@@ -481,7 +495,8 @@ const allPostcardsData = [
         vignette_url: "{{ postcard.vignette_url|default:'' }}",
         likes_count: {{ postcard.likes_count|default:0 }},
         has_video: {% if postcard.animated_url %}true{% else %}false{% endif %},
-        video_url: "{{ postcard.get_first_video_url|default:'' }}"
+        video_url: "{{ postcard.get_first_video_url|default:'' }}",
+        rarity: "{{ postcard.rarity }}"
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
 ];
@@ -1193,41 +1208,54 @@ function stopCinemaPlay() {
 // =============================================
 // POPUPS
 // =============================================
-function showDetail(id) {
-    const postcard = filteredPostcards.find(p => p.id === id) || allPostcardsData.find(p => p.id === id);
-    if (!postcard) return;
-    
-    currentPostcardId = id;
-    currentIndex = filteredPostcards.findIndex(p => p.id === id);
-    if (currentIndex === -1) currentIndex = 0;
-    currentView = 'front';
-    
-    document.getElementById('popup-image').src = postcard.grande_url || postcard.vignette_url;
-    document.getElementById('popup-title').textContent = postcard.title;
-    document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
-    document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
-    
-    document.getElementById('popup-video-btn').style.display = postcard.has_video ? 'flex' : 'none';
-    
-    const animatedLink = document.getElementById('popup-animated-link');
-    if (postcard.has_video) {
-        animatedLink.style.display = 'flex';
-        animatedLink.href = `/cp-animes/?highlight=${id}`;
-    } else {
-        animatedLink.style.display = 'none';
+async function showDetail(id) {
+    try {
+        const response = await fetch(`/api/postcard/${id}/`);
+        const data = await response.json();
+        
+        currentPostcardId = id;
+        currentIndex = filteredPostcards.findIndex(p => p.id === id);
+        if (currentIndex === -1) currentIndex = 0;
+        currentView = 'front';
+        
+        // Use the returned URLs (which will be member card if restricted)
+        document.getElementById('popup-image').src = data.grande_url || data.vignette_url;
+        document.getElementById('popup-title').textContent = data.title;
+        document.getElementById('popup-number').textContent = 'N° ' + data.number;
+        document.getElementById('popup-like-count').textContent = data.likes_count || 0;
+        
+        // Show restriction badge if needed
+        if (data.is_restricted) {
+            // Could add visual indicator that this is restricted
+            document.getElementById('popup-title').textContent = data.title + ' (Réservé aux membres)';
+        }
+        
+        document.getElementById('popup-video-btn').style.display = 
+            (data.animated_urls && data.animated_urls.length > 0 && !data.is_restricted) ? 'flex' : 'none';
+        
+        const animatedLink = document.getElementById('popup-animated-link');
+        if (data.animated_urls && data.animated_urls.length > 0 && !data.is_restricted) {
+            animatedLink.style.display = 'flex';
+            animatedLink.href = `/cp-animes/?highlight=${id}`;
+        } else {
+            animatedLink.style.display = 'none';
+        }
+        
+        document.getElementById('popup-flip').style.display = 
+            (data.dos_url && !data.is_restricted) ? 'flex' : 'none';
+        
+        const cardLikeBtn = document.querySelector(`.like-btn[data-id="${id}"]`);
+        const popupLikeBtn = document.getElementById('popup-like-btn');
+        popupLikeBtn.classList.toggle('liked', cardLikeBtn?.classList.contains('liked'));
+        
+        document.getElementById('popup-overlay').classList.add('active');
+        document.getElementById('popup-detail').classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        updateNavButtons();
+    } catch (error) {
+        console.error('Error loading postcard:', error);
     }
-    
-    document.getElementById('popup-flip').style.display = postcard.dos_url ? 'flex' : 'none';
-    
-    const cardLikeBtn = document.querySelector(`.like-btn[data-id="${id}"]`);
-    const popupLikeBtn = document.getElementById('popup-like-btn');
-    popupLikeBtn.classList.toggle('liked', cardLikeBtn?.classList.contains('liked'));
-    
-    document.getElementById('popup-overlay').classList.add('active');
-    document.getElementById('popup-detail').classList.add('active');
-    document.body.style.overflow = 'hidden';
-    
-    updateNavButtons();
 }
 
 function showZoom(id) {
@@ -1255,9 +1283,13 @@ function playAnimation(event, id) {
     loading.style.display = 'flex';
     video.style.opacity = '0';
     
+    // Clear previous video
     video.pause();
     video.removeAttribute('src');
     video.load();
+    
+    // Use cached video if available
+    const cachedVideo = videoCache.get(postcard.video_url);
     
     const source = video.querySelector('source');
     source.src = postcard.video_url;
@@ -1267,21 +1299,23 @@ function playAnimation(event, id) {
         loading.style.display = 'none';
         video.style.opacity = '1';
         video.play().catch(() => {});
-        video.removeEventListener('canplay', onCanPlay);
+        video.removeEventListener('canplaythrough', onCanPlay);
     };
     
-    video.addEventListener('canplay', onCanPlay);
+    // Use canplaythrough for smoother playback
+    video.addEventListener('canplaythrough', onCanPlay);
     
     video.onerror = () => {
         loading.innerHTML = '<p style="color: #ff6b6b;">Erreur de chargement</p>';
     };
     
+    // Shorter timeout
     setTimeout(() => {
         if (loading.style.display !== 'none') {
             loading.style.display = 'none';
             video.style.opacity = '1';
         }
-    }, 5000);
+    }, 3000);
     
     document.getElementById('popup-overlay').classList.add('active');
     document.getElementById('popup-video').classList.add('active');
@@ -1548,6 +1582,25 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('load', () => loadingManager.hide());
     setTimeout(() => loadingManager.hide(), 1000);
 });
+
+// Optimized video preloading
+const videoCache = new Map();
+const MAX_CACHED_VIDEOS = 5;
+
+function preloadVideo(url) {
+    if (videoCache.has(url)) return videoCache.get(url);
+    if (videoCache.size >= MAX_CACHED_VIDEOS) {
+        // Remove oldest cached video
+        const firstKey = videoCache.keys().next().value;
+        videoCache.delete(firstKey);
+    }
+    
+    const video = document.createElement('video');
+    video.preload = 'metadata'; // Only load metadata initially
+    video.src = url;
+    videoCache.set(url, video);
+    return video;
+}
 </script>
 
 <style>
@@ -2264,6 +2317,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     .river-keywords-container { height: 120px; }
     .keyword-small { display: none; }
+}
+
+/* Add restricted badge style */
+.restricted-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border-radius: 10px;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 5;
+}
+
+/* Make entire card clickable */
+.postcard-card {
+    cursor: pointer;
 }
 </style>
 {% endblock %}

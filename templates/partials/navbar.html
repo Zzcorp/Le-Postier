@@ -7,12 +7,13 @@
         <div class="nav-brand">
             <a href="{% url 'home' %}">
                 <img src="{% static 'images/Fav_icone.png' %}" alt="Logo" class="brand-logo">
-                <span class="brand-text">{% block page_title %}Collection CPA{% endblock %}</span>
+                <span class="brand-text">{% block page_title %}Accueil{% endblock %}</span>
             </a>
         </div>
         
         <!-- Desktop Menu -->
         <ul class="nav-menu">
+            <!-- Accueil - Text + Logo -->
             <li>
                 <a href="{% url 'home' %}" class="nav-link" title="Accueil">
                     <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -22,32 +23,16 @@
                     <span class="nav-link-text">Accueil</span>
                 </a>
             </li>
+            <!-- Parcourir - Icon only -->
             <li>
-                <a href="{% url 'decouvrir' %}" class="nav-link" title="Découvrir">
-                    <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-                    </svg>
-                    <span class="nav-link-text">Découvrir</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'presentation' %}" class="nav-link" title="Présentation">
-                    <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                    </svg>
-                    <span class="nav-link-text">Présentation</span>
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'browse' %}" class="nav-link nav-icon-only" title="Rechercher">
+                <a href="{% url 'browse' %}" class="nav-link nav-icon-only" title="Parcourir">
                     <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35"/>
                     </svg>
                 </a>
             </li>
+            <!-- CP Animées - Icon only -->
             <li>
                 <a href="{% url 'animated_gallery' %}" class="nav-link nav-icon-only" title="CP Animées">
                     <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -62,14 +47,34 @@
                     </svg>
                 </a>
             </li>
+            <!-- Présentation - Icon only -->
             <li>
-                <a href="{% url 'la_poste' %}" class="nav-link nav-icon-only" title="La Poste">
+                <a href="{% url 'presentation' %}" class="nav-link nav-icon-only" title="Présentation">
                     <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                        <polyline points="22,6 12,13 2,6"/>
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                     </svg>
                 </a>
             </li>
+            <!-- Découvrir - Icon only -->
+            <li>
+                <a href="{% url 'decouvrir' %}" class="nav-link nav-icon-only" title="Découvrir">
+                    <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+                    </svg>
+                </a>
+            </li>
+            <!-- La Poste - Icon only (Plume/Feather pen writing) -->
+            <li>
+                <a href="{% url 'la_poste' %}" class="nav-link nav-icon-only" title="La Poste">
+                    <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        <path d="M15 5l4 4"/>
+                    </svg>
+                </a>
+            </li>
+            <!-- Contact - Icon only -->
             <li>
                 <a href="{% url 'contact' %}" class="nav-link nav-icon-only" title="Contact">
                     <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -187,26 +192,12 @@
             </svg>
             Accueil
         </a>
-        <a href="{% url 'decouvrir' %}" class="mobile-nav-link">
-            <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-            </svg>
-            Découvrir
-        </a>
-        <a href="{% url 'presentation' %}" class="mobile-nav-link">
-            <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-            </svg>
-            Présentation
-        </a>
         <a href="{% url 'browse' %}" class="mobile-nav-link">
             <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
             </svg>
-            Rechercher
+            Parcourir
         </a>
         <a href="{% url 'animated_gallery' %}" class="mobile-nav-link">
             <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -217,11 +208,24 @@
             </svg>
             CP Animées
         </a>
-        <!-- Also add to mobile menu -->
+        <a href="{% url 'presentation' %}" class="mobile-nav-link">
+            <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+            Présentation
+        </a>
+        <a href="{% url 'decouvrir' %}" class="mobile-nav-link">
+            <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+            </svg>
+            Découvrir
+        </a>
         <a href="{% url 'la_poste' %}" class="mobile-nav-link">
             <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                <path d="M15 5l4 4"/>
             </svg>
             La Poste
         </a>

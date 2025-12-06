@@ -215,6 +215,8 @@ def profile(request):
         return HttpResponse(f"<h1>Profile Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
+# core/views.py - Updated browse view and get_postcard_detail
+
 def browse(request):
     """Browse page"""
     try:
@@ -224,9 +226,12 @@ def browse(request):
         themes = Theme.objects.all()
 
         if query:
+            # Search in BOTH title AND keywords fields
             postcards = postcards.filter(
                 Q(title__icontains=query) |
-                Q(keywords__icontains=query)
+                Q(keywords__icontains=query) |
+                Q(number__icontains=query) |
+                Q(description__icontains=query)
             )
             # Log search
             SearchLog.objects.create(
@@ -269,6 +274,77 @@ def browse(request):
 
     except Exception as e:
         return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
+
+
+def get_postcard_detail(request, postcard_id):
+    """API endpoint for postcard details"""
+    try:
+        postcard = Postcard.objects.get(id=postcard_id)
+        postcard.views_count += 1
+        postcard.save(update_fields=['views_count'])
+
+        # Check if user has liked
+        has_liked = False
+        if request.user.is_authenticated:
+            has_liked = PostcardLike.objects.filter(
+                postcard=postcard,
+                user=request.user,
+                is_animated_like=False
+            ).exists()
+        elif request.session.session_key:
+            has_liked = PostcardLike.objects.filter(
+                postcard=postcard,
+                session_key=request.session.session_key,
+                is_animated_like=False
+            ).exists()
+
+        # Check rarity - if very_rare and user not authorized, return member card
+        can_view_full = True
+        if postcard.rarity == 'very_rare':
+            if not request.user.is_authenticated:
+                can_view_full = False
+            elif hasattr(request.user, 'can_view_very_rare') and not request.user.can_view_very_rare():
+                can_view_full = False
+
+        # If user can't view very rare, return restricted data
+        if not can_view_full:
+            member_card_url = '/static/images/Carte_Membre_4.jpeg'
+            data = {
+                'id': postcard.id,
+                'number': postcard.number,
+                'title': postcard.title,
+                'description': 'Carte réservée aux membres',
+                'keywords': '',
+                'rarity': postcard.rarity,
+                'vignette_url': member_card_url,
+                'grande_url': member_card_url,
+                'dos_url': member_card_url,
+                'zoom_url': member_card_url,
+                'animated_urls': [],
+                'likes_count': postcard.likes_count,
+                'has_liked': has_liked,
+                'is_restricted': True,
+            }
+        else:
+            data = {
+                'id': postcard.id,
+                'number': postcard.number,
+                'title': postcard.title,
+                'description': postcard.description,
+                'keywords': postcard.keywords,
+                'rarity': postcard.rarity,
+                'vignette_url': postcard.vignette_url or '',
+                'grande_url': postcard.grande_url or '',
+                'dos_url': postcard.dos_url or '',
+                'zoom_url': postcard.zoom_url or '',
+                'animated_urls': postcard.get_animated_urls(),
+                'likes_count': postcard.likes_count,
+                'has_liked': has_liked,
+                'is_restricted': False,
+            }
+        return JsonResponse(data)
+    except Postcard.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
 
 
 def gallery(request):
@@ -364,48 +440,6 @@ def logout_view(request):
     """Logout"""
     logout(request)
     return redirect('home')
-
-
-def get_postcard_detail(request, postcard_id):
-    """API endpoint for postcard details"""
-    try:
-        postcard = Postcard.objects.get(id=postcard_id)
-        postcard.views_count += 1
-        postcard.save(update_fields=['views_count'])
-
-        # Check if user has liked
-        has_liked = False
-        if request.user.is_authenticated:
-            has_liked = PostcardLike.objects.filter(
-                postcard=postcard,
-                user=request.user,
-                is_animated_like=False
-            ).exists()
-        elif request.session.session_key:
-            has_liked = PostcardLike.objects.filter(
-                postcard=postcard,
-                session_key=request.session.session_key,
-                is_animated_like=False
-            ).exists()
-
-        data = {
-            'id': postcard.id,
-            'number': postcard.number,
-            'title': postcard.title,
-            'description': postcard.description,
-            'keywords': postcard.keywords,
-            'rarity': postcard.rarity,
-            'vignette_url': postcard.vignette_url or '',
-            'grande_url': postcard.grande_url or '',
-            'dos_url': postcard.dos_url or '',
-            'zoom_url': postcard.zoom_url or '',
-            'animated_urls': postcard.get_animated_urls(),
-            'likes_count': postcard.likes_count,
-            'has_liked': has_liked,
-        }
-        return JsonResponse(data)
-    except Postcard.DoesNotExist:
-        return JsonResponse({'error': 'Not found'}, status=404)
 
 
 def zoom_postcard(request, postcard_id):
