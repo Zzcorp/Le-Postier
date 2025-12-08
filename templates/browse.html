@@ -225,7 +225,7 @@
         <div class="search-info" id="searchInfo">
             {% if query %}
             <p class="search-results-text">
-                <span class="result-count">{{ total_count }}</span> résultat{{ total_count|pluralize }} pour 
+                <span class="result-count">{{ total_with_images }}</span> résultat{{ total_with_images|pluralize }} pour 
                 "<span class="result-query">{{ query }}</span>"
             </p>
             {% endif %}
@@ -364,7 +364,7 @@
     </div>
     
     <div class="browse-footer">
-        <p><span id="visible-count">{{ postcards|length }}</span> cartes affichées sur {{ total_count }}</p>
+        <p><span id="visible-count">{{ postcards|length }}</span> cartes affichées sur <span id="total-count">{{ total_with_images }}</span></p>
     </div>
 </div>
 
@@ -467,6 +467,8 @@
 // DATA
 // =============================================
 const csrfToken = '{{ csrf_token }}';
+const totalPostcardsCount = {{ total_with_images }};
+const initialDisplayedCount = {{ postcards|length }};
 
 const allPostcardsData = [
     {% for postcard in postcards %}
@@ -534,6 +536,16 @@ let filteredPostcards = [...allPostcardsData];
 let currentIndex = 0;
 let currentView = 'front';
 let currentPostcardId = null;
+
+// Initialize visible count
+document.addEventListener('DOMContentLoaded', function() {
+    updateVisibleCount();
+});
+
+function updateVisibleCount() {
+    const visibleCards = document.querySelectorAll('.postcard-card:not([style*="display: none"])');
+    document.getElementById('visible-count').textContent = visibleCards.length;
+}
 
 // =============================================
 // FLOATING RIVER KEYWORDS SYSTEM
@@ -853,7 +865,9 @@ class SearchEngine {
         
         filteredPostcards = [...allPostcardsData];
         
-        document.getElementById('visible-count').textContent = allPostcardsData.length;
+        // Update counts
+        const visibleCards = document.querySelectorAll('.postcard-card');
+        document.getElementById('visible-count').textContent = visibleCards.length;
         document.getElementById('noResults').style.display = 'none';
         document.getElementById('searchInfo').innerHTML = '';
         document.getElementById('river-keywords-section').classList.remove('searching');
@@ -1544,6 +1558,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('searchInput').value.trim()) {
         document.getElementById('river-keywords-section').classList.add('searching');
     }
+    
+    // Update visible count on load
+    updateVisibleCount();
     
     window.addEventListener('load', () => loadingManager.hide());
     setTimeout(() => loadingManager.hide(), 1000);

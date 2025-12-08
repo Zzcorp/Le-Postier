@@ -241,7 +241,14 @@ def browse(request):
                 ip_address=get_client_ip(request)
             )
 
+        # Filter postcards with images
         postcards_with_images = postcards.exclude(vignette_url='').exclude(vignette_url__isnull=True)
+
+        # Get total count BEFORE limiting
+        total_with_images = postcards_with_images.count()
+
+        # Limit for display (but pass total count separately)
+        display_postcards = postcards_with_images[:50]
 
         # Get user's likes
         user_likes = set()
@@ -261,10 +268,13 @@ def browse(request):
             )
 
         context = {
-            'postcards': postcards_with_images[:50],
+            'postcards': display_postcards,
             'themes': themes,
             'query': query,
-            'total_count': postcards.count(),
+            'total_count': postcards.count(),  # Total matching query
+            'displayed_count': display_postcards.count() if hasattr(display_postcards, 'count') else len(
+                list(display_postcards)),  # Actually displayed
+            'total_with_images': total_with_images,  # Total with images
             'slideshow_postcards': postcards_with_images[:20],
             'user': request.user,
             'user_likes': user_likes,

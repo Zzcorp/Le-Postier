@@ -2,15 +2,20 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block page_title %}Accueil{% endblock %}
+{% block title %}Collection Samathey{% endblock %}
+{% block page_title %}Collection Samathey{% endblock %}
 
 {% block content %}
 <div class="home-page">
     <!-- Video Background Hero with Diaporama -->
     <header class="hero-section">
         <div class="video-container">
+            <!-- Poster image for instant display -->
+            <div class="video-poster" id="video-poster">
+                <div class="poster-gradient"></div>
+            </div>
             <!-- Multiple video sources for diaporama -->
-            <video autoplay muted loop playsinline id="hero-video" class="hero-video" preload="metadata">
+            <video autoplay muted loop playsinline id="hero-video" class="hero-video" preload="auto">
                 <source id="video-source" src="" type="video/mp4">
             </video>
             <div class="video-overlay"></div>
@@ -114,6 +119,7 @@ class VideoCarousel {
         this.videoSource = document.getElementById('video-source');
         this.transition = document.getElementById('video-transition');
         this.indicatorsContainer = document.getElementById('video-indicators');
+        this.videoPoster = document.getElementById('video-poster');
         
         this.videos = animatedVideos.length > 0 ? animatedVideos : [fallbackVideo];
         this.currentIndex = 0;
@@ -121,6 +127,7 @@ class VideoCarousel {
         this.autoPlayInterval = null;
         this.videoTimeout = null;
         this.preloadedVideos = new Map();
+        this.videoLoaded = false;
         
         this.init();
     }
@@ -135,19 +142,43 @@ class VideoCarousel {
         // Create indicators
         this.createIndicators();
         
-        // Preload first few videos
-        this.preloadVideos(0, 3);
-        
-        // Load first video
-        this.loadVideo(0);
+        // Start preloading first video immediately
+        this.preloadFirstVideo();
         
         // Set up event listeners
+        this.videoElement.addEventListener('loadeddata', () => this.onVideoLoaded());
+        this.videoElement.addEventListener('canplay', () => this.onVideoReady());
         this.videoElement.addEventListener('ended', () => this.nextVideo());
         this.videoElement.addEventListener('error', () => this.handleError());
-        this.videoElement.addEventListener('canplaythrough', () => this.onVideoReady());
         
         // Auto-advance every 15 seconds if video is still playing
         this.startAutoAdvance();
+    }
+    
+    preloadFirstVideo() {
+        // Load first video immediately
+        const firstVideoUrl = this.videos[0];
+        this.videoSource.src = firstVideoUrl;
+        this.videoElement.load();
+        
+        // Also preload next videos in background
+        setTimeout(() => this.preloadVideos(1, 3), 100);
+    }
+    
+    onVideoLoaded() {
+        // Hide poster, show video
+        if (this.videoPoster) {
+            this.videoPoster.style.opacity = '0';
+            setTimeout(() => {
+                this.videoPoster.style.display = 'none';
+            }, 500);
+        }
+        this.videoLoaded = true;
+        
+        // Try to play
+        this.videoElement.play().catch(() => {
+            console.log('Autoplay prevented, video will play on interaction');
+        });
     }
     
     shuffleVideos() {
@@ -303,11 +334,35 @@ document.addEventListener('DOMContentLoaded', () => {
     z-index: 0; 
 }
 
+/* Video Poster - Shows immediately while video loads */
+.video-poster {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #1a1208 0%, #2d1f0d 50%, #1a1208 100%);
+    z-index: 2;
+    transition: opacity 0.5s ease;
+}
+
+.poster-gradient {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 30% 40%, rgba(181, 96, 11, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(209, 135, 44, 0.1) 0%, transparent 50%);
+    animation: gradientPulse 4s ease-in-out infinite;
+}
+
+@keyframes gradientPulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
 .hero-video { 
     width: 100%; 
     height: 100%; 
     object-fit: cover; 
-    filter: brightness(0.55) saturate(1.1); 
+    filter: brightness(0.55) saturate(1.1);
+    z-index: 1;
 }
 
 .video-overlay {
@@ -320,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         rgba(26,18,8,0.1) 70%,
         rgba(26,18,8,0.8) 100%
     );
+    z-index: 3;
 }
 
 .video-transition {
@@ -329,6 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
     opacity: 0;
     transition: opacity 0.2s ease;
     pointer-events: none;
+    z-index: 4;
 }
 
 .video-transition.active {
@@ -371,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* Hero Content */
 .hero-content { 
     position: relative; 
-    z-index: 1; 
+    z-index: 10; 
     text-align: center; 
     padding: 20px; 
     max-width: 900px; 
@@ -429,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
     transform: translateX(-50%); 
     text-align: center;
     color: rgba(255,255,255,0.7); 
-    z-index: 1;
+    z-index: 10;
 }
 
 .scroll-indicator span { 
