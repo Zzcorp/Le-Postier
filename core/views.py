@@ -218,21 +218,15 @@ def profile(request):
 # core/views.py - Updated browse view and get_postcard_detail
 
 def browse(request):
-    """Browse page with search functionality"""
+    """Browse page"""
     try:
         query = request.GET.get('keywords_input', '').strip()
 
-        # Start with all postcards that have images
-        postcards = Postcard.objects.exclude(
-            vignette_url=''
-        ).exclude(
-            vignette_url__isnull=True
-        )
-
-        total_in_db = postcards.count()
+        postcards = Postcard.objects.all()
+        themes = Theme.objects.all()
 
         if query:
-            # Search in title, keywords, number, and description
+            # Search in BOTH title AND keywords fields
             postcards = postcards.filter(
                 Q(title__icontains=query) |
                 Q(keywords__icontains=query) |
@@ -247,16 +241,7 @@ def browse(request):
                 ip_address=get_client_ip(request)
             )
 
-        themes = Theme.objects.all()
-
-        # Get the filtered count
-        filtered_count = postcards.count()
-
-        # Limit display to 100 for performance, but show all if searching
-        if query:
-            display_postcards = postcards[:200]  # Show more results when searching
-        else:
-            display_postcards = postcards[:100]
+        postcards_with_images = postcards.exclude(vignette_url='').exclude(vignette_url__isnull=True)
 
         # Get user's likes
         user_likes = set()
@@ -276,13 +261,11 @@ def browse(request):
             )
 
         context = {
-            'postcards': display_postcards,
+            'postcards': postcards_with_images[:50],
             'themes': themes,
             'query': query,
-            'total_count': total_in_db,  # Total postcards with images in DB
-            'filtered_count': filtered_count,  # Count after search filter
-            'displayed_count': display_postcards.count(),  # Actually displayed
-            'slideshow_postcards': postcards[:20],
+            'total_count': postcards.count(),
+            'slideshow_postcards': postcards_with_images[:20],
             'user': request.user,
             'user_likes': user_likes,
         }
@@ -290,7 +273,6 @@ def browse(request):
         return render(request, 'browse.html', context)
 
     except Exception as e:
-        import traceback
         return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
