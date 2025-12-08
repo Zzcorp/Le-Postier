@@ -49,6 +49,9 @@ urlpatterns = [
     path('api/postcard/<int:postcard_id>/like/', views.like_postcard, name='postcard_like'),
     path('api/postcard/<int:postcard_id>/suggest/', views.suggest_animation, name='suggest_animation'),
 
+    # Browse API for infinite scroll/pagination
+    path('api/browse/', views.browse_api, name='browse_api'),
+
     # Legacy
     path('admin/update-user/<int:user_id>/', views.update_user_category, name='update_user_category'),
     path('admin/delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
