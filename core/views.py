@@ -241,7 +241,12 @@ def browse(request):
                 ip_address=get_client_ip(request)
             )
 
+        # Get postcards with images - don't filter out empty URLs here, let template handle it
         postcards_with_images = postcards.exclude(vignette_url='').exclude(vignette_url__isnull=True)
+
+        # Get total count BEFORE slicing
+        total_with_images = postcards_with_images.count()
+        total_all = postcards.count()
 
         # Get user's likes
         user_likes = set()
@@ -260,11 +265,16 @@ def browse(request):
                 ).values_list('postcard_id', flat=True)
             )
 
+        # Limit for display but keep all for data
+        display_postcards = postcards_with_images[:100]  # Increased limit
+
         context = {
-            'postcards': postcards_with_images[:50],
+            'postcards': display_postcards,
             'themes': themes,
             'query': query,
-            'total_count': postcards.count(),
+            'total_count': total_all,
+            'displayed_count': display_postcards.count(),
+            'total_with_images': total_with_images,
             'slideshow_postcards': postcards_with_images[:20],
             'user': request.user,
             'user_likes': user_likes,
@@ -273,6 +283,7 @@ def browse(request):
         return render(request, 'browse.html', context)
 
     except Exception as e:
+        import traceback
         return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
