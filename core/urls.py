@@ -28,6 +28,9 @@ urlpatterns = [
     path('api/profile/update/', views.update_profile, name='update_profile'),
     path('api/profile/signature/', views.upload_signature, name='upload_signature'),
 
+    # Search API
+    path('api/search/', views.search_postcards_api, name='search_postcards_api'),
+
     # Image proxy routes
     path('images/<str:image_type>/<str:number>.jpg', views.serve_postcard_image, name='serve_image'),
     path('api/check-images/', views.check_ftp_images, name='check_images'),
@@ -48,9 +51,6 @@ urlpatterns = [
     path('api/postcard/<int:postcard_id>/zoom/', views.zoom_postcard, name='postcard_zoom'),
     path('api/postcard/<int:postcard_id>/like/', views.like_postcard, name='postcard_like'),
     path('api/postcard/<int:postcard_id>/suggest/', views.suggest_animation, name='suggest_animation'),
-
-    # Browse API for infinite scroll/pagination
-    path('api/browse/', views.browse_api, name='browse_api'),
 
     # Legacy
     path('admin/update-user/<int:user_id>/', views.update_user_category, name='update_user_category'),

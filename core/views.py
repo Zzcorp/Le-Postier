@@ -8,7 +8,6 @@ from django.db.models.functions import TruncDate, TruncHour
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from django.core.paginator import Paginator
 from datetime import timedelta
 import traceback
 import json
@@ -131,7 +130,7 @@ def decouvrir(request):
                 'title': "Accident de l'archevêché",
                 'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_2_Off.png',
                 'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_2_Clic.png',
-                'video_id': 'dQw4w9WgXcQ',  # Replace with actual video ID
+                'video_id': 'dQw4w9WgXcQ',
             },
             {
                 'title': "Bateau « Touriste »",
@@ -217,26 +216,31 @@ def profile(request):
 
 
 def browse(request):
-    """Browse page - FIXED to show all postcards with proper images"""
+    """Browse page with keyword search"""
     try:
         query = request.GET.get('keywords_input', '').strip()
-        page_number = request.GET.get('page', 1)
+        themes = Theme.objects.all()
 
-        # Get ALL postcards with images
+        # Base queryset - only postcards with images
         postcards = Postcard.objects.exclude(
             vignette_url=''
         ).exclude(
             vignette_url__isnull=True
-        ).order_by('number')
+        )
+
+        # Total count before filtering
+        total_in_collection = postcards.count()
 
         # Apply search filter if query exists
         if query:
+            # Search in keywords, title, number, and description
             postcards = postcards.filter(
-                Q(title__icontains=query) |
                 Q(keywords__icontains=query) |
+                Q(title__icontains=query) |
                 Q(number__icontains=query) |
                 Q(description__icontains=query)
             )
+
             # Log search
             SearchLog.objects.create(
                 keyword=query,
@@ -245,11 +249,8 @@ def browse(request):
                 ip_address=get_client_ip(request)
             )
 
-        # Get total count BEFORE pagination
-        total_count = postcards.count()
-
-        # Get themes
-        themes = Theme.objects.all()
+        # Count after filtering
+        filtered_count = postcards.count()
 
         # Get user's likes
         user_likes = set()
@@ -268,27 +269,14 @@ def browse(request):
                 ).values_list('postcard_id', flat=True)
             )
 
-        # Paginate - show 100 per page for better performance
-        paginator = Paginator(postcards, 100)
-        page_obj = paginator.get_page(page_number)
-
-        # For slideshow, get random sample
-        slideshow_postcards = postcards.order_by('?')[:20]
-
         context = {
-            'postcards': page_obj,  # Paginated postcards
-            'page_obj': page_obj,
+            'postcards': postcards[:100],  # Limit display to 100
             'themes': themes,
             'query': query,
-            'total_count': total_count,  # Total count of ALL matching postcards
-            'displayed_count': len(page_obj),  # Count on current page
-            'slideshow_postcards': slideshow_postcards,
+            'total_count': total_in_collection,
+            'filtered_count': filtered_count,
             'user': request.user,
             'user_likes': user_likes,
-            'has_next': page_obj.has_next(),
-            'has_previous': page_obj.has_previous(),
-            'current_page': page_obj.number,
-            'total_pages': paginator.num_pages,
         }
 
         return render(request, 'browse.html', context)
@@ -297,32 +285,33 @@ def browse(request):
         return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
-def browse_api(request):
-    """API endpoint to load more postcards via AJAX"""
+def search_postcards_api(request):
+    """API endpoint for AJAX search"""
     try:
         query = request.GET.get('q', '').strip()
-        page = int(request.GET.get('page', 1))
-        per_page = int(request.GET.get('per_page', 50))
 
+        # Base queryset - only postcards with images
         postcards = Postcard.objects.exclude(
             vignette_url=''
         ).exclude(
             vignette_url__isnull=True
-        ).order_by('number')
+        )
 
         if query:
             postcards = postcards.filter(
-                Q(title__icontains=query) |
                 Q(keywords__icontains=query) |
+                Q(title__icontains=query) |
                 Q(number__icontains=query) |
                 Q(description__icontains=query)
             )
 
-        total_count = postcards.count()
-
-        # Paginate
-        paginator = Paginator(postcards, per_page)
-        page_obj = paginator.get_page(page)
+            # Log search
+            SearchLog.objects.create(
+                keyword=query,
+                results_count=postcards.count(),
+                user=request.user if request.user.is_authenticated else None,
+                ip_address=get_client_ip(request)
+            )
 
         # Get user likes
         user_likes = set()
@@ -341,35 +330,33 @@ def browse_api(request):
                 ).values_list('postcard_id', flat=True)
             )
 
-        postcards_data = [{
-            'id': p.id,
-            'number': p.number,
-            'title': p.title,
-            'keywords': p.keywords,
-            'vignette_url': p.vignette_url,
-            'grande_url': p.grande_url,
-            'dos_url': p.dos_url,
-            'zoom_url': p.zoom_url,
-            'animated_url': p.animated_url,
-            'has_video': bool(p.animated_url),
-            'video_url': p.get_first_video_url(),
-            'likes_count': p.likes_count,
-            'is_liked': p.id in user_likes,
-            'rarity': p.rarity,
-        } for p in page_obj]
+        # Build response data
+        postcards_data = []
+        for p in postcards[:100]:
+            postcards_data.append({
+                'id': p.id,
+                'number': p.number,
+                'title': p.title,
+                'keywords': p.keywords,
+                'vignette_url': p.vignette_url or '',
+                'grande_url': p.grande_url or '',
+                'dos_url': p.dos_url or '',
+                'zoom_url': p.zoom_url or '',
+                'has_video': bool(p.animated_url),
+                'video_url': p.get_first_video_url() or '',
+                'likes_count': p.likes_count,
+                'is_liked': p.id in user_likes,
+            })
 
         return JsonResponse({
+            'success': True,
             'postcards': postcards_data,
-            'total_count': total_count,
-            'page': page,
-            'per_page': per_page,
-            'total_pages': paginator.num_pages,
-            'has_next': page_obj.has_next(),
-            'has_previous': page_obj.has_previous(),
+            'count': postcards.count(),
+            'query': query
         })
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 def get_postcard_detail(request, postcard_id):
