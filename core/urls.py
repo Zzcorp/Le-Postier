@@ -29,7 +29,7 @@ urlpatterns = [
     path('api/profile/signature/', views.upload_signature, name='upload_signature'),
 
     # Search API
-    path('api/search/', views.search_postcards_api, name='search_postcards_api'),
+    path('api/search/', views.admin_postcards_api, name='search_postcards_api'),  # Or rename name= if needed
 
     # Image proxy routes
     path('images/<str:image_type>/<str:number>.jpg', views.serve_postcard_image, name='serve_image'),
