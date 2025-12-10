@@ -127,8 +127,8 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/images/'
+MEDIA_ROOT = BASE_DIR / '/var/media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -186,7 +186,7 @@ LOGGING = {
 FTP_HOST = 'ftp.cluster010.hosting.ovh.net'
 FTP_USER = 'samathey'
 FTP_PASSWORD = 'qaszSZDE123'  # In production, use environment variable!
-FTP_IMAGE_PATH = 'www/collection_cp/cartes'  # Adjust after exploring
+FTP_IMAGE_PATH = '/collection_cp/cartes'  # Adjust after exploring
 
 # CSRF Settings - IMPORTANT FOR LOGIN
 CSRF_TRUSTED_ORIGINS = [
