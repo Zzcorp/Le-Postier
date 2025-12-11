@@ -43,7 +43,6 @@ class CustomUser(AbstractUser):
         return self.last_intro_seen == timezone.now().date()
 
     def get_display_image(self):
-        """Return signature image or default avatar"""
         if self.signature_image:
             return self.signature_image.url
         return None
@@ -64,14 +63,14 @@ class Postcard(models.Model):
     description = models.TextField(blank=True, verbose_name="Description")
     keywords = models.TextField(blank=True, verbose_name="Mots-clés", help_text="Séparés par des virgules")
 
-    # Store URLs instead of files - pointing to OVH
+    # URL fields for remote images (OVH)
     vignette_url = models.URLField(max_length=500, blank=True, verbose_name="URL Vignette")
     grande_url = models.URLField(max_length=500, blank=True, verbose_name="URL Grande")
     dos_url = models.URLField(max_length=500, blank=True, verbose_name="URL Dos")
     zoom_url = models.URLField(max_length=500, blank=True, verbose_name="URL Zoom")
 
     # Legacy field for animated URLs
-    animated_url = models.TextField(max_length=2000, blank=True, verbose_name="URL Animation(s) (legacy)")
+    animated_url = models.TextField(max_length=2000, blank=True, verbose_name="URL Animation(s)")
 
     rarity = models.CharField(max_length=20, choices=RARITY_CHOICES, default='common', verbose_name="Rareté")
     views_count = models.IntegerField(default=0, verbose_name="Nombre de vues")
@@ -87,12 +86,6 @@ class Postcard(models.Model):
         related_name='created_postcards'
     )
 
-    # Local media fields - use different names to avoid conflict
-    local_vignette = models.ImageField(upload_to='Vignette/', blank=True, null=True, verbose_name="Vignette Image")
-    local_grande = models.ImageField(upload_to='Grande/', blank=True, null=True, verbose_name="Grande Image")
-    local_dos = models.ImageField(upload_to='Dos/', blank=True, null=True, verbose_name="Dos Image")
-    local_zoom = models.ImageField(upload_to='Zoom/', blank=True, null=True, verbose_name="Zoom Image")
-
     class Meta:
         ordering = ['number']
         verbose_name = "Carte Postale"
@@ -105,7 +98,7 @@ class Postcard(models.Model):
         return [k.strip() for k in self.keywords.split(',') if k.strip()]
 
     def get_animated_urls(self):
-        """Return list of animated video URLs from related PostcardVideo model"""
+        """Return list of animated video URLs"""
         video_urls = []
         for video in self.videos.all():
             if video.video_file:
@@ -114,61 +107,30 @@ class Postcard(models.Model):
                 video_urls.append(video.video_url)
         if video_urls:
             return video_urls
-        # Fallback to legacy field
         if self.animated_url:
             return [url.strip() for url in self.animated_url.split(',') if url.strip()]
         return []
 
     def has_animation(self):
-        """Check if postcard has any animation"""
         return self.videos.exists() or bool(self.animated_url)
 
     def get_first_video_url(self):
-        """Get first video URL for preview"""
         first = self.videos.first()
         if first:
             if first.video_file:
                 return first.video_file.url
             return first.video_url
-        # Fallback to legacy field
         urls = self.get_animated_urls()
         return urls[0] if urls else None
 
     def video_count(self):
-        """Get number of videos"""
         count = self.videos.count()
         if count > 0:
             return count
         return len(self.get_animated_urls())
 
-    # Helper methods to get image URLs (prefer local, fallback to URL)
-    def get_vignette_url(self):
-        """Get vignette image URL - prefer local file, fallback to URL"""
-        if self.local_vignette:
-            return self.local_vignette.url
-        return self.vignette_url or ''
-
-    def get_grande_url(self):
-        """Get grande image URL - prefer local file, fallback to URL"""
-        if self.local_grande:
-            return self.local_grande.url
-        return self.grande_url or ''
-
-    def get_dos_url(self):
-        """Get dos image URL - prefer local file, fallback to URL"""
-        if self.local_dos:
-            return self.local_dos.url
-        return self.dos_url or ''
-
-    def get_zoom_url(self):
-        """Get zoom image URL - prefer local file, fallback to URL"""
-        if self.local_zoom:
-            return self.local_zoom.url
-        return self.zoom_url or ''
-
 
 class PostcardVideo(models.Model):
-    """Store individual animated videos for postcards"""
     postcard = models.ForeignKey(
         Postcard,
         on_delete=models.CASCADE,
@@ -189,7 +151,6 @@ class PostcardVideo(models.Model):
 
 
 class PostcardLike(models.Model):
-    """Track likes on postcards"""
     postcard = models.ForeignKey(Postcard, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
     session_key = models.CharField(max_length=100, blank=True)
@@ -206,7 +167,6 @@ class PostcardLike(models.Model):
 
 
 class AnimationSuggestion(models.Model):
-    """Store user suggestions for animated postcards"""
     STATUS_CHOICES = [
         ('pending', 'En attente'),
         ('reviewed', 'Examiné'),
@@ -362,7 +322,6 @@ class IntroSeen(models.Model):
 
 
 class SentPostcard(models.Model):
-    """Postcards sent between users"""
     VISIBILITY_CHOICES = [
         ('private', 'Privé - Destinataire uniquement'),
         ('public', 'Public - Visible par tous'),
@@ -412,7 +371,6 @@ class SentPostcard(models.Model):
 
 
 class PostcardComment(models.Model):
-    """Comments on public postcards"""
     sent_postcard = models.ForeignKey(
         SentPostcard,
         on_delete=models.CASCADE,
