@@ -29,11 +29,11 @@ urlpatterns = [
     path('api/profile/signature/', views.upload_signature, name='upload_signature'),
 
     # Search API
-    path('api/search/', views.admin_postcards_api, name='search_postcards_api'),  # Or rename name= if needed
+    path('api/search/', views.admin_postcards_api, name='search_postcards_api'),
 
-    # Image proxy routes
-    path('images/<str:image_type>/<str:number>.jpg', views.serve_postcard_image, name='serve_image'),
-    path('api/check-images/', views.check_ftp_images, name='check_images'),
+    # REMOVED: Image proxy routes (no longer needed)
+    # path('images/<str:image_type>/<str:number>.jpg', views.serve_postcard_image, name='serve_image'),
+    # path('api/check-images/', views.check_ftp_images, name='check_images'),
 
     # Admin Dashboard
     path('tableau-de-bord/', views.admin_dashboard, name='admin_dashboard'),

@@ -326,6 +326,7 @@ def get_postcard_detail(request, postcard_id):
                 'is_restricted': True,
             }
         else:
+            # UPDATED: Use methods that return local file URLs
             data = {
                 'id': postcard.id,
                 'number': postcard.number,
@@ -333,10 +334,10 @@ def get_postcard_detail(request, postcard_id):
                 'description': postcard.description,
                 'keywords': postcard.keywords,
                 'rarity': postcard.rarity,
-                'vignette_url': postcard.vignette_url or '',
-                'grande_url': postcard.grande_url or '',
-                'dos_url': postcard.dos_url or '',
-                'zoom_url': postcard.zoom_url or '',
+                'vignette_url': postcard.get_vignette_url(),
+                'grande_url': postcard.get_grande_url(),
+                'dos_url': postcard.get_dos_url(),
+                'zoom_url': postcard.get_zoom_url(),
                 'animated_urls': postcard.get_animated_urls(),
                 'likes_count': postcard.likes_count,
                 'has_liked': has_liked,
@@ -458,14 +459,14 @@ def zoom_postcard(request, postcard_id):
             postcard.zoom_count += 1
             postcard.save(update_fields=['zoom_count'])
 
+        # UPDATED: Use local file URLs
         return JsonResponse({
             'can_view': can_view,
-            'zoom_url': postcard.zoom_url if can_view else '',
-            'grande_url': postcard.grande_url if can_view else '',
+            'zoom_url': postcard.get_zoom_url() if can_view else '',
+            'grande_url': postcard.get_grande_url() if can_view else '',
         })
     except Postcard.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
-
 
 @require_http_methods(["POST"])
 def like_postcard(request, postcard_id):
@@ -933,47 +934,6 @@ def update_user_category(request, user_id):
 
 def delete_user(request, user_id):
     return admin_user_detail(request, user_id)
-
-
-# Image serving (keep from original)
-def serve_postcard_image(request, image_type, number):
-    """Serve postcard image - proxy to OVH"""
-    from django.http import Http404
-    import hashlib
-
-    valid_types = ['vignette', 'grande', 'dos', 'zoom']
-    image_type = image_type.lower()
-
-    if image_type not in valid_types:
-        raise Http404("Invalid image type")
-
-    number = ''.join(filter(str.isdigit, str(number).split('.')[0]))
-    if not number:
-        raise Http404("Invalid number")
-
-    # Redirect to OVH directly
-    from django.shortcuts import redirect
-    base_url = 'https://collections.samathey.fr/cartes'
-    folder_map = {
-        'vignette': 'Vignette',
-        'grande': 'Grande',
-        'dos': 'Dos',
-        'zoom': 'Zoom',
-    }
-
-    num_padded = number.zfill(6)
-    url = f"{base_url}/{folder_map[image_type]}/{num_padded}.jpg"
-
-    return redirect(url)
-
-
-def check_ftp_images(request):
-    """Admin view to check images"""
-    if not request.user.is_staff:
-        from django.http import Http404
-        raise Http404()
-
-    return JsonResponse({'message': 'Check FTP images endpoint'})
 
 
 @user_passes_test(is_admin)

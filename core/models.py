@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 import uuid
+import os
 
 
 class CustomUser(AbstractUser):
@@ -52,6 +53,34 @@ class CustomUser(AbstractUser):
         verbose_name_plural = "Utilisateurs"
 
 
+def postcard_vignette_path(instance, filename):
+    """Generate path for vignette: media/postcards/Vignette/000001.jpg"""
+    num = str(instance.number).zfill(6)
+    ext = os.path.splitext(filename)[1]
+    return f'postcards/Vignette/{num}{ext}'
+
+
+def postcard_grande_path(instance, filename):
+    """Generate path for grande: media/postcards/Grande/000001.jpg"""
+    num = str(instance.number).zfill(6)
+    ext = os.path.splitext(filename)[1]
+    return f'postcards/Grande/{num}{ext}'
+
+
+def postcard_dos_path(instance, filename):
+    """Generate path for dos: media/postcards/Dos/000001.jpg"""
+    num = str(instance.number).zfill(6)
+    ext = os.path.splitext(filename)[1]
+    return f'postcards/Dos/{num}{ext}'
+
+
+def postcard_zoom_path(instance, filename):
+    """Generate path for zoom: media/postcards/Zoom/000001.jpg"""
+    num = str(instance.number).zfill(6)
+    ext = os.path.splitext(filename)[1]
+    return f'postcards/Zoom/{num}{ext}'
+
+
 class Postcard(models.Model):
     RARITY_CHOICES = [
         ('common', 'Commune'),
@@ -63,14 +92,38 @@ class Postcard(models.Model):
     description = models.TextField(blank=True, verbose_name="Description")
     keywords = models.TextField(blank=True, verbose_name="Mots-clés", help_text="Séparés par des virgules")
 
-    # URL fields for remote images (OVH)
-    vignette_url = models.URLField(max_length=500, blank=True, verbose_name="URL Vignette")
-    grande_url = models.URLField(max_length=500, blank=True, verbose_name="URL Grande")
-    dos_url = models.URLField(max_length=500, blank=True, verbose_name="URL Dos")
-    zoom_url = models.URLField(max_length=500, blank=True, verbose_name="URL Zoom")
+    # Local image fields - stored on Render disk
+    vignette_image = models.ImageField(
+        upload_to=postcard_vignette_path,
+        blank=True,
+        null=True,
+        verbose_name="Image Vignette"
+    )
+    grande_image = models.ImageField(
+        upload_to=postcard_grande_path,
+        blank=True,
+        null=True,
+        verbose_name="Image Grande"
+    )
+    dos_image = models.ImageField(
+        upload_to=postcard_dos_path,
+        blank=True,
+        null=True,
+        verbose_name="Image Dos"
+    )
+    zoom_image = models.ImageField(
+        upload_to=postcard_zoom_path,
+        blank=True,
+        null=True,
+        verbose_name="Image Zoom"
+    )
 
-    # Legacy field for animated URLs
-    animated_url = models.TextField(max_length=2000, blank=True, verbose_name="URL Animation(s)")
+    # Legacy URL fields - keep for backward compatibility but won't be used
+    vignette_url = models.URLField(max_length=500, blank=True, verbose_name="URL Vignette (legacy)")
+    grande_url = models.URLField(max_length=500, blank=True, verbose_name="URL Grande (legacy)")
+    dos_url = models.URLField(max_length=500, blank=True, verbose_name="URL Dos (legacy)")
+    zoom_url = models.URLField(max_length=500, blank=True, verbose_name="URL Zoom (legacy)")
+    animated_url = models.TextField(max_length=2000, blank=True, verbose_name="URL Animation(s) (legacy)")
 
     rarity = models.CharField(max_length=20, choices=RARITY_CHOICES, default='common', verbose_name="Rareté")
     views_count = models.IntegerField(default=0, verbose_name="Nombre de vues")
@@ -96,6 +149,30 @@ class Postcard(models.Model):
 
     def get_keywords_list(self):
         return [k.strip() for k in self.keywords.split(',') if k.strip()]
+
+    def get_vignette_url(self):
+        """Get vignette URL - prioritize local file"""
+        if self.vignette_image:
+            return self.vignette_image.url
+        return self.vignette_url or ''
+
+    def get_grande_url(self):
+        """Get grande URL - prioritize local file"""
+        if self.grande_image:
+            return self.grande_image.url
+        return self.grande_url or ''
+
+    def get_dos_url(self):
+        """Get dos URL - prioritize local file"""
+        if self.dos_image:
+            return self.dos_image.url
+        return self.dos_url or ''
+
+    def get_zoom_url(self):
+        """Get zoom URL - prioritize local file"""
+        if self.zoom_image:
+            return self.zoom_image.url
+        return self.zoom_url or ''
 
     def get_animated_urls(self):
         """Return list of animated video URLs"""
@@ -130,16 +207,27 @@ class Postcard(models.Model):
         return len(self.get_animated_urls())
 
 
+def animated_video_path(instance, filename):
+    """Generate path for animated videos: media/animated_cp/000001_0.mp4"""
+    num = str(instance.postcard.number).zfill(6)
+    return f'animated_cp/{num}_{instance.order}{os.path.splitext(filename)[1]}'
+
+
 class PostcardVideo(models.Model):
     postcard = models.ForeignKey(
         Postcard,
         on_delete=models.CASCADE,
         related_name='videos'
     )
-    video_url = models.URLField(max_length=500, verbose_name="URL Vidéo")
+    video_url = models.URLField(max_length=500, blank=True, verbose_name="URL Vidéo (legacy)")
+    video_file = models.FileField(
+        upload_to=animated_video_path,
+        blank=True,
+        null=True,
+        verbose_name="Vidéo Animée"
+    )
     order = models.PositiveIntegerField(default=0, verbose_name="Ordre")
     created_at = models.DateTimeField(auto_now_add=True)
-    video_file = models.FileField(upload_to='animated_cp/', blank=True, null=True, verbose_name="Vidéo Animée")
 
     class Meta:
         ordering = ['postcard', 'order']
@@ -148,6 +236,12 @@ class PostcardVideo(models.Model):
 
     def __str__(self):
         return f"{self.postcard.number} - Video {self.order}"
+
+    def get_video_url(self):
+        """Get video URL - prioritize local file"""
+        if self.video_file:
+            return self.video_file.url
+        return self.video_url or ''
 
 
 class PostcardLike(models.Model):
@@ -365,8 +459,8 @@ class SentPostcard(models.Model):
         return f"Carte publique de {self.sender.username}"
 
     def get_image_url(self):
-        if self.postcard and self.postcard.grande_url:
-            return self.postcard.grande_url
+        if self.postcard:
+            return self.postcard.get_grande_url()
         return self.custom_image_url or ''
 
 
