@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 import uuid
 
+
 class CustomUser(AbstractUser):
     USER_CATEGORIES = [
         ('subscribed_unverified', 'Inscrit - Non vérifié'),
@@ -24,7 +25,6 @@ class CustomUser(AbstractUser):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     last_visit_date = models.DateField(null=True, blank=True, verbose_name="Dernière visite (date)")
     last_intro_seen = models.DateField(null=True, blank=True, verbose_name="Dernière intro vue")
-    # NEW: Signature field
     signature_image = models.ImageField(
         upload_to='signatures/',
         blank=True,
@@ -52,6 +52,7 @@ class CustomUser(AbstractUser):
         verbose_name = "Utilisateur"
         verbose_name_plural = "Utilisateurs"
 
+
 class Postcard(models.Model):
     RARITY_CHOICES = [
         ('common', 'Commune'),
@@ -62,13 +63,16 @@ class Postcard(models.Model):
     title = models.CharField(max_length=500, verbose_name="Titre")
     description = models.TextField(blank=True, verbose_name="Description")
     keywords = models.TextField(blank=True, verbose_name="Mots-clés", help_text="Séparés par des virgules")
+
     # Store URLs instead of files - pointing to OVH
     vignette_url = models.URLField(max_length=500, blank=True, verbose_name="URL Vignette")
     grande_url = models.URLField(max_length=500, blank=True, verbose_name="URL Grande")
     dos_url = models.URLField(max_length=500, blank=True, verbose_name="URL Dos")
     zoom_url = models.URLField(max_length=500, blank=True, verbose_name="URL Zoom")
-    # Legacy field - keep for backward compatibility, but use PostcardVideo model instead
+
+    # Legacy field for animated URLs
     animated_url = models.TextField(max_length=2000, blank=True, verbose_name="URL Animation(s) (legacy)")
+
     rarity = models.CharField(max_length=20, choices=RARITY_CHOICES, default='common', verbose_name="Rareté")
     views_count = models.IntegerField(default=0, verbose_name="Nombre de vues")
     zoom_count = models.IntegerField(default=0, verbose_name="Nombre de zooms")
@@ -83,11 +87,11 @@ class Postcard(models.Model):
         related_name='created_postcards'
     )
 
-    # New fields for local media
-    vignette_image = models.ImageField(upload_to='Vignette/', blank=True, null=True, verbose_name="Vignette Image")
-    grande_image = models.ImageField(upload_to='Grande/', blank=True, null=True, verbose_name="Grande Image")
-    dos_image = models.ImageField(upload_to='Dos/', blank=True, null=True, verbose_name="Dos Image")
-    zoom_image = models.ImageField(upload_to='Zoom/', blank=True, null=True, verbose_name="Zoom Image")
+    # Local media fields - use different names to avoid conflict
+    local_vignette = models.ImageField(upload_to='Vignette/', blank=True, null=True, verbose_name="Vignette Image")
+    local_grande = models.ImageField(upload_to='Grande/', blank=True, null=True, verbose_name="Grande Image")
+    local_dos = models.ImageField(upload_to='Dos/', blank=True, null=True, verbose_name="Dos Image")
+    local_zoom = models.ImageField(upload_to='Zoom/', blank=True, null=True, verbose_name="Zoom Image")
 
     class Meta:
         ordering = ['number']
@@ -104,7 +108,7 @@ class Postcard(models.Model):
         """Return list of animated video URLs from related PostcardVideo model"""
         video_urls = []
         for video in self.videos.all():
-            if video.video_file:  # Prefer new local file
+            if video.video_file:
                 video_urls.append(video.video_file.url)
             elif video.video_url:
                 video_urls.append(video.video_url)
@@ -135,33 +139,33 @@ class Postcard(models.Model):
         count = self.videos.count()
         if count > 0:
             return count
-        # Fallback to legacy field
         return len(self.get_animated_urls())
 
-    # Properties to access images (for template compatibility)
-    @property
-    def vignette_image(self):
-        if self.vignette_image:  # Prefer new local field
-            return self.vignette_image
-        return type('obj', (object,), {'url': self.vignette_url})()
+    # Helper methods to get image URLs (prefer local, fallback to URL)
+    def get_vignette_url(self):
+        """Get vignette image URL - prefer local file, fallback to URL"""
+        if self.local_vignette:
+            return self.local_vignette.url
+        return self.vignette_url or ''
 
-    @property
-    def grande_image(self):
-        if self.grande_image:  # Prefer new local field
-            return self.grande_image
-        return type('obj', (object,), {'url': self.grande_url})()
+    def get_grande_url(self):
+        """Get grande image URL - prefer local file, fallback to URL"""
+        if self.local_grande:
+            return self.local_grande.url
+        return self.grande_url or ''
 
-    @property
-    def dos_image(self):
-        if self.dos_image:  # Prefer new local field
-            return self.dos_image
-        return type('obj', (object,), {'url': self.dos_url})()
+    def get_dos_url(self):
+        """Get dos image URL - prefer local file, fallback to URL"""
+        if self.local_dos:
+            return self.local_dos.url
+        return self.dos_url or ''
 
-    @property
-    def zoom_image(self):
-        if self.zoom_image:  # Prefer new local field
-            return self.zoom_image
-        return type('obj', (object,), {'url': self.zoom_url})()
+    def get_zoom_url(self):
+        """Get zoom image URL - prefer local file, fallback to URL"""
+        if self.local_zoom:
+            return self.local_zoom.url
+        return self.zoom_url or ''
+
 
 class PostcardVideo(models.Model):
     """Store individual animated videos for postcards"""
@@ -173,8 +177,6 @@ class PostcardVideo(models.Model):
     video_url = models.URLField(max_length=500, verbose_name="URL Vidéo")
     order = models.PositiveIntegerField(default=0, verbose_name="Ordre")
     created_at = models.DateTimeField(auto_now_add=True)
-
-    # New field for local video
     video_file = models.FileField(upload_to='animated_cp/', blank=True, null=True, verbose_name="Vidéo Animée")
 
     class Meta:
@@ -184,6 +186,7 @@ class PostcardVideo(models.Model):
 
     def __str__(self):
         return f"{self.postcard.number} - Video {self.order}"
+
 
 class PostcardLike(models.Model):
     """Track likes on postcards"""
@@ -200,6 +203,7 @@ class PostcardLike(models.Model):
 
     def __str__(self):
         return f"Like on {self.postcard.number}"
+
 
 class AnimationSuggestion(models.Model):
     """Store user suggestions for animated postcards"""
@@ -232,6 +236,7 @@ class AnimationSuggestion(models.Model):
     def __str__(self):
         return f"Suggestion for {self.postcard.number}"
 
+
 class Theme(models.Model):
     name = models.CharField(max_length=200, unique=True, verbose_name="Nom du thème")
     display_name = models.CharField(max_length=200, verbose_name="Nom affiché")
@@ -245,6 +250,7 @@ class Theme(models.Model):
 
     def __str__(self):
         return self.display_name
+
 
 class ContactMessage(models.Model):
     message = models.TextField(verbose_name="Message")
@@ -261,6 +267,7 @@ class ContactMessage(models.Model):
     def __str__(self):
         return f"Message du {self.created_at.strftime('%d/%m/%Y %H:%M')}"
 
+
 class SearchLog(models.Model):
     keyword = models.CharField(max_length=500, verbose_name="Mot-clé recherché")
     results_count = models.IntegerField(verbose_name="Nombre de résultats")
@@ -275,6 +282,7 @@ class SearchLog(models.Model):
 
     def __str__(self):
         return f"{self.keyword} - {self.created_at.strftime('%d/%m/%Y %H:%M')}"
+
 
 class PageView(models.Model):
     page_name = models.CharField(max_length=100, verbose_name="Nom de la page")
@@ -291,6 +299,7 @@ class PageView(models.Model):
 
     def __str__(self):
         return f"{self.page_name} - {self.timestamp.strftime('%d/%m/%Y %H:%M')}"
+
 
 class UserActivity(models.Model):
     ACTION_CHOICES = [
@@ -319,6 +328,7 @@ class UserActivity(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.get_action_display()} - {self.timestamp}"
 
+
 class SystemLog(models.Model):
     LOG_LEVELS = [
         ('INFO', 'Information'),
@@ -339,6 +349,7 @@ class SystemLog(models.Model):
     def __str__(self):
         return f"{self.level} - {self.timestamp}"
 
+
 class IntroSeen(models.Model):
     session_key = models.CharField(max_length=100)
     date_seen = models.DateField(default=timezone.now)
@@ -348,6 +359,7 @@ class IntroSeen(models.Model):
         verbose_name = "Intro vue"
         verbose_name_plural = "Intros vues"
         unique_together = ['session_key', 'date_seen']
+
 
 class SentPostcard(models.Model):
     """Postcards sent between users"""
@@ -365,16 +377,15 @@ class SentPostcard(models.Model):
         on_delete=models.CASCADE,
         related_name='received_postcards',
         null=True,
-        blank=True  # Null if public postcard
+        blank=True
     )
-    # The postcard image used
     postcard = models.ForeignKey(
         Postcard,
         on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
-    custom_image_url = models.URLField(max_length=500, blank=True)  # Or custom image
+    custom_image_url = models.URLField(max_length=500, blank=True)
     message = models.TextField(max_length=1000, verbose_name="Message")
     visibility = models.CharField(
         max_length=20,
@@ -398,6 +409,7 @@ class SentPostcard(models.Model):
         if self.postcard and self.postcard.grande_url:
             return self.postcard.grande_url
         return self.custom_image_url or ''
+
 
 class PostcardComment(models.Model):
     """Comments on public postcards"""

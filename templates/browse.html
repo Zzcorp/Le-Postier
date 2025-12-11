@@ -269,22 +269,22 @@
         <div class="postcards-grid" id="postcards-grid">
             {% for postcard in postcards %}
             <div class="postcard-card"
-                 data-id="{{ postcard.id }}"
-                 data-number="{{ postcard.number }}"
-                 data-title="{{ postcard.title|escapejs }}"
-                 data-keywords="{{ postcard.keywords|lower }}"
-                 data-vignette="{{ postcard.vignette_image.url }}"
-                 data-grande="{{ postcard.grande_image.url }}"
-                 data-dos="{{ postcard.dos_image.url }}"
-                 data-has-video="{% if postcard.animated_url %}true{% else %}false{% endif %}"
-                 data-video-url="{{ postcard.get_first_video_url|default:'' }}">
-               
+                data-id="{{ postcard.id }}"
+                data-number="{{ postcard.number }}"
+                data-title="{{ postcard.title|escapejs }}"
+                data-keywords="{{ postcard.keywords|lower }}"
+                data-vignette="{{ postcard.vignette_url }}"
+                data-grande="{{ postcard.grande_url }}"
+                data-dos="{{ postcard.dos_url }}"
+                data-has-video="{% if postcard.animated_url %}true{% else %}false{% endif %}"
+                data-video-url="{{ postcard.get_first_video_url|default:'' }}">
+            
                 <div class="card-image-wrapper">
-                    {% if postcard.vignette_image.url %}
+                    {% if postcard.vignette_url %}
                     <img class="card-image"
-                         data-src="{{ postcard.vignette_image.url }}"
-                         alt="{{ postcard.title }}"
-                         loading="lazy">
+                        data-src="{{ postcard.vignette_url }}"
+                        alt="{{ postcard.title }}"
+                        loading="lazy">
                     <div class="card-placeholder">
                         <div class="placeholder-spinner"></div>
                     </div>
@@ -297,12 +297,12 @@
                         </svg>
                     </div>
                     {% endif %}
-                   
+                
                     {% if postcard.animated_url %}
                     <a href="{% url 'animated_gallery' %}?highlight={{ postcard.id }}"
-                       class="animated-badge"
-                       title="Voir l'animation"
-                       onclick="event.stopPropagation();">
+                    class="animated-badge"
+                    title="Voir l'animation"
+                    onclick="event.stopPropagation();">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8 5v14l11-7z"/>
                         </svg>
