@@ -269,22 +269,22 @@
         <div class="postcards-grid" id="postcards-grid">
             {% for postcard in postcards %}
             <div class="postcard-card"
-                data-id="{{ postcard.id }}"
-                data-number="{{ postcard.number }}"
-                data-title="{{ postcard.title|escapejs }}"
-                data-keywords="{{ postcard.keywords|lower }}"
-                data-vignette="{{ postcard.vignette_url }}"
-                data-grande="{{ postcard.grande_url }}"
-                data-dos="{{ postcard.dos_url }}"
-                data-has-video="{% if postcard.animated_url %}true{% else %}false{% endif %}"
-                data-video-url="{{ postcard.get_first_video_url|default:'' }}">
-            
+                 data-id="{{ postcard.id }}"
+                 data-number="{{ postcard.number }}"
+                 data-title="{{ postcard.title|escapejs }}"
+                 data-keywords="{{ postcard.keywords|lower }}"
+                 data-vignette="{{ postcard.get_vignette_url }}"
+                 data-grande="{{ postcard.get_grande_url }}"
+                 data-dos="{{ postcard.get_dos_url }}"
+                 data-has-video="{% if postcard.animated_url %}true{% else %}false{% endif %}"
+                 data-video-url="{{ postcard.get_first_video_url|default:'' }}">
+               
                 <div class="card-image-wrapper">
-                    {% if postcard.vignette_url %}
+                    {% if postcard.get_vignette_url %}
                     <img class="card-image"
-                        data-src="{{ postcard.vignette_url }}"
-                        alt="{{ postcard.title }}"
-                        loading="lazy">
+                         data-src="{{ postcard.get_vignette_url }}"
+                         alt="{{ postcard.title }}"
+                         loading="lazy">
                     <div class="card-placeholder">
                         <div class="placeholder-spinner"></div>
                     </div>
@@ -297,19 +297,19 @@
                         </svg>
                     </div>
                     {% endif %}
-                
+                   
                     {% if postcard.animated_url %}
                     <a href="{% url 'animated_gallery' %}?highlight={{ postcard.id }}"
-                    class="animated-badge"
-                    title="Voir l'animation"
-                    onclick="event.stopPropagation();">
+                       class="animated-badge"
+                       title="Voir l'animation"
+                       onclick="event.stopPropagation();">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8 5v14l11-7z"/>
                         </svg>
                     </a>
                     {% endif %}
                 </div>
-            
+               
                 <div class="card-overlay">
                     <div class="card-actions">
                         <button class="action-btn" onclick="showDetail({{ postcard.id }})" title="Voir le détail">
@@ -318,7 +318,7 @@
                                 <circle cx="12" cy="12" r="3"/>
                             </svg>
                         </button>
-                    
+                       
                         <button class="action-btn like-btn {% if postcard.id in user_likes %}liked{% endif %}"
                                 onclick="toggleLike(event, {{ postcard.id }})"
                                 title="J'aime"
@@ -327,14 +327,14 @@
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                             </svg>
                         </button>
-                    
+                       
                         <button class="action-btn" onclick="showZoom({{ postcard.id }})" title="Agrandir">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"/>
                                 <path d="m21 21-4.35-4.35M11 8v6M8 11h6"/>
                             </svg>
                         </button>
-                    
+                       
                         {% if postcard.animated_url %}
                         <button class="action-btn action-video" onclick="playAnimation(event, {{ postcard.id }})" title="Voir l'animation">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -368,18 +368,16 @@
     </div>
 </div>
  
-<!-- Detail <!-- Replace the popup sections and JavaScript in browse.html -->
-
-<!-- Detail Popup - Add this if missing or fix existing -->
+<!-- Detail Popup -->
 <div class="popup-overlay" id="popup-overlay" onclick="closeAllPopups()"></div>
-
+ 
 <div class="popup-modal" id="popup-detail">
     <button class="popup-close" onclick="closeAllPopups()" title="Fermer">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
     </button>
-    
+   
     <button class="popup-flip" id="popup-flip" onclick="togglePostcardSide()" title="Voir le verso">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 7v6h6"/>
@@ -388,26 +386,23 @@
             <path d="M8 21a9 9 0 0 0 12.735-3"/>
         </svg>
     </button>
-    
+   
     <button class="popup-nav popup-prev" id="popup-prev" onclick="previousImage()" title="Précédent">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="m15 18-6-6 6-6"/>
         </svg>
     </button>
-    
+   
     <div class="popup-image-container">
-        <img id="popup-image" src="" alt="" onerror="this.src='/static/images/placeholder.png'">
-        <div class="popup-loading" id="popup-loading" style="display:none;">
-            <div class="loading-spinner"></div>
-        </div>
+        <img id="popup-image" src="" alt="">
     </div>
-    
+   
     <button class="popup-nav popup-next" id="popup-next" onclick="nextImage()" title="Suivant">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="m9 18 6-6-6-6"/>
         </svg>
     </button>
-    
+   
     <div class="popup-info">
         <div class="popup-actions">
             <button class="popup-action-btn" id="popup-like-btn" onclick="togglePopupLike()" title="J'aime">
@@ -416,18 +411,25 @@
                 </svg>
                 <span id="popup-like-count">0</span>
             </button>
-            
+           
             <button class="popup-action-btn" id="popup-video-btn" onclick="playPopupAnimation()" title="Voir l'animation" style="display:none;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="5 3 19 12 5 21 5 3"/>
                 </svg>
             </button>
+           
+            <a class="popup-action-btn popup-animated-link" id="popup-animated-link" href="#" title="Galerie animée" style="display:none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                    <path d="M7 2v20M17 2v20"/>
+                </svg>
+            </a>
         </div>
         <h3 id="popup-title"></h3>
         <span id="popup-number"></span>
     </div>
 </div>
-
+ 
 <!-- Zoom Popup -->
 <div class="popup-modal popup-zoom-modal" id="popup-zoom">
     <button class="popup-close" onclick="closeAllPopups()" title="Fermer">
@@ -435,10 +437,10 @@
             <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
     </button>
-    <img id="popup-zoom-image" src="" alt="" onerror="this.src='/static/images/placeholder.png'">
+    <img id="popup-zoom-image" src="" alt="">
 </div>
-
-<!-- Video Popup -->
+ 
+<!-- Animation Popup -->
 <div class="popup-modal popup-video-modal" id="popup-video">
     <button class="popup-close" onclick="closeVideoPopup()" title="Fermer">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -462,7 +464,7 @@
  
 <script>
 // =============================================
-// DATA
+// DATA - UPDATED to use local image URLs
 // =============================================
 const csrfToken = '{{ csrf_token }}';
  
@@ -473,10 +475,10 @@ const allPostcardsData = [
         number: "{{ postcard.number|escapejs }}",
         title: "{{ postcard.title|escapejs }}",
         keywords: "{{ postcard.keywords|escapejs|lower }}",
-        grande_url: "{{ postcard.grande_url|default:postcard.vignette_url }}",
-        dos_url: "{{ postcard.dos_url|default:'' }}",
-        zoom_url: "{{ postcard.zoom_url|default:postcard.grande_url }}",
-        vignette_url: "{{ postcard.vignette_url|default:'' }}",
+        grande_url: "{{ postcard.get_grande_url }}",
+        dos_url: "{{ postcard.get_dos_url }}",
+        zoom_url: "{{ postcard.get_zoom_url }}",
+        vignette_url: "{{ postcard.get_vignette_url }}",
         likes_count: {{ postcard.likes_count|default:0 }},
         has_video: {% if postcard.animated_url %}true{% else %}false{% endif %},
         video_url: "{{ postcard.get_first_video_url|default:'' }}"
@@ -1473,650 +1475,15 @@ class ImageLoader {
  
 // =============================================
 // LOADING
-<script>
 // =============================================
-// DATA & CONFIGURATION
-// =============================================
-const csrfToken = '{{ csrf_token }}';
-
-const allPostcardsData = [
-    {% for postcard in postcards %}
-    {
-        id: {{ postcard.id }},
-        number: "{{ postcard.number|escapejs }}",
-        title: "{{ postcard.title|escapejs }}",
-        keywords: "{{ postcard.keywords|escapejs|lower }}",
-        grande_url: "{{ postcard.grande_url|default:postcard.vignette_url }}",
-        dos_url: "{{ postcard.dos_url|default:'' }}",
-        zoom_url: "{{ postcard.zoom_url|default:postcard.grande_url }}",
-        vignette_url: "{{ postcard.vignette_url|default:'' }}",
-        likes_count: {{ postcard.likes_count|default:0 }},
-        has_video: {% if postcard.animated_url %}true{% else %}false{% endif %},
-        video_url: "{{ postcard.get_first_video_url|default:'' }}"
-    }{% if not forloop.last %},{% endif %}
-    {% endfor %}
-];
-
-// River keywords for floating display
-const riverKeywords = [
-    { word: 'Seine', size: 'large', importance: 1 },
-    { word: 'Marne', size: 'large', importance: 1 },
-    { word: 'Bateau', size: 'large', importance: 1 },
-    { word: 'Péniche', size: 'large', importance: 1 },
-    { word: 'Paris', size: 'large', importance: 1 },
-    { word: 'Pont', size: 'medium', importance: 2 },
-    { word: 'Écluse', size: 'medium', importance: 2 },
-    { word: 'Port', size: 'medium', importance: 2 },
-    { word: 'Quai', size: 'medium', importance: 2 },
-    { word: 'Vapeur', size: 'medium', importance: 2 },
-    { word: 'Fleuve', size: 'medium', importance: 2 },
-    { word: 'Crue', size: 'small', importance: 3 },
-    { word: 'Inondation', size: 'small', importance: 3 },
-    { word: 'Lavoir', size: 'small', importance: 3 },
-    { word: 'Berge', size: 'small', importance: 3 },
-    { word: 'Canal', size: 'small', importance: 3 },
-    {% for theme in themes %}
-    { word: '{{ theme.display_name|escapejs }}', size: 'medium', importance: 2 },
-    {% endfor %}
-];
-
-let filteredPostcards = [...allPostcardsData];
-let currentIndex = 0;
-let currentView = 'front';
-let currentPostcardId = null;
-
-// =============================================
-// POPUP FUNCTIONS - FIXED
-// =============================================
-
-function showDetail(id) {
-    console.log('showDetail called with id:', id);
-    
-    // Find postcard in data
-    let postcard = allPostcardsData.find(p => p.id === id);
-    if (!postcard) {
-        console.error('Postcard not found:', id);
-        return;
-    }
-    
-    console.log('Found postcard:', postcard);
-    
-    currentPostcardId = id;
-    currentIndex = filteredPostcards.findIndex(p => p.id === id);
-    if (currentIndex === -1) {
-        currentIndex = 0;
-        filteredPostcards = [postcard]; // At least show this one
-    }
-    currentView = 'front';
-    
-    // Set image - use grande_url or fallback to vignette
-    const imageUrl = postcard.grande_url || postcard.vignette_url || '/static/images/placeholder.png';
-    console.log('Setting image URL:', imageUrl);
-    
-    const popupImage = document.getElementById('popup-image');
-    popupImage.src = imageUrl;
-    
-    // Set title and number
-    document.getElementById('popup-title').textContent = postcard.title || 'Sans titre';
-    document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
-    document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
-    
-    // Show/hide video button
-    const videoBtn = document.getElementById('popup-video-btn');
-    if (videoBtn) {
-        videoBtn.style.display = postcard.has_video ? 'flex' : 'none';
-    }
-    
-    // Show/hide flip button based on dos availability
-    const flipBtn = document.getElementById('popup-flip');
-    if (flipBtn) {
-        flipBtn.style.display = postcard.dos_url ? 'flex' : 'none';
-    }
-    
-    // Update like button state
-    const cardLikeBtn = document.querySelector(`.like-btn[data-id="${id}"]`);
-    const popupLikeBtn = document.getElementById('popup-like-btn');
-    if (popupLikeBtn && cardLikeBtn) {
-        popupLikeBtn.classList.toggle('liked', cardLikeBtn.classList.contains('liked'));
-    }
-    
-    // Show popup
-    document.getElementById('popup-overlay').classList.add('active');
-    document.getElementById('popup-detail').classList.add('active');
-    document.body.style.overflow = 'hidden';
-    
-    // Update navigation buttons
-    updateNavButtons();
-    
-    // Increment view count via API
-    fetch(`/api/postcard/${id}/`, { method: 'GET' }).catch(() => {});
-}
-
-function showZoom(id) {
-    console.log('showZoom called with id:', id);
-    
-    const postcard = allPostcardsData.find(p => p.id === id);
-    if (!postcard) {
-        console.error('Postcard not found for zoom:', id);
-        return;
-    }
-    
-    const zoomUrl = postcard.zoom_url || postcard.grande_url || postcard.vignette_url || '/static/images/placeholder.png';
-    console.log('Setting zoom URL:', zoomUrl);
-    
-    document.getElementById('popup-zoom-image').src = zoomUrl;
-    document.getElementById('popup-overlay').classList.add('active');
-    document.getElementById('popup-zoom').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function playAnimation(event, id) {
-    event.stopPropagation();
-    console.log('playAnimation called with id:', id);
-    
-    const postcard = allPostcardsData.find(p => p.id === id);
-    if (!postcard || !postcard.video_url) {
-        console.error('No video for postcard:', id);
-        return;
-    }
-    
-    const video = document.getElementById('popup-video-player');
-    const loading = document.getElementById('video-loading');
-    
-    document.getElementById('popup-video-title').textContent = postcard.title;
-    document.getElementById('popup-video-number').textContent = 'N° ' + postcard.number;
-    
-    loading.style.display = 'flex';
-    video.style.opacity = '0';
-    
-    // Clear previous source
-    video.pause();
-    video.removeAttribute('src');
-    video.load();
-    
-    // Set new source
-    const source = video.querySelector('source');
-    source.src = postcard.video_url;
-    video.load();
-    
-    const onCanPlay = () => {
-        loading.style.display = 'none';
-        video.style.opacity = '1';
-        video.play().catch(() => {});
-        video.removeEventListener('canplay', onCanPlay);
-    };
-    
-    video.addEventListener('canplay', onCanPlay);
-    
-    video.onerror = () => {
-        loading.innerHTML = '<p style="color: #ff6b6b;">Erreur de chargement vidéo</p>';
-    };
-    
-    // Fallback timeout
-    setTimeout(() => {
-        if (loading.style.display !== 'none') {
-            loading.style.display = 'none';
-            video.style.opacity = '1';
-        }
-    }, 5000);
-    
-    document.getElementById('popup-overlay').classList.add('active');
-    document.getElementById('popup-video').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function playPopupAnimation() {
-    if (currentPostcardId) {
-        closeAllPopups();
-        setTimeout(() => playAnimation({ stopPropagation: () => {} }, currentPostcardId), 100);
-    }
-}
-
-function togglePostcardSide() {
-    const postcard = filteredPostcards[currentIndex];
-    if (!postcard) return;
-    
-    const img = document.getElementById('popup-image');
-    const flipBtn = document.getElementById('popup-flip');
-    
-    if (currentView === 'front' && postcard.dos_url) {
-        img.src = postcard.dos_url;
-        currentView = 'back';
-        if (flipBtn) flipBtn.classList.add('flipped');
-    } else {
-        img.src = postcard.grande_url || postcard.vignette_url;
-        currentView = 'front';
-        if (flipBtn) flipBtn.classList.remove('flipped');
-    }
-}
-
-function previousImage() {
-    if (currentIndex > 0) {
-        currentIndex--;
-        updatePopupFromIndex();
-    }
-}
-
-function nextImage() {
-    if (currentIndex < filteredPostcards.length - 1) {
-        currentIndex++;
-        updatePopupFromIndex();
-    }
-}
-
-function updatePopupFromIndex() {
-    const postcard = filteredPostcards[currentIndex];
-    if (!postcard) return;
-    
-    currentPostcardId = postcard.id;
-    currentView = 'front';
-    
-    document.getElementById('popup-image').src = postcard.grande_url || postcard.vignette_url || '/static/images/placeholder.png';
-    document.getElementById('popup-title').textContent = postcard.title || 'Sans titre';
-    document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
-    document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
-    
-    const videoBtn = document.getElementById('popup-video-btn');
-    if (videoBtn) {
-        videoBtn.style.display = postcard.has_video ? 'flex' : 'none';
-    }
-    
-    const flipBtn = document.getElementById('popup-flip');
-    if (flipBtn) {
-        flipBtn.style.display = postcard.dos_url ? 'flex' : 'none';
-        flipBtn.classList.remove('flipped');
-    }
-    
-    updateNavButtons();
-}
-
-function updateNavButtons() {
-    const prevBtn = document.getElementById('popup-prev');
-    const nextBtn = document.getElementById('popup-next');
-    
-    if (prevBtn) {
-        prevBtn.style.display = currentIndex > 0 ? 'flex' : 'none';
-    }
-    if (nextBtn) {
-        nextBtn.style.display = currentIndex < filteredPostcards.length - 1 ? 'flex' : 'none';
-    }
-}
-
-function closeAllPopups() {
-    document.getElementById('popup-overlay').classList.remove('active');
-    document.getElementById('popup-detail').classList.remove('active');
-    document.getElementById('popup-zoom').classList.remove('active');
-    document.getElementById('popup-video').classList.remove('active');
-    document.body.style.overflow = '';
-    
-    const video = document.getElementById('popup-video-player');
-    if (video) video.pause();
-}
-
-function closeVideoPopup() {
-    const video = document.getElementById('popup-video-player');
-    if (video) {
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
-    }
-    
-    const loading = document.getElementById('video-loading');
-    if (loading) {
-        loading.style.display = 'flex';
-        loading.innerHTML = '<div class="video-spinner"></div><p>Chargement...</p>';
-    }
-    
-    document.getElementById('popup-overlay').classList.remove('active');
-    document.getElementById('popup-video').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-// =============================================
-// LIKE FUNCTIONALITY
-// =============================================
-
-async function toggleLike(event, postcardId) {
-    event.stopPropagation();
-    
-    try {
-        const formData = new FormData();
-        formData.append('is_animated', 'false');
-        
-        const response = await fetch(`/api/postcard/${postcardId}/like/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Update card button
-            const cardBtn = document.querySelector(`.like-btn[data-id="${postcardId}"]`);
-            if (cardBtn) {
-                cardBtn.classList.toggle('liked', data.liked);
-                const svg = cardBtn.querySelector('svg');
-                if (svg) svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
-            }
-            
-            // Update popup if open
-            if (currentPostcardId === postcardId) {
-                const popupBtn = document.getElementById('popup-like-btn');
-                if (popupBtn) popupBtn.classList.toggle('liked', data.liked);
-                const countEl = document.getElementById('popup-like-count');
-                if (countEl) countEl.textContent = data.likes_count;
-            }
-            
-            // Update local data
-            const postcard = allPostcardsData.find(p => p.id === postcardId);
-            if (postcard) postcard.likes_count = data.likes_count;
-        }
-    } catch (error) {
-        console.error('Like error:', error);
-    }
-}
-
-function togglePopupLike() {
-    if (currentPostcardId) {
-        toggleLike({ stopPropagation: () => {} }, currentPostcardId);
-    }
-}
-
-// =============================================
-// SEARCH FUNCTIONALITY
-// =============================================
-
-class SearchEngine {
-    constructor() {
-        this.searchInput = document.getElementById('searchInput');
-        this.clearBtn = document.getElementById('clearBtn');
-        this.debounceTimer = null;
-        
-        if (this.searchInput) {
-            this.init();
-        }
-    }
-    
-    init() {
-        this.searchInput.addEventListener('input', (e) => this.handleInput(e));
-        this.searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.performSearch(this.searchInput.value);
-            }
-        });
-        this.updateClearButton();
-    }
-    
-    handleInput(e) {
-        const query = e.target.value.trim();
-        this.updateClearButton();
-        
-        if (!query) {
-            this.resetSearch();
-            return;
-        }
-        
-        clearTimeout(this.debounceTimer);
-        this.debounceTimer = setTimeout(() => {
-            this.performSearch(query);
-        }, 150);
-    }
-    
-    updateClearButton() {
-        if (this.clearBtn) {
-            const hasValue = this.searchInput && this.searchInput.value.trim().length > 0;
-            this.clearBtn.classList.toggle('visible', hasValue);
-        }
-    }
-    
-    performSearch(query) {
-        if (!query.trim()) {
-            this.resetSearch();
-            return;
-        }
-        
-        const searchTerms = query.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
-        const cards = document.querySelectorAll('.postcard-card');
-        let visibleCount = 0;
-        
-        cards.forEach(card => {
-            const title = (card.dataset.title || '').toLowerCase();
-            const keywords = (card.dataset.keywords || '').toLowerCase();
-            const number = card.dataset.number || '';
-            const searchText = `${title} ${keywords} ${number}`;
-            
-            const matches = searchTerms.some(term => searchText.includes(term));
-            
-            card.style.display = matches ? '' : 'none';
-            if (matches) visibleCount++;
-        });
-        
-        // Update filtered postcards
-        filteredPostcards = allPostcardsData.filter(p => {
-            const searchText = `${p.title} ${p.keywords} ${p.number}`.toLowerCase();
-            return searchTerms.some(term => searchText.includes(term));
-        });
-        
-        this.updateUI(query, visibleCount);
-        
-        const keywordsSection = document.getElementById('river-keywords-section');
-        if (keywordsSection) keywordsSection.classList.add('searching');
-    }
-    
-    updateUI(query, count) {
-        const countEl = document.getElementById('visible-count');
-        if (countEl) countEl.textContent = count;
-        
-        const noResults = document.getElementById('noResults');
-        if (noResults) noResults.style.display = count === 0 ? 'block' : 'none';
-        
-        const searchInfo = document.getElementById('searchInfo');
-        if (searchInfo) {
-            searchInfo.innerHTML = `
-                <p class="search-results-text">
-                    <span class="result-count">${count}</span> résultat${count !== 1 ? 's' : ''} pour
-                    "<span class="result-query">${query}</span>"
-                </p>
-            `;
-        }
-        
-        this.updateClearButton();
-    }
-    
-    resetSearch() {
-        document.querySelectorAll('.postcard-card').forEach(card => {
-            card.style.display = '';
-        });
-        
-        filteredPostcards = [...allPostcardsData];
-        
-        const countEl = document.getElementById('visible-count');
-        if (countEl) countEl.textContent = allPostcardsData.length;
-        
-        const noResults = document.getElementById('noResults');
-        if (noResults) noResults.style.display = 'none';
-        
-        const searchInfo = document.getElementById('searchInfo');
-        if (searchInfo) searchInfo.innerHTML = '';
-        
-        const keywordsSection = document.getElementById('river-keywords-section');
-        if (keywordsSection) keywordsSection.classList.remove('searching');
-        
-        this.updateClearButton();
-    }
-}
-
-function clearSearch() {
-    const input = document.getElementById('searchInput');
-    if (input) {
-        input.value = '';
-        input.focus();
-    }
-    if (window.searchEngine) {
-        window.searchEngine.resetSearch();
-    }
-}
-
-// =============================================
-// IMAGE LAZY LOADING
-// =============================================
-
-class ImageLoader {
-    constructor() {
-        this.observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    this.loadImage(entry.target);
-                    this.observer.unobserve(entry.target);
-                }
-            });
-        }, {
-            rootMargin: '100px',
-            threshold: 0.1
-        });
-        
-        document.querySelectorAll('.card-image[data-src]').forEach(img => {
-            this.observer.observe(img);
-        });
-    }
-    
-    loadImage(img) {
-        const src = img.dataset.src;
-        if (!src) return;
-        
-        img.src = src;
-        
-        img.onload = () => {
-            img.classList.add('loaded');
-            const placeholder = img.closest('.card-image-wrapper')?.querySelector('.card-placeholder');
-            if (placeholder) placeholder.classList.add('hidden');
-        };
-        
-        img.onerror = () => {
-            // Try placeholder
-            img.src = '/static/images/placeholder.png';
-            const placeholder = img.closest('.card-image-wrapper')?.querySelector('.card-placeholder');
-            if (placeholder) placeholder.classList.add('hidden');
-        };
-    }
-}
-
-// =============================================
-// FLOATING KEYWORDS
-// =============================================
-
-class FloatingKeywords {
-    constructor() {
-        this.container = document.getElementById('river-keywords-container');
-        if (!this.container) return;
-        
-        this.keywords = [];
-        this.isVisible = true;
-        this.init();
-    }
-    
-    init() {
-        this.createKeywords();
-        this.startAnimation();
-    }
-    
-    createKeywords() {
-        const allKeywords = [...riverKeywords, ...riverKeywords];
-        
-        allKeywords.forEach((kw, index) => {
-            const element = document.createElement('button');
-            element.className = `floating-keyword keyword-${kw.size}`;
-            element.textContent = kw.word;
-            element.dataset.word = kw.word;
-            
-            const startX = Math.random() * 100;
-            const startY = 10 + Math.random() * 80;
-            const speed = kw.size === 'large' ? 0.3 : kw.size === 'medium' ? 0.5 : 0.7;
-            
-            const keywordObj = {
-                element,
-                x: startX,
-                y: startY,
-                speed: speed + Math.random() * 0.3,
-                waveAmplitude: 5 + Math.random() * 15,
-                waveFrequency: 0.5 + Math.random() * 1,
-                waveOffset: Math.random() * Math.PI * 2,
-                word: kw.word
-            };
-            
-            this.keywords.push(keywordObj);
-            this.container.appendChild(element);
-            
-            element.addEventListener('click', () => this.onKeywordClick(kw.word));
-            
-            element.style.cssText = `
-                position: absolute;
-                left: ${startX}%;
-                top: ${startY}%;
-                opacity: 0.8;
-            `;
-        });
-    }
-    
-    startAnimation() {
-        const animate = (timestamp) => {
-            if (!this.isVisible) {
-                requestAnimationFrame(animate);
-                return;
-            }
-            
-            this.keywords.forEach(kw => {
-                kw.x -= kw.speed * 0.05;
-                
-                if (kw.x < -20) {
-                    kw.x = 110;
-                    kw.y = 10 + Math.random() * 80;
-                }
-                
-                const elapsed = timestamp / 1000;
-                const waveY = Math.sin(elapsed * kw.waveFrequency + kw.waveOffset) * kw.waveAmplitude;
-                
-                let opacity = 1;
-                if (kw.x > 90) opacity = (100 - kw.x) / 10;
-                else if (kw.x < 10) opacity = kw.x / 10;
-                
-                kw.element.style.left = `${kw.x}%`;
-                kw.element.style.top = `${kw.y}%`;
-                kw.element.style.transform = `translateY(${waveY}px)`;
-                kw.element.style.opacity = Math.max(0, Math.min(0.9, opacity));
-            });
-            
-            requestAnimationFrame(animate);
-        };
-        
-        requestAnimationFrame(animate);
-    }
-    
-    onKeywordClick(word) {
-        const input = document.getElementById('searchInput');
-        if (input) {
-            input.value = word;
-            if (window.searchEngine) {
-                window.searchEngine.performSearch(word);
-            }
-        }
-    }
-}
-
-// =============================================
-// LOADING MANAGER
-// =============================================
-
 class LoadingManager {
     constructor() {
         this.overlay = document.getElementById('loading-overlay');
         this.bar = document.getElementById('loading-bar');
+        this.startTime = Date.now();
     }
-    
+   
     start() {
-        if (!this.bar) return;
         let progress = 0;
         const tick = () => {
             progress += (100 - progress) * 0.15;
@@ -2125,67 +1492,62 @@ class LoadingManager {
         };
         requestAnimationFrame(tick);
     }
-    
+   
     hide() {
-        if (this.bar) this.bar.style.width = '100%';
+        const elapsed = Date.now() - this.startTime;
+        const remaining = Math.max(0, 400 - elapsed);
+       
         setTimeout(() => {
-            if (this.overlay) this.overlay.classList.add('hidden');
-        }, 200);
+            this.bar.style.width = '100%';
+            setTimeout(() => {
+                this.overlay.classList.add('hidden');
+            }, 100);
+        }, remaining);
     }
 }
-
-// =============================================
-// KEYBOARD NAVIGATION
-// =============================================
-
+ 
+// Keyboard
 document.addEventListener('keydown', (e) => {
-    // Detail popup navigation
-    if (document.getElementById('popup-detail')?.classList.contains('active')) {
-        if (e.key === 'ArrowLeft') previousImage();
-        else if (e.key === 'ArrowRight') nextImage();
-        else if (e.key === 'Escape') closeAllPopups();
+    if (document.getElementById('cinemaModal').classList.contains('active')) {
+        if (e.key === 'ArrowLeft') cinemaPrev();
+        else if (e.key === 'ArrowRight') cinemaNext();
+        else if (e.key === ' ') { e.preventDefault(); toggleCinemaPlay(); }
+        else if (e.key === 'Escape') closeCinema();
         return;
     }
-    
-    // Video popup
-    if (document.getElementById('popup-video')?.classList.contains('active')) {
+   
+    if (document.getElementById('popup-video').classList.contains('active')) {
         if (e.key === 'Escape') closeVideoPopup();
         return;
     }
-    
-    // Zoom popup
-    if (document.getElementById('popup-zoom')?.classList.contains('active')) {
+   
+    if (document.getElementById('popup-detail').classList.contains('active')) {
+        if (e.key === 'ArrowLeft') previousImage();
+        else if (e.key === 'ArrowRight') nextImage();
+        else if (e.key === 'Escape') closeAllPopups();
+    } else if (document.getElementById('popup-zoom').classList.contains('active')) {
         if (e.key === 'Escape') closeAllPopups();
-        return;
     }
 });
-
-// =============================================
-// INITIALIZATION
-// =============================================
-
+ 
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Browse page initializing...');
-    console.log('Total postcards:', allPostcardsData.length);
-    
     const loadingManager = new LoadingManager();
     loadingManager.start();
-    
+   
     window.searchEngine = new SearchEngine();
-    new FloatingKeywords();
+    window.floatingKeywords = new FloatingKeywords();
+    new WavesAnimation();
     new ImageLoader();
-    
-    // Check for active search
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput && searchInput.value.trim()) {
-        const keywordsSection = document.getElementById('river-keywords-section');
-        if (keywordsSection) keywordsSection.classList.add('searching');
+   
+    // Check if there's an active search
+    if (document.getElementById('searchInput').value.trim()) {
+        document.getElementById('river-keywords-section').classList.add('searching');
     }
-    
+   
     window.addEventListener('load', () => loadingManager.hide());
-    setTimeout(() => loadingManager.hide(), 1500);
+    setTimeout(() => loadingManager.hide(), 1000);
 });
-
 </script>
  
 <style>
@@ -2902,10 +2264,6 @@ document.addEventListener('DOMContentLoaded', () => {
    
     .river-keywords-container { height: 120px; }
     .keyword-small { display: none; }
-}
-.card-no-image,
-.popup-image-container img[src="/static/images/placeholder.png"] {
-    background: linear-gradient(135deg, rgba(181, 96, 11, 0.2), rgba(181, 96, 11, 0.1));
 }
 </style>
 {% endblock %}
