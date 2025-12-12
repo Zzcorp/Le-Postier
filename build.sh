@@ -25,17 +25,8 @@ python manage.py create_admin || true
 echo "Scanning media folder..."
 python manage.py scan_media || true
 
-# Create postcard entries from images if database is empty
-POSTCARD_COUNT=$(python -c "
-import django
-django.setup()
-from core.models import Postcard
-print(Postcard.objects.count())
-" 2>/dev/null || echo "0")
-
-if [ "$POSTCARD_COUNT" = "0" ]; then
-    echo "Database is empty, creating postcards from images..."
-    python manage.py import_postcards_from_csv --create-from-images || true
-fi
+# Update postcard image flags
+echo "Updating postcard image flags..."
+python manage.py import_postcards_csv --update-flags || true
 
 echo "=== Build completed successfully! ==="

@@ -38,6 +38,10 @@ urlpatterns = [
     path('api/admin/suggestion/<int:suggestion_id>/', views.admin_suggestion_detail, name='admin_suggestion_detail'),
     path('api/admin/postcards/next-number/', views.admin_next_postcard_number, name='admin_next_postcard_number'),
 
+    # Media upload endpoints (NEW)
+    path('api/admin/upload-media/', views.admin_upload_media, name='admin_upload_media'),
+    path('api/admin/media-stats/', views.admin_media_stats, name='admin_media_stats'),
+
     # API endpoints
     path('api/postcard/<int:postcard_id>/', views.get_postcard_detail, name='postcard_detail'),
     path('api/postcard/<int:postcard_id>/zoom/', views.zoom_postcard, name='postcard_zoom'),

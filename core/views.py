@@ -1108,3 +1108,97 @@ def upload_signature(request):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+# Add this to core/views.py - ADDITIONAL ENDPOINT FOR MEDIA UPLOAD
+
+@user_passes_test(is_admin)
+@require_http_methods(["POST"])
+def admin_upload_media(request):
+    """
+    Admin endpoint to upload media files.
+    Used for batch uploading images/videos to the server.
+    """
+    from django.conf import settings
+    from pathlib import Path
+    import os
+
+    if 'file' not in request.FILES:
+        return JsonResponse({'error': 'No file provided'}, status=400)
+
+    file = request.FILES['file']
+    folder = request.POST.get('folder', 'Vignette')
+
+    # Validate folder
+    valid_folders = ['Vignette', 'Grande', 'Dos', 'Zoom', 'animated_cp']
+    if folder not in valid_folders:
+        return JsonResponse({'error': f'Invalid folder: {folder}'}, status=400)
+
+    # Determine destination path
+    media_root = Path(settings.MEDIA_ROOT)
+    if folder == 'animated_cp':
+        dest_dir = media_root / 'animated_cp'
+    else:
+        dest_dir = media_root / 'postcards' / folder
+
+    # Ensure directory exists
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save file
+    dest_path = dest_dir / file.name
+
+    try:
+        with open(dest_path, 'wb+') as destination:
+            for chunk in file.chunks():
+                destination.write(chunk)
+
+        return JsonResponse({
+            'success': True,
+            'filename': file.name,
+            'path': str(dest_path)
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@user_passes_test(is_admin)
+def admin_media_stats(request):
+    """Get media storage statistics."""
+    from django.conf import settings
+    from pathlib import Path
+    import os
+
+    media_root = Path(settings.MEDIA_ROOT)
+
+    stats = {
+        'media_root': str(media_root),
+        'exists': media_root.exists(),
+        'folders': {}
+    }
+
+    if media_root.exists():
+        # Count files in each folder
+        for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
+            folder_path = media_root / 'postcards' / folder
+            if folder_path.exists():
+                count = len(list(folder_path.glob('*.*')))
+                stats['folders'][folder] = count
+            else:
+                stats['folders'][folder] = 0
+
+        # Animated
+        animated_path = media_root / 'animated_cp'
+        if animated_path.exists():
+            stats['folders']['animated_cp'] = len(list(animated_path.glob('*.*')))
+        else:
+            stats['folders']['animated_cp'] = 0
+
+        # Total size
+        total_size = 0
+        for root, dirs, files in os.walk(media_root):
+            for f in files:
+                total_size += os.path.getsize(os.path.join(root, f))
+
+        stats['total_size_mb'] = round(total_size / (1024 * 1024), 2)
+
+    return JsonResponse(stats)

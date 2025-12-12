@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.conf import settings
 import uuid
 from pathlib import Path
+import os
 
 
 class CustomUser(AbstractUser):
@@ -60,7 +61,7 @@ class Postcard(models.Model):
         ('very_rare', 'Très Rare'),
     ]
 
-    number = models.CharField(max_length=20, unique=True, verbose_name="Numéro")
+    number = models.CharField(max_length=20, unique=True, verbose_name="Numéro", db_index=True)
     title = models.CharField(max_length=500, verbose_name="Titre")
     description = models.TextField(blank=True, verbose_name="Description")
     keywords = models.TextField(blank=True, verbose_name="Mots-clés", help_text="Séparés par des virgules")
@@ -69,6 +70,10 @@ class Postcard(models.Model):
     views_count = models.IntegerField(default=0, verbose_name="Nombre de vues")
     zoom_count = models.IntegerField(default=0, verbose_name="Nombre de zooms")
     likes_count = models.IntegerField(default=0, verbose_name="Nombre de likes")
+
+    # Flag to indicate if images exist on disk
+    has_images = models.BooleanField(default=False, verbose_name="Images présentes")
+    has_animation = models.BooleanField(default=False, verbose_name="Animation présente")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -108,7 +113,7 @@ class Postcard(models.Model):
         base_path = Path(settings.MEDIA_ROOT) / 'postcards' / folder
 
         # Check for different extensions
-        for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
+        for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG', '.gif', '.GIF']:
             file_path = base_path / f'{padded}{ext}'
             if file_path.exists():
                 return f'{settings.MEDIA_URL}postcards/{folder}/{padded}{ext}'
@@ -166,11 +171,11 @@ class Postcard(models.Model):
 
         return video_urls
 
-    def has_animation(self):
+    def check_has_animation(self):
         """Check if this postcard has any animations"""
         return len(self.get_animated_urls()) > 0
 
-    def has_vignette(self):
+    def check_has_vignette(self):
         """Check if this postcard has a vignette image"""
         return bool(self.get_vignette_url())
 
@@ -182,6 +187,12 @@ class Postcard(models.Model):
     def video_count(self):
         """Count number of videos"""
         return len(self.get_animated_urls())
+
+    def update_image_flags(self):
+        """Update has_images and has_animation flags based on actual files"""
+        self.has_images = self.check_has_vignette()
+        self.has_animation = self.check_has_animation()
+        self.save(update_fields=['has_images', 'has_animation'])
 
 
 class PostcardLike(models.Model):
@@ -340,8 +351,13 @@ class SentPostcard(models.Model):
         ('public', 'Public - Visible par tous'),
     ]
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_postcards')
-    recipient = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_postcards', null=True,
-                                  blank=True)
+    recipient = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='received_postcards',
+        null=True,
+        blank=True
+    )
     postcard = models.ForeignKey(Postcard, on_delete=models.SET_NULL, null=True, blank=True)
     custom_image_url = models.URLField(max_length=500, blank=True)
     message = models.TextField(max_length=1000, verbose_name="Message")

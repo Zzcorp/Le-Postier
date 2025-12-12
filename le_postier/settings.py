@@ -1,7 +1,7 @@
 # le_postier/settings.py
 """
 Django settings for le_postier project.
-Configured for local media storage on Render disk.
+Configured for local media storage on Render persistent disk.
 """
 
 import os
@@ -102,30 +102,36 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # =============================================================================
-# MEDIA FILES - LOCAL STORAGE ON RENDER DISK
+# MEDIA FILES - LOCAL STORAGE ON RENDER PERSISTENT DISK
 # =============================================================================
 MEDIA_URL = '/media/'
 
-# On Render, use the mounted disk path
-# Set MEDIA_ROOT via environment variable for flexibility
+# On Render, use the mounted persistent disk path
+# Set via environment variable: MEDIA_ROOT=/var/data/media
+# Locally, defaults to BASE_DIR / 'media'
 MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
 
-# Expected directory structure:
-# media/
-#   postcards/
-#     Vignette/    -> 000001.jpg, 000002.jpg, ...
-#     Grande/      -> 000001.jpg, 000002.jpg, ...
-#     Dos/         -> 000001.jpg, 000002.jpg, ...
-#     Zoom/        -> 000001.jpg, 000002.jpg, ...
-#   animated_cp/   -> 000001.mp4, 000001_0.mp4, 000001_1.mp4, ...
-#   signatures/    -> user signatures
+# Postcard image subdirectories
+POSTCARD_IMAGE_DIRS = ['Vignette', 'Grande', 'Dos', 'Zoom']
+ANIMATED_CP_DIR = 'animated_cp'
+SIGNATURES_DIR = 'signatures'
+
+def create_media_dirs():
+    """Create media directories if they don't exist."""
+    try:
+        # Create postcard directories
+        for subdir in POSTCARD_IMAGE_DIRS:
+            (MEDIA_ROOT / 'postcards' / subdir).mkdir(parents=True, exist_ok=True)
+        # Create animated postcards directory
+        (MEDIA_ROOT / ANIMATED_CP_DIR).mkdir(parents=True, exist_ok=True)
+        # Create signatures directory
+        (MEDIA_ROOT / SIGNATURES_DIR).mkdir(parents=True, exist_ok=True)
+        print(f"Media directories created/verified at: {MEDIA_ROOT}")
+    except Exception as e:
+        print(f"Warning: Could not create media directories: {e}")
 
 # Create directories on startup
-POSTCARD_DIRS = ['Vignette', 'Grande', 'Dos', 'Zoom']
-for subdir in POSTCARD_DIRS:
-    (MEDIA_ROOT / 'postcards' / subdir).mkdir(parents=True, exist_ok=True)
-(MEDIA_ROOT / 'animated_cp').mkdir(parents=True, exist_ok=True)
-(MEDIA_ROOT / 'signatures').mkdir(parents=True, exist_ok=True)
+create_media_dirs()
 
 # =============================================================================
 
@@ -139,14 +145,22 @@ LOGOUT_REDIRECT_URL = '/'
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
     'https://*.onrender.com',
+    'https://collections.samathey.fr',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
 
-# Security Settings (relaxed for development, tighten for production)
-SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+# Security Settings for Production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 # Logging
 LOGGING = {
@@ -178,5 +192,5 @@ LOGGING = {
 }
 
 # File upload settings
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB

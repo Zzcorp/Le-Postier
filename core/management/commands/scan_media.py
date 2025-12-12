@@ -1,83 +1,110 @@
 # core/management/commands/scan_media.py
 """
-Scan media folder and show detailed statistics about available files.
+Management command to scan and report on media files.
 """
 
+import os
+from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from pathlib import Path
+from core.models import Postcard
 
 
 class Command(BaseCommand):
-    help = 'Scan media folder and display statistics'
+    help = 'Scan media directory and report statistics'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--verbose',
+            action='store_true',
+            help='Show detailed file listing'
+        )
 
     def handle(self, *args, **options):
         media_root = Path(settings.MEDIA_ROOT)
+        verbose = options['verbose']
 
-        self.stdout.write('=' * 70)
-        self.stdout.write('MEDIA FOLDER SCAN')
+        self.stdout.write(f'\n{"=" * 60}')
+        self.stdout.write(f'MEDIA SCAN REPORT')
+        self.stdout.write(f'{"=" * 60}')
         self.stdout.write(f'Media Root: {media_root}')
-        self.stdout.write('=' * 70)
+        self.stdout.write(f'Exists: {media_root.exists()}')
 
         if not media_root.exists():
-            self.stdout.write(self.style.ERROR(f'\n❌ Media root does not exist: {media_root}'))
+            self.stdout.write(self.style.ERROR('Media root does not exist!'))
             return
 
-        # Scan postcards folder
-        postcards_dir = media_root / 'postcards'
+        # Scan postcard directories
+        postcard_dirs = ['Vignette', 'Grande', 'Dos', 'Zoom']
+        postcard_base = media_root / 'postcards'
 
-        self.stdout.write('\n📁 POSTCARDS FOLDER:')
+        self.stdout.write(f'\n{"─" * 60}')
+        self.stdout.write('POSTCARD IMAGES')
+        self.stdout.write(f'{"─" * 60}')
 
-        for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
-            folder_path = postcards_dir / folder
-            if folder_path.exists():
-                files = list(folder_path.glob('*.[jJpP][pPnN][gG]*'))
-                total_size = sum(f.stat().st_size for f in files) / (1024 * 1024)  # MB
-                self.stdout.write(f'   {folder}: {len(files)} files ({total_size:.1f} MB)')
+        total_images = 0
+        for dir_name in postcard_dirs:
+            dir_path = postcard_base / dir_name
+            if dir_path.exists():
+                count = len(list(dir_path.glob('*.*')))
+                total_images += count
+                self.stdout.write(f'  {dir_name}: {count} files')
 
-                # Show sample files
-                if files:
-                    samples = sorted([f.name for f in files[:5]])
-                    self.stdout.write(f'      Sample: {", ".join(samples)}...')
+                if verbose and count > 0:
+                    for f in sorted(dir_path.iterdir())[:5]:
+                        self.stdout.write(f'    - {f.name}')
+                    if count > 5:
+                        self.stdout.write(f'    ... and {count - 5} more')
             else:
-                self.stdout.write(f'   {folder}: ❌ Not found')
+                self.stdout.write(f'  {dir_name}: (not found)')
 
-        # Scan animated folder
+        self.stdout.write(f'  Total images: {total_images}')
+
+        # Scan animated directory
+        self.stdout.write(f'\n{"─" * 60}')
+        self.stdout.write('ANIMATED POSTCARDS')
+        self.stdout.write(f'{"─" * 60}')
+
         animated_dir = media_root / 'animated_cp'
-
-        self.stdout.write('\n📁 ANIMATED FOLDER:')
-
         if animated_dir.exists():
-            videos = list(animated_dir.glob('*.[mMwW][pP4eEbBmM]*'))
-            total_size = sum(f.stat().st_size for f in videos) / (1024 * 1024)  # MB
-            self.stdout.write(f'   Videos: {len(videos)} files ({total_size:.1f} MB)')
+            video_count = len(list(animated_dir.glob('*.mp4'))) + len(list(animated_dir.glob('*.webm')))
+            self.stdout.write(f'  Videos: {video_count} files')
 
-            # Count unique postcards with videos
-            unique_postcards = set()
-            for v in videos:
-                name = v.stem
-                if '_' in name:
-                    name = name.rsplit('_', 1)[0]
-                unique_postcards.add(name)
-
-            self.stdout.write(f'   Unique postcards with animation: {len(unique_postcards)}')
-
-            # Show sample files
-            if videos:
-                samples = sorted([f.name for f in videos[:5]])
-                self.stdout.write(f'   Sample: {", ".join(samples)}...')
+            if verbose and video_count > 0:
+                for f in sorted(animated_dir.iterdir())[:5]:
+                    size_mb = f.stat().st_size / (1024 * 1024)
+                    self.stdout.write(f'    - {f.name} ({size_mb:.1f} MB)')
+                if video_count > 5:
+                    self.stdout.write(f'    ... and {video_count - 5} more')
         else:
-            self.stdout.write(f'   ❌ Not found')
+            self.stdout.write(f'  Animated directory: (not found)')
 
-        # Scan signatures folder
-        signatures_dir = media_root / 'signatures'
+        # Database statistics
+        self.stdout.write(f'\n{"─" * 60}')
+        self.stdout.write('DATABASE STATISTICS')
+        self.stdout.write(f'{"─" * 60}')
 
-        self.stdout.write('\n📁 SIGNATURES FOLDER:')
+        total_postcards = Postcard.objects.count()
+        with_images = Postcard.objects.filter(has_images=True).count()
+        with_animation = Postcard.objects.filter(has_animation=True).count()
 
-        if signatures_dir.exists():
-            sigs = list(signatures_dir.glob('*'))
-            self.stdout.write(f'   Files: {len(sigs)}')
-        else:
-            self.stdout.write(f'   ❌ Not found (will be created)')
+        self.stdout.write(f'  Total postcards in DB: {total_postcards}')
+        self.stdout.write(f'  With images: {with_images}')
+        self.stdout.write(f'  With animations: {with_animation}')
 
-        self.stdout.write('\n' + '=' * 70)
+        # Disk space
+        self.stdout.write(f'\n{"─" * 60}')
+        self.stdout.write('DISK USAGE')
+        self.stdout.write(f'{"─" * 60}')
+
+        total_size = 0
+        for root, dirs, files in os.walk(media_root):
+            for f in files:
+                total_size += os.path.getsize(os.path.join(root, f))
+
+        size_mb = total_size / (1024 * 1024)
+        size_gb = total_size / (1024 * 1024 * 1024)
+
+        self.stdout.write(f'  Total size: {size_mb:.1f} MB ({size_gb:.2f} GB)')
+
+        self.stdout.write(f'\n{"=" * 60}\n')
