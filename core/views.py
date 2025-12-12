@@ -3,18 +3,17 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q, Count, Sum, Avg
-from django.db.models.functions import TruncDate, TruncHour
+from django.db.models import Q, Count
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 import traceback
 import json
 
 from .models import (
     CustomUser, Postcard, PostcardLike, AnimationSuggestion, Theme,
-    ContactMessage, SearchLog, PageView, UserActivity, SystemLog, IntroSeen
+    ContactMessage, SearchLog, PageView, UserActivity, SystemLog, IntroSeen,
+    SentPostcard, PostcardComment
 )
 from .forms import ContactForm, SimpleRegistrationForm
 
@@ -77,9 +76,7 @@ def intro(request):
     """Intro/Loading page"""
     mark_intro_seen(request)
     redirect_url = request.GET.get('next', '/')
-    return render(request, 'intro.html', {
-        'redirect_url': redirect_url
-    })
+    return render(request, 'intro.html', {'redirect_url': redirect_url})
 
 
 def home(request):
@@ -88,16 +85,13 @@ def home(request):
         if should_show_intro(request):
             return redirect(f'/intro/?next=/')
 
-        # Get animated postcards - check both local files and URLs
-        animated_postcards = Postcard.objects.filter(
-            Q(animated_url__isnull=False) & ~Q(animated_url='')
-        ).values_list('animated_url', flat=True)[:50]
-
+        # Get animated postcards for background video
         all_videos = []
-        for url_string in animated_postcards:
-            if url_string:
-                urls = [u.strip() for u in url_string.split(',') if u.strip()]
-                all_videos.extend(urls)
+        for postcard in Postcard.objects.all()[:100]:
+            urls = postcard.get_animated_urls()
+            all_videos.extend(urls)
+            if len(all_videos) >= 50:
+                break
 
         return render(request, 'home.html', {
             'animated_videos': all_videos[:50]
@@ -106,108 +100,16 @@ def home(request):
         return HttpResponse(f"<h1>Home Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
-def decouvrir(request):
-    """Découvrir page - 6 paintings with videos"""
-    try:
-        paintings = [
-            {
-                'title': "Ascenseur de la Terrasse",
-                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_1_Off.png',
-                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_1_Clic.png',
-                'video_id': '2hD8sSnelHs',
-            },
-            {
-                'title': "Accident de l'archevêché",
-                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_2_Off.png',
-                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_2_Clic.png',
-                'video_id': 'dQw4w9WgXcQ',
-            },
-            {
-                'title': "Bateau « Touriste »",
-                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_3_Off.png',
-                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_3_Clic.png',
-                'video_id': '6462WnYcRxo',
-            },
-            {
-                'title': "Machine de Marly",
-                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_4_Off.png',
-                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_4_Clic.png',
-                'video_id': 'h-bLPdvk4BU',
-            },
-            {
-                'title': "Yacht « Le Druide »",
-                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_5_Off.png',
-                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_5_Clic.png',
-                'video_id': 'J-VMocHfFb8',
-            },
-            {
-                'title': "La Pénichienne",
-                'image_off': 'https://collections.samathey.fr/decouvrir/static/Cadre_6_Off.png',
-                'image_on': 'https://collections.samathey.fr/decouvrir/static/Cadre_6_Clic.png',
-                'video_id': '0ftXAcvLukY',
-            },
-        ]
-        return render(request, 'decouvrir.html', {'paintings': paintings})
-    except Exception as e:
-        return HttpResponse(f"<h1>Découvrir Error</h1><pre>{traceback.format_exc()}</pre>")
-
-
-def animated_gallery(request):
-    """Animated postcards gallery page"""
-    try:
-        # Get postcards with animations - check both local files and legacy URLs
-        animated_postcards = Postcard.objects.filter(
-            Q(animated_url__isnull=False) & ~Q(animated_url='')
-        ).order_by('-likes_count', 'number')
-
-        user_likes = set()
-        if request.user.is_authenticated:
-            user_likes = set(
-                PostcardLike.objects.filter(
-                    user=request.user,
-                    is_animated_like=True
-                ).values_list('postcard_id', flat=True)
-            )
-        elif request.session.session_key:
-            user_likes = set(
-                PostcardLike.objects.filter(
-                    session_key=request.session.session_key,
-                    is_animated_like=True
-                ).values_list('postcard_id', flat=True)
-            )
-
-        context = {
-            'postcards': animated_postcards,
-            'user_likes': user_likes,
-            'total_count': animated_postcards.count(),
-        }
-
-        return render(request, 'animated_gallery.html', context)
-    except Exception as e:
-        return HttpResponse(f"<h1>Animated Gallery Error</h1><pre>{traceback.format_exc()}</pre>")
-
-
-@login_required
-def profile(request):
-    """User profile page"""
-    try:
-        context = {
-            'user': request.user,
-        }
-        return render(request, 'profile.html', context)
-    except Exception as e:
-        return HttpResponse(f"<h1>Profile Error</h1><pre>{traceback.format_exc()}</pre>")
-
-
 def browse(request):
-    """Browse page - FIXED to handle both local files and URL fields"""
+    """Browse page - search and display postcards"""
     try:
         query = request.GET.get('keywords_input', '').strip()
 
-        # Get all postcards first
+        # Start with all postcards
         postcards = Postcard.objects.all()
         themes = Theme.objects.all()
 
+        # Apply search filter
         if query:
             postcards = postcards.filter(
                 Q(title__icontains=query) |
@@ -215,6 +117,8 @@ def browse(request):
                 Q(number__icontains=query) |
                 Q(description__icontains=query)
             )
+
+            # Log search
             SearchLog.objects.create(
                 keyword=query,
                 results_count=postcards.count(),
@@ -222,12 +126,9 @@ def browse(request):
                 ip_address=get_client_ip(request)
             )
 
-        # FIXED: Filter postcards that have ANY image (local file OR URL)
-        # Check for vignette_image (local) OR vignette_url (legacy)
-        postcards_with_images = postcards.filter(
-            Q(vignette_image__isnull=False) & ~Q(vignette_image='') |
-            Q(vignette_url__isnull=False) & ~Q(vignette_url='')
-        )
+        # Convert to list and filter those with images
+        postcards_list = list(postcards[:200])
+        postcards_with_images = [p for p in postcards_list if p.has_vignette()]
 
         # Get user's likes
         user_likes = set()
@@ -246,15 +147,12 @@ def browse(request):
                 ).values_list('postcard_id', flat=True)
             )
 
-        # Get total count before limiting
-        total_count = postcards.count()
-
         context = {
             'postcards': postcards_with_images[:50],
             'themes': themes,
             'query': query,
-            'total_count': total_count,
-            'displayed_count': min(postcards_with_images.count(), 50),
+            'total_count': Postcard.objects.count(),
+            'displayed_count': min(len(postcards_with_images), 50),
             'slideshow_postcards': postcards_with_images[:20],
             'user': request.user,
             'user_likes': user_likes,
@@ -270,9 +168,12 @@ def get_postcard_detail(request, postcard_id):
     """API endpoint for postcard details"""
     try:
         postcard = Postcard.objects.get(id=postcard_id)
+
+        # Increment view count
         postcard.views_count += 1
         postcard.save(update_fields=['views_count'])
 
+        # Check if user has liked
         has_liked = False
         if request.user.is_authenticated:
             has_liked = PostcardLike.objects.filter(
@@ -287,6 +188,7 @@ def get_postcard_detail(request, postcard_id):
                 is_animated_like=False
             ).exists()
 
+        # Check view permissions for rare cards
         can_view_full = True
         if postcard.rarity == 'very_rare':
             if not request.user.is_authenticated:
@@ -329,104 +231,169 @@ def get_postcard_detail(request, postcard_id):
                 'has_liked': has_liked,
                 'is_restricted': False,
             }
+
         return JsonResponse(data)
+
     except Postcard.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
+
+
+def animated_gallery(request):
+    """Animated postcards gallery page"""
+    try:
+        # Get all postcards and filter those with animations
+        all_postcards = Postcard.objects.all().order_by('-likes_count', 'number')
+        animated_postcards = [p for p in all_postcards if p.has_animation()]
+
+        user_likes = set()
+        if request.user.is_authenticated:
+            user_likes = set(
+                PostcardLike.objects.filter(
+                    user=request.user,
+                    is_animated_like=True
+                ).values_list('postcard_id', flat=True)
+            )
+        elif request.session.session_key:
+            user_likes = set(
+                PostcardLike.objects.filter(
+                    session_key=request.session.session_key,
+                    is_animated_like=True
+                ).values_list('postcard_id', flat=True)
+            )
+
+        context = {
+            'postcards': animated_postcards,
+            'user_likes': user_likes,
+            'total_count': len(animated_postcards),
+        }
+
+        return render(request, 'animated_gallery.html', context)
+
+    except Exception as e:
+        return HttpResponse(f"<h1>Animated Gallery Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
 def gallery(request):
     """Gallery page"""
     try:
-        # FIXED: Get postcards with any image source
-        postcards = Postcard.objects.filter(
-            Q(vignette_image__isnull=False) & ~Q(vignette_image='') |
-            Q(vignette_url__isnull=False) & ~Q(vignette_url='')
-        ).order_by('?')[:50]
+        all_postcards = list(Postcard.objects.all().order_by('?')[:100])
+        postcards = [p for p in all_postcards if p.has_vignette()][:50]
 
-        context = {
+        return render(request, 'gallery.html', {
             'postcards': postcards,
             'user': request.user,
-        }
-
-        return render(request, 'gallery.html', context)
-
+        })
     except Exception as e:
         return HttpResponse(f"<h1>Gallery Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
 def presentation(request):
     """Presentation page"""
-    try:
-        return render(request, 'presentation.html')
-    except Exception as e:
-        return HttpResponse(f"<h1>Presentation Error</h1><pre>{traceback.format_exc()}</pre>")
+    return render(request, 'presentation.html')
+
+
+def decouvrir(request):
+    """Découvrir page - 6 paintings with videos"""
+    paintings = [
+        {
+            'title': "Ascenseur de la Terrasse",
+            'image_off': '/static/images/decouvrir/Cadre_1_Off.png',
+            'image_on': '/static/images/decouvrir/Cadre_1_Clic.png',
+            'video_id': '2hD8sSnelHs',
+        },
+        {
+            'title': "Accident de l'archevêché",
+            'image_off': '/static/images/decouvrir/Cadre_2_Off.png',
+            'image_on': '/static/images/decouvrir/Cadre_2_Clic.png',
+            'video_id': 'dQw4w9WgXcQ',
+        },
+        {
+            'title': "Bateau « Touriste »",
+            'image_off': '/static/images/decouvrir/Cadre_3_Off.png',
+            'image_on': '/static/images/decouvrir/Cadre_3_Clic.png',
+            'video_id': '6462WnYcRxo',
+        },
+        {
+            'title': "Machine de Marly",
+            'image_off': '/static/images/decouvrir/Cadre_4_Off.png',
+            'image_on': '/static/images/decouvrir/Cadre_4_Clic.png',
+            'video_id': 'h-bLPdvk4BU',
+        },
+        {
+            'title': "Yacht « Le Druide »",
+            'image_off': '/static/images/decouvrir/Cadre_5_Off.png',
+            'image_on': '/static/images/decouvrir/Cadre_5_Clic.png',
+            'video_id': 'J-VMocHfFb8',
+        },
+        {
+            'title': "La Pénichienne",
+            'image_off': '/static/images/decouvrir/Cadre_6_Off.png',
+            'image_on': '/static/images/decouvrir/Cadre_6_Clic.png',
+            'video_id': '0ftXAcvLukY',
+        },
+    ]
+    return render(request, 'decouvrir.html', {'paintings': paintings})
 
 
 def contact(request):
     """Contact page"""
-    try:
-        if request.method == 'POST':
-            form = ContactForm(request.POST)
-            if form.is_valid():
-                message = form.save(commit=False)
-                if request.user.is_authenticated:
-                    message.user = request.user
-                message.ip_address = get_client_ip(request)
-                message.save()
-                return render(request, 'contact.html', {'form': ContactForm(), 'success': True})
-        else:
-            form = ContactForm()
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            message = form.save(commit=False)
+            if request.user.is_authenticated:
+                message.user = request.user
+            message.ip_address = get_client_ip(request)
+            message.save()
+            return render(request, 'contact.html', {'form': ContactForm(), 'success': True})
+    else:
+        form = ContactForm()
 
-        return render(request, 'contact.html', {'form': form})
-
-    except Exception as e:
-        return HttpResponse(f"<h1>Contact Error</h1><pre>{traceback.format_exc()}</pre>")
+    return render(request, 'contact.html', {'form': form})
 
 
 def register(request):
     """Registration page"""
-    try:
-        if request.method == 'POST':
-            form = SimpleRegistrationForm(request.POST)
-            if form.is_valid():
-                user = form.save()
-                login(request, user)
-                return redirect('home')
-        else:
-            form = SimpleRegistrationForm()
+    if request.method == 'POST':
+        form = SimpleRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('home')
+    else:
+        form = SimpleRegistrationForm()
 
-        return render(request, 'register.html', {'form': form})
-
-    except Exception as e:
-        return HttpResponse(f"<h1>Register Error</h1><pre>{traceback.format_exc()}</pre>")
+    return render(request, 'register.html', {'form': form})
 
 
 def login_view(request):
     """Login page"""
-    try:
-        error = None
-        if request.method == 'POST':
-            username = request.POST.get('username')
-            password = request.POST.get('password')
-            user = authenticate(request, username=username, password=password)
+    error = None
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
 
-            if user is not None:
-                login(request, user)
-                next_url = request.GET.get('next', '/')
-                return redirect(next_url)
-            else:
-                error = "Nom d'utilisateur ou mot de passe incorrect."
+        if user is not None:
+            login(request, user)
+            next_url = request.GET.get('next', '/')
+            return redirect(next_url)
+        else:
+            error = "Nom d'utilisateur ou mot de passe incorrect."
 
-        return render(request, 'login.html', {'error': error})
-
-    except Exception as e:
-        return HttpResponse(f"<h1>Login Error</h1><pre>{traceback.format_exc()}</pre>")
+    return render(request, 'login.html', {'error': error})
 
 
 def logout_view(request):
     """Logout"""
     logout(request)
     return redirect('home')
+
+
+@login_required
+def profile(request):
+    """User profile page"""
+    return render(request, 'profile.html', {'user': request.user})
 
 
 def zoom_postcard(request, postcard_id):
@@ -511,7 +478,7 @@ def suggest_animation(request, postcard_id):
         if len(description) < 10:
             return JsonResponse({'error': 'Description too short'}, status=400)
 
-        suggestion = AnimationSuggestion.objects.create(
+        AnimationSuggestion.objects.create(
             postcard=postcard,
             user=request.user if request.user.is_authenticated else None,
             description=description,
@@ -533,53 +500,56 @@ def suggest_animation(request, postcard_id):
 
 @user_passes_test(is_admin)
 def admin_dashboard(request):
-    """Custom admin dashboard with enhanced metrics"""
+    """Custom admin dashboard"""
     try:
         today = timezone.now().date()
         week_ago = today - timedelta(days=7)
         month_ago = today - timedelta(days=30)
 
+        # User stats
         total_users = CustomUser.objects.count()
         new_users_week = CustomUser.objects.filter(date_joined__date__gte=week_ago).count()
         new_users_month = CustomUser.objects.filter(date_joined__date__gte=month_ago).count()
 
+        # Postcard stats
         total_postcards = Postcard.objects.count()
 
-        # Count postcards with images (either local or URL)
-        postcards_with_images = Postcard.objects.filter(
-            Q(vignette_image__isnull=False) & ~Q(vignette_image='') |
-            Q(vignette_url__isnull=False) & ~Q(vignette_url='')
-        ).count()
+        # Sample postcards for image/animation counts
+        all_postcards = list(Postcard.objects.all()[:500])
+        postcards_with_images = sum(1 for p in all_postcards if p.has_vignette())
+        animated_postcards = sum(1 for p in all_postcards if p.has_animation())
 
-        animated_postcards = Postcard.objects.filter(
-            Q(animated_url__isnull=False) & ~Q(animated_url='')
-        ).count()
-
+        # Engagement stats
         total_likes = PostcardLike.objects.count()
         likes_week = PostcardLike.objects.filter(created_at__date__gte=week_ago).count()
         total_suggestions = AnimationSuggestion.objects.count()
         pending_suggestions = AnimationSuggestion.objects.filter(status='pending').count()
 
+        # Search stats
         total_searches = SearchLog.objects.count()
         today_searches = SearchLog.objects.filter(created_at__date=today).count()
         week_searches = SearchLog.objects.filter(created_at__date__gte=week_ago).count()
 
+        # Page view stats
         total_views = PageView.objects.count()
         today_views = PageView.objects.filter(timestamp__date=today).count()
         week_views = PageView.objects.filter(timestamp__date__gte=week_ago).count()
 
+        # Top content
         top_postcards = Postcard.objects.order_by('-views_count')[:10]
         top_liked = Postcard.objects.order_by('-likes_count')[:10]
         top_searches = SearchLog.objects.values('keyword').annotate(
             count=Count('id')
         ).order_by('-count')[:10]
 
+        # Recent activity
         recent_users = CustomUser.objects.order_by('-date_joined')[:10]
         recent_searches = SearchLog.objects.order_by('-created_at')[:15]
         recent_messages = ContactMessage.objects.order_by('-created_at')[:10]
         recent_suggestions = AnimationSuggestion.objects.order_by('-created_at')[:10]
         recent_likes = PostcardLike.objects.order_by('-created_at')[:20]
 
+        # User categories
         user_categories = {
             'unverified': CustomUser.objects.filter(category='subscribed_unverified').count(),
             'verified': CustomUser.objects.filter(category='subscribed_verified').count(),
@@ -588,6 +558,7 @@ def admin_dashboard(request):
             'staff': CustomUser.objects.filter(is_staff=True).count(),
         }
 
+        # Daily stats for chart
         daily_stats = []
         for i in range(14):
             date = today - timedelta(days=13 - i)
@@ -644,60 +615,31 @@ def admin_stats_api(request):
     try:
         today = timezone.now().date()
 
+        # Daily views
         daily_views = []
         for i in range(14):
             date = today - timedelta(days=13 - i)
             count = PageView.objects.filter(timestamp__date=date).count()
-            daily_views.append({
-                'date': date.strftime('%d/%m'),
-                'count': count
-            })
+            daily_views.append({'date': date.strftime('%d/%m'), 'count': count})
 
+        # Daily searches
         daily_searches = []
         for i in range(14):
             date = today - timedelta(days=13 - i)
             count = SearchLog.objects.filter(created_at__date=date).count()
-            daily_searches.append({
-                'date': date.strftime('%d/%m'),
-                'count': count
-            })
+            daily_searches.append({'date': date.strftime('%d/%m'), 'count': count})
 
-        daily_likes = []
-        for i in range(14):
-            date = today - timedelta(days=13 - i)
-            count = PostcardLike.objects.filter(created_at__date=date).count()
-            daily_likes.append({
-                'date': date.strftime('%d/%m'),
-                'count': count
-            })
-
-        top_searches = SearchLog.objects.values('keyword').annotate(
-            count=Count('id')
-        ).order_by('-count')[:10]
-
-        hourly_views = []
-        for hour in range(24):
-            count = PageView.objects.filter(
-                timestamp__date=today,
-                timestamp__hour=hour
-            ).count()
-            hourly_views.append({
-                'hour': f'{hour:02d}:00',
-                'count': count
-            })
+        # Count animated postcards
+        all_postcards = list(Postcard.objects.all()[:500])
+        animated_count = sum(1 for p in all_postcards if p.has_animation())
 
         return JsonResponse({
             'daily_views': daily_views,
             'daily_searches': daily_searches,
-            'daily_likes': daily_likes,
-            'hourly_views': hourly_views,
-            'top_searches': list(top_searches),
             'total_users': CustomUser.objects.count(),
             'total_postcards': Postcard.objects.count(),
             'total_likes': PostcardLike.objects.count(),
-            'animated_count': Postcard.objects.filter(
-                Q(animated_url__isnull=False) & ~Q(animated_url='')
-            ).count(),
+            'animated_count': animated_count,
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -742,14 +684,12 @@ def admin_user_detail(request, user_id):
 
         elif request.method == 'PUT':
             data = json.loads(request.body)
-
             if 'category' in data:
                 user.category = data['category']
             if 'is_active' in data:
                 user.is_active = data['is_active']
             if 'is_staff' in data and request.user.is_superuser:
                 user.is_staff = data['is_staff']
-
             user.save()
             return JsonResponse({'success': True})
 
@@ -777,12 +717,12 @@ def admin_postcards_api(request):
             'rarity': p.rarity,
             'views_count': p.views_count,
             'likes_count': p.likes_count,
-            'has_vignette': bool(p.vignette_image) or bool(p.vignette_url),
-            'has_grande': bool(p.grande_image) or bool(p.grande_url),
-            'has_dos': bool(p.dos_image) or bool(p.dos_url),
-            'has_zoom': bool(p.zoom_image) or bool(p.zoom_url),
-            'has_animated': bool(p.animated_url),
-            'animated_count': len(p.get_animated_urls()),
+            'has_vignette': p.has_vignette(),
+            'has_grande': bool(p.get_grande_url()),
+            'has_dos': bool(p.get_dos_url()),
+            'has_zoom': bool(p.get_zoom_url()),
+            'has_animated': p.has_animation(),
+            'animated_count': p.video_count(),
         } for p in postcards]
         return JsonResponse({'postcards': data, 'total': Postcard.objects.count()})
 
@@ -822,7 +762,6 @@ def admin_postcard_detail(request, postcard_id):
                 'grande_url': postcard.get_grande_url(),
                 'dos_url': postcard.get_dos_url(),
                 'zoom_url': postcard.get_zoom_url(),
-                'animated_url': postcard.animated_url,
                 'animated_urls': postcard.get_animated_urls(),
                 'views_count': postcard.views_count,
                 'zoom_count': postcard.zoom_count,
@@ -831,12 +770,9 @@ def admin_postcard_detail(request, postcard_id):
 
         elif request.method == 'PUT':
             data = json.loads(request.body)
-
-            for field in ['number', 'title', 'description', 'keywords', 'rarity',
-                          'vignette_url', 'grande_url', 'dos_url', 'zoom_url', 'animated_url']:
+            for field in ['number', 'title', 'description', 'keywords', 'rarity']:
                 if field in data:
                     setattr(postcard, field, data[field])
-
             postcard.save()
             return JsonResponse({'success': True})
 
@@ -891,10 +827,12 @@ def admin_suggestion_detail(request, suggestion_id):
 
 
 def update_user_category(request, user_id):
+    """Legacy endpoint"""
     return admin_user_detail(request, user_id)
 
 
 def delete_user(request, user_id):
+    """Legacy endpoint"""
     return admin_user_detail(request, user_id)
 
 
@@ -903,7 +841,6 @@ def admin_next_postcard_number(request):
     """Get the next available postcard number"""
     try:
         last_postcard = Postcard.objects.order_by('-number').first()
-
         if last_postcard:
             num_str = ''.join(filter(str.isdigit, str(last_postcard.number)))
             if num_str:
@@ -921,8 +858,9 @@ def admin_next_postcard_number(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-from .models import SentPostcard, PostcardComment
-
+# ============================================
+# LA POSTE - SOCIAL HUB VIEWS
+# ============================================
 
 @login_required
 def la_poste(request):
@@ -945,10 +883,8 @@ def la_poste(request):
     ).count()
 
     # Get postcards with images for selection
-    available_postcards = Postcard.objects.filter(
-        Q(vignette_image__isnull=False) & ~Q(vignette_image='') |
-        Q(vignette_url__isnull=False) & ~Q(vignette_url='')
-    )[:50]
+    all_postcards = list(Postcard.objects.all()[:100])
+    available_postcards = [p for p in all_postcards if p.has_vignette()][:50]
 
     context = {
         'received_postcards': received,

@@ -1,6 +1,5 @@
 # core/urls.py
 from django.urls import path
-from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
@@ -28,13 +27,6 @@ urlpatterns = [
     path('api/profile/update/', views.update_profile, name='update_profile'),
     path('api/profile/signature/', views.upload_signature, name='upload_signature'),
 
-    # Search API
-    path('api/search/', views.admin_postcards_api, name='search_postcards_api'),
-
-    # REMOVED: Image proxy routes (no longer needed)
-    # path('images/<str:image_type>/<str:number>.jpg', views.serve_postcard_image, name='serve_image'),
-    # path('api/check-images/', views.check_ftp_images, name='check_images'),
-
     # Admin Dashboard
     path('tableau-de-bord/', views.admin_dashboard, name='admin_dashboard'),
     path('api/admin/stats/', views.admin_stats_api, name='admin_stats_api'),
@@ -52,10 +44,8 @@ urlpatterns = [
     path('api/postcard/<int:postcard_id>/like/', views.like_postcard, name='postcard_like'),
     path('api/postcard/<int:postcard_id>/suggest/', views.suggest_animation, name='suggest_animation'),
 
-    # Legacy
+    # Legacy URLs
     path('admin/update-user/<int:user_id>/', views.update_user_category, name='update_user_category'),
     path('admin/delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
-
-    # Redirects for old URLs
     path('galerie/', views.decouvrir, name='gallery'),
 ]

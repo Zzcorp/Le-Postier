@@ -1,5 +1,5 @@
+# core/forms.py
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser, ContactMessage
 import secrets
 
@@ -14,7 +14,6 @@ class ContactForm(forms.ModelForm):
                 'class': 'contact_text',
                 'placeholder': 'Texte...',
                 'required': True,
-                'oninput': 'capitalizeFirstLetter(this)'
             })
         }
 
@@ -55,7 +54,6 @@ class SimpleRegistrationForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        # Generate a random password since we're not using passwords for now
         random_password = secrets.token_urlsafe(16)
         user.set_password(random_password)
         user.category = 'subscribed_unverified'
@@ -63,6 +61,4 @@ class SimpleRegistrationForm(forms.ModelForm):
 
         if commit:
             user.save()
-            # TODO: Send email with verification link
-            # For now, you can manually verify users through admin
         return user

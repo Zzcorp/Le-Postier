@@ -1,6 +1,7 @@
 # le_postier/settings.py
 """
 Django settings for le_postier project.
+Configured for local media storage on Render disk.
 """
 
 import os
@@ -16,9 +17,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-8d0)r5bhf(r85cg*u_vbk
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = [
-    '*'
-]
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
@@ -40,6 +39,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.MediaServeMiddleware',
 ]
 
 ROOT_URLCONF = 'le_postier.urls'
@@ -63,8 +63,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'le_postier.wsgi.application'
 
-# Database - PostgreSQL for Render
-DATABASE_URL = config('DATABASE_URL', default='postgresql://zzcorp:fmh3PWJY625Dlt3gizh2v1jMwAavxHhJ@dpg-d4m741chg0os73blg3sg-a.frankfurt-postgres.render.com/z_data_db_zyx')
+# Database
+DATABASE_URL = config('DATABASE_URL', default='')
 
 if DATABASE_URL:
     DATABASES = {
@@ -73,12 +73,8 @@ if DATABASE_URL:
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME', default='le_postier_db'),
-            'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD'),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='5432'),
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 
@@ -87,18 +83,10 @@ AUTH_USER_MODEL = 'core.CustomUser'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 # Internationalization
@@ -111,73 +99,42 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-
-WHITENOISE_USE_FINDERS = True
-WHITENOISE_AUTOREFRESH = True
-
-# WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files - NOW STORED LOCALLY ON RENDER
+# =============================================================================
+# MEDIA FILES - LOCAL STORAGE ON RENDER DISK
+# =============================================================================
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
 
-# Create media subdirectories
-POSTCARD_IMAGES_DIR = MEDIA_ROOT / 'postcards'
-ANIMATED_VIDEOS_DIR = MEDIA_ROOT / 'animated_cp'
-SIGNATURES_DIR = MEDIA_ROOT / 'signatures'
+# On Render, use the mounted disk path
+# Set MEDIA_ROOT via environment variable for flexibility
+MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
 
-# Ensure directories exist
-for directory in [POSTCARD_IMAGES_DIR, ANIMATED_VIDEOS_DIR, SIGNATURES_DIR]:
-    directory.mkdir(parents=True, exist_ok=True)
+# Expected directory structure:
+# media/
+#   postcards/
+#     Vignette/    -> 000001.jpg, 000002.jpg, ...
+#     Grande/      -> 000001.jpg, 000002.jpg, ...
+#     Dos/         -> 000001.jpg, 000002.jpg, ...
+#     Zoom/        -> 000001.jpg, 000002.jpg, ...
+#   animated_cp/   -> 000001.mp4, 000001_0.mp4, 000001_1.mp4, ...
+#   signatures/    -> user signatures
+
+# Create directories on startup
+POSTCARD_DIRS = ['Vignette', 'Grande', 'Dos', 'Zoom']
+for subdir in POSTCARD_DIRS:
+    (MEDIA_ROOT / 'postcards' / subdir).mkdir(parents=True, exist_ok=True)
+(MEDIA_ROOT / 'animated_cp').mkdir(parents=True, exist_ok=True)
+(MEDIA_ROOT / 'signatures').mkdir(parents=True, exist_ok=True)
+
+# =============================================================================
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-
-# CORS Settings
-CORS_ALLOWED_ORIGINS = [
-    "https://le-postier.onrender.com",
-    "http://localhost:8000",
-]
-
-# Security Settings
-SECURE_SSL_REDIRECT = False
-SECURE_BROWSER_XSS_FILTER = False
-SECURE_CONTENT_TYPE_NOSNIFF = False
-X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 # Login/Logout URLs
 LOGIN_URL = '/connexion/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
-
-# Disable HSTS
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
-
-# Logging
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-}
 
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
@@ -186,10 +143,40 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
 ]
 
-CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_HTTPONLY = False
-CSRF_USE_SESSIONS = False
-
-# Session settings
+# Security Settings (relaxed for development, tighten for production)
+SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SECURE = False
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'core': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
