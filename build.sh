@@ -1,43 +1,41 @@
 #!/usr/bin/env bash
+# build.sh - Build script for Render deployment
+
 set -o errexit
 
-echo "Starting build process..."
-echo "Python version: $(python --version)"
+echo "=== Starting build process ==="
 
-# Upgrade pip
-python -m pip install --upgrade pip wheel setuptools
-
-# Install dependencies
-echo "Installing Python dependencies..."
-python -m pip install -r requirements.txt
+# Install Python dependencies
+echo "Installing dependencies..."
+pip install -r requirements.txt
 
 # Collect static files
 echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
-# Run migrations
+# Run database migrations
 echo "Running migrations..."
 python manage.py migrate
 
-# Create superuser
-echo "Checking for superuser..."
-python manage.py shell << END
-from django.contrib.auth import get_user_model
-User = get_user_model()
-if not User.objects.filter(username='samathey').exists():
-    try:
-        User.objects.create_superuser(
-            username='samathey',
-            email='sam@samathey.com',
-            password='Elpatron78!',
-            category='viewer',
-            email_verified=True
-        )
-        print('Superuser created successfully.')
-    except Exception as e:
-        print(f'Error creating superuser: {e}')
-else:
-    print('Superuser already exists.')
-END
+# Create admin user
+echo "Creating admin user..."
+python manage.py create_admin || true
 
-echo "Build completed successfully!"
+# Scan media folder and show stats
+echo "Scanning media folder..."
+python manage.py scan_media || true
+
+# Create postcard entries from images if database is empty
+POSTCARD_COUNT=$(python -c "
+import django
+django.setup()
+from core.models import Postcard
+print(Postcard.objects.count())
+" 2>/dev/null || echo "0")
+
+if [ "$POSTCARD_COUNT" = "0" ]; then
+    echo "Database is empty, creating postcards from images..."
+    python manage.py import_postcards_from_csv --create-from-images || true
+fi
+
+echo "=== Build completed successfully! ==="
