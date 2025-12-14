@@ -194,6 +194,14 @@ class Postcard(models.Model):
         self.has_animation = self.check_has_animation()
         self.save(update_fields=['has_images', 'has_animation'])
 
+    def has_vignette(self):
+        """Alias for check_has_vignette for compatibility"""
+        return self.check_has_vignette()
+
+    def has_animation(self):
+        """Alias for check_has_animation for compatibility"""
+        return self.check_has_animation()
+
 
 class PostcardLike(models.Model):
     postcard = models.ForeignKey(Postcard, on_delete=models.CASCADE, related_name='likes')

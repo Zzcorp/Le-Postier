@@ -128,7 +128,8 @@ def browse(request):
 
         # Convert to list and filter those with images
         postcards_list = list(postcards[:200])
-        postcards_with_images = [p for p in postcards_list if p.has_vignette()]
+        # FIX: Use check_has_vignette() instead of has_vignette()
+        postcards_with_images = [p for p in postcards_list if p.check_has_vignette()]
 
         # Get user's likes
         user_likes = set()
@@ -243,7 +244,8 @@ def animated_gallery(request):
     try:
         # Get all postcards and filter those with animations
         all_postcards = Postcard.objects.all().order_by('-likes_count', 'number')
-        animated_postcards = [p for p in all_postcards if p.has_animation()]
+        # FIX: Use check_has_animation() instead of has_animation()
+        animated_postcards = [p for p in all_postcards if p.check_has_animation()]
 
         user_likes = set()
         if request.user.is_authenticated:
