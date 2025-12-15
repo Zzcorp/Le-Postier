@@ -145,7 +145,7 @@ class Command(BaseCommand):
 
     def download_csv(self, ftp, options):
         """Download CSV file from FTP and parse it"""
-        csv_path = options.get('csv_file') or f"{options['ftp_path']}/postcards.csv"
+        csv_path = options.get('csv_file') or f"{options['ftp_path']}/cartes/postcards.csv"
 
         self.stdout.write(f'Attempting to download CSV from {csv_path}...')
 
@@ -310,7 +310,7 @@ class Command(BaseCommand):
         self.stdout.write('\nDownloading videos...')
 
         ftp_base = options['ftp_path']
-        ftp_folder = f"{ftp_base}/animated_cp"
+        ftp_folder = f"{ftp_base}/cartes/animated_cp"
 
         # Create local directory
         local_dir = Path(settings.MEDIA_ROOT) / 'animated_cp'
