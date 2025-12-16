@@ -1,39 +1,31 @@
-#!/bin/bash
-# fix_postcards.sh
-# Run this script to fix all postcard issues
+#!/usr/bin/env bash
+# build.sh
 
-echo "=============================================="
-echo "POSTCARD COLLECTION FIX SCRIPT"
-echo "=============================================="
+set -o errexit
 
-# Step 1: Run diagnostic
-echo ""
-echo "Step 1: Running diagnostic..."
-python manage.py full_media_diagnostic --verbose
+echo "=== Starting build process ==="
 
-# Step 2: Ask for CSV/SQL file location
-echo ""
-echo "Step 2: Import data"
-read -p "Enter path to your CSV or SQL file: " DATA_FILE
+pip install -r requirements.txt
 
-if [ -f "$DATA_FILE" ]; then
-    echo "Importing data from: $DATA_FILE"
-    python manage.py import_data_complete "$DATA_FILE" --update
-else
-    echo "File not found: $DATA_FILE"
+echo "Collecting static files..."
+python manage.py collectstatic --no-input
+
+echo "Running migrations..."
+python manage.py migrate
+
+echo "Creating admin user..."
+python manage.py create_admin || true
+
+# Check if migration should run
+if [ "$RUN_OVH_MIGRATION" = "false" ]; then
+    echo "Running OVH migration..."
+    python manage.py migrate_from_ovh \
+      --ftp-host=${OVH_FTP_HOST} \
+      --ftp-user=${OVH_FTP_USER} \
+      --ftp-pass=${OVH_FTP_PASS} \
+      --generate-csv
+    
+    echo "Migration completed!"
 fi
 
-# Step 3: Update postcard flags
-echo ""
-echo "Step 3: Updating postcard flags..."
-python manage.py update_postcard_flags
-
-# Step 4: Final diagnostic
-echo ""
-echo "Step 4: Final diagnostic..."
-python manage.py full_media_diagnostic
-
-echo ""
-echo "=============================================="
-echo "COMPLETE"
-echo "=============================================="
+echo "=== Build completed ==="
