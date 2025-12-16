@@ -47,6 +47,7 @@ urlpatterns = [
     path('api/postcard/<int:postcard_id>/zoom/', views.zoom_postcard, name='postcard_zoom'),
     path('api/postcard/<int:postcard_id>/like/', views.like_postcard, name='postcard_like'),
     path('api/postcard/<int:postcard_id>/suggest/', views.suggest_animation, name='suggest_animation'),
+    path('api/debug/postcard/<int:postcard_id>/', views.debug_postcard_images, name='debug_postcard'),
 
     # Legacy URLs
     path('admin/update-user/<int:user_id>/', views.update_user_category, name='update_user_category'),

@@ -203,6 +203,47 @@ class Postcard(models.Model):
         """Alias for check_has_vignette for compatibility"""
         return self.check_has_vignette()
 
+    # Add this method to your Postcard model for debugging
+    def debug_image_paths(self):
+        """Debug image path resolution"""
+        from django.conf import settings
+        from pathlib import Path
+
+        padded = self.get_padded_number()
+        results = {}
+
+        for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
+            base_path = Path(settings.MEDIA_ROOT) / 'postcards' / folder
+            results[folder] = {
+                'base_path': str(base_path),
+                'exists': base_path.exists(),
+                'files_checked': [],
+                'found': None
+            }
+
+            for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
+                file_path = base_path / f'{padded}{ext}'
+                results[folder]['files_checked'].append(str(file_path))
+                if file_path.exists():
+                    results[folder]['found'] = str(file_path)
+                    break
+
+        # Check animated
+        animated_path = Path(settings.MEDIA_ROOT) / 'animated_cp'
+        results['animated'] = {
+            'base_path': str(animated_path),
+            'exists': animated_path.exists(),
+            'found': []
+        }
+
+        if animated_path.exists():
+            for ext in ['.mp4', '.webm']:
+                file_path = animated_path / f'{padded}{ext}'
+                if file_path.exists():
+                    results['animated']['found'].append(str(file_path))
+
+        return results
+
 
 class PostcardLike(models.Model):
     postcard = models.ForeignKey(Postcard, on_delete=models.CASCADE, related_name='likes')

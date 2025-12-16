@@ -1204,3 +1204,34 @@ def admin_media_stats(request):
         stats['total_size_mb'] = round(total_size / (1024 * 1024), 2)
 
     return JsonResponse(stats)
+
+
+# Add to core/views.py
+@user_passes_test(is_admin)
+def debug_postcard_images(request, postcard_id):
+    """Debug endpoint to check image paths for a postcard"""
+    try:
+        postcard = Postcard.objects.get(id=postcard_id)
+        debug_info = {
+            'postcard': {
+                'id': postcard.id,
+                'number': postcard.number,
+                'padded_number': postcard.get_padded_number(),
+            },
+            'urls': {
+                'vignette': postcard.get_vignette_url(),
+                'grande': postcard.get_grande_url(),
+                'dos': postcard.get_dos_url(),
+                'zoom': postcard.get_zoom_url(),
+                'animated': postcard.get_animated_urls(),
+            },
+            'paths': postcard.debug_image_paths() if hasattr(postcard, 'debug_image_paths') else 'Method not available',
+            'settings': {
+                'MEDIA_ROOT': str(settings.MEDIA_ROOT),
+                'MEDIA_URL': settings.MEDIA_URL,
+            }
+        }
+        return JsonResponse(debug_info, json_dumps_params={'indent': 2})
+    except Postcard.DoesNotExist:
+        return JsonResponse({'error': 'Postcard not found'}, status=404)
+
