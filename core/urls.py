@@ -53,4 +53,6 @@ urlpatterns = [
     path('admin/update-user/<int:user_id>/', views.update_user_category, name='update_user_category'),
     path('admin/delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
     path('galerie/', views.decouvrir, name='gallery'),
+
+    path('debug/browse/', views.debug_browse, name='debug_browse'),
 ]

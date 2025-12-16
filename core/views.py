@@ -100,6 +100,8 @@ def home(request):
         return HttpResponse(f"<h1>Home Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
+# In core/views.py - Update the browse function
+
 def browse(request):
     """Browse page - search and display postcards"""
     try:
@@ -126,10 +128,17 @@ def browse(request):
                 ip_address=get_client_ip(request)
             )
 
-        # Convert to list and filter those with images
-        postcards_list = list(postcards[:200])
-        # FIX: Use check_has_vignette() instead of has_vignette()
-        postcards_with_images = [p for p in postcards_list if p.check_has_vignette()]
+        # Get postcards and check for images
+        postcards_list = list(postcards.order_by('number')[:500])
+
+        # Filter those with images - using method that actually checks file existence
+        postcards_with_images = []
+        for p in postcards_list:
+            vignette_url = p.get_vignette_url()
+            if vignette_url:
+                postcards_with_images.append(p)
+            if len(postcards_with_images) >= 100:  # Limit for performance
+                break
 
         # Get user's likes
         user_likes = set()
@@ -153,7 +162,7 @@ def browse(request):
             'themes': themes,
             'query': query,
             'total_count': Postcard.objects.count(),
-            'displayed_count': min(len(postcards_with_images), 50),
+            'displayed_count': len(postcards_with_images[:50]),
             'slideshow_postcards': postcards_with_images[:20],
             'user': request.user,
             'user_likes': user_likes,
@@ -162,7 +171,51 @@ def browse(request):
         return render(request, 'browse.html', context)
 
     except Exception as e:
+        import traceback
         return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
+
+
+def animated_gallery(request):
+    """Animated postcards gallery page"""
+    try:
+        # Get all postcards that have animations
+        all_postcards = Postcard.objects.all().order_by('-likes_count', 'number')
+
+        # Filter to only those with actual animation files
+        animated_postcards = []
+        for postcard in all_postcards:
+            if postcard.get_animated_urls():  # This checks for actual files
+                animated_postcards.append(postcard)
+                if len(animated_postcards) >= 100:  # Limit for performance
+                    break
+
+        user_likes = set()
+        if request.user.is_authenticated:
+            user_likes = set(
+                PostcardLike.objects.filter(
+                    user=request.user,
+                    is_animated_like=True
+                ).values_list('postcard_id', flat=True)
+            )
+        elif request.session.session_key:
+            user_likes = set(
+                PostcardLike.objects.filter(
+                    session_key=request.session.session_key,
+                    is_animated_like=True
+                ).values_list('postcard_id', flat=True)
+            )
+
+        context = {
+            'postcards': animated_postcards,
+            'user_likes': user_likes,
+            'total_count': len(animated_postcards),
+        }
+
+        return render(request, 'animated_gallery.html', context)
+
+    except Exception as e:
+        import traceback
+        return HttpResponse(f"<h1>Animated Gallery Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
 def get_postcard_detail(request, postcard_id):
@@ -237,42 +290,6 @@ def get_postcard_detail(request, postcard_id):
 
     except Postcard.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
-
-
-def animated_gallery(request):
-    """Animated postcards gallery page"""
-    try:
-        # Get all postcards and filter those with animations
-        all_postcards = Postcard.objects.all().order_by('-likes_count', 'number')
-        # FIX: Use check_has_animation() instead of has_animation()
-        animated_postcards = [p for p in all_postcards if p.check_has_animation()]
-
-        user_likes = set()
-        if request.user.is_authenticated:
-            user_likes = set(
-                PostcardLike.objects.filter(
-                    user=request.user,
-                    is_animated_like=True
-                ).values_list('postcard_id', flat=True)
-            )
-        elif request.session.session_key:
-            user_likes = set(
-                PostcardLike.objects.filter(
-                    session_key=request.session.session_key,
-                    is_animated_like=True
-                ).values_list('postcard_id', flat=True)
-            )
-
-        context = {
-            'postcards': animated_postcards,
-            'user_likes': user_likes,
-            'total_count': len(animated_postcards),
-        }
-
-        return render(request, 'animated_gallery.html', context)
-
-    except Exception as e:
-        return HttpResponse(f"<h1>Animated Gallery Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
 def gallery(request):
@@ -1206,7 +1223,6 @@ def admin_media_stats(request):
     return JsonResponse(stats)
 
 
-# Add to core/views.py
 @user_passes_test(is_admin)
 def debug_postcard_images(request, postcard_id):
     """Debug endpoint to check image paths for a postcard"""
@@ -1235,3 +1251,41 @@ def debug_postcard_images(request, postcard_id):
     except Postcard.DoesNotExist:
         return JsonResponse({'error': 'Postcard not found'}, status=404)
 
+
+# Add to core/views.py
+
+def debug_browse(request):
+    """Debug view to check postcard images"""
+    from django.conf import settings
+    from pathlib import Path
+
+    output = []
+    output.append(f"MEDIA_ROOT: {settings.MEDIA_ROOT}")
+    output.append(f"MEDIA_URL: {settings.MEDIA_URL}")
+    output.append("")
+
+    # Check folders
+    media_root = Path(settings.MEDIA_ROOT)
+    for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
+        folder_path = media_root / 'postcards' / folder
+        if folder_path.exists():
+            files = list(folder_path.glob('*.*'))
+            output.append(f"{folder}: {len(files)} files")
+            if files[:3]:
+                output.append(f"  Sample: {', '.join(f.name for f in files[:3])}")
+        else:
+            output.append(f"{folder}: NOT FOUND")
+
+    output.append("")
+
+    # Check database
+    total = Postcard.objects.count()
+    output.append(f"Database: {total} postcards")
+
+    # Check first 5 postcards
+    postcards = Postcard.objects.all()[:5]
+    for p in postcards:
+        vignette = p.get_vignette_url()
+        output.append(f"  {p.number}: vignette={vignette or 'NOT FOUND'}")
+
+    return HttpResponse("<pre>" + "\n".join(output) + "</pre>")

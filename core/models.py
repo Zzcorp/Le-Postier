@@ -109,14 +109,29 @@ class Postcard(models.Model):
         Find image file in local media folder.
         Returns the URL if found, empty string otherwise.
         """
+        from django.conf import settings
+        from pathlib import Path
+
         padded = self.get_padded_number()
         base_path = Path(settings.MEDIA_ROOT) / 'postcards' / folder
 
-        # Check for different extensions
-        for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG', '.gif', '.GIF']:
+        if not base_path.exists():
+            return ''
+
+        # Check for different extensions and case variations
+        extensions = ['.jpg', '.jpeg', '.png', '.gif', '.JPG', '.JPEG', '.PNG', '.GIF']
+
+        for ext in extensions:
             file_path = base_path / f'{padded}{ext}'
             if file_path.exists():
                 return f'{settings.MEDIA_URL}postcards/{folder}/{padded}{ext}'
+
+        # Also try without padding (original number)
+        original_num = str(self.number).strip()
+        for ext in extensions:
+            file_path = base_path / f'{original_num}{ext}'
+            if file_path.exists():
+                return f'{settings.MEDIA_URL}postcards/{folder}/{original_num}{ext}'
 
         return ''
 
