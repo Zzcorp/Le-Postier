@@ -17,7 +17,7 @@ echo "Creating admin user..."
 python manage.py create_admin || true
 
 # Check if migration should run
-if [ "$RUN_OVH_MIGRATION" = "true" ]; then
+if [ "$RUN_OVH_MIGRATION" = "false" ]; then
     echo "Running OVH migration..."
     python manage.py migrate_from_ovh \
       --ftp-host=${OVH_FTP_HOST} \
