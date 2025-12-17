@@ -55,4 +55,6 @@ urlpatterns = [
     path('galerie/', views.decouvrir, name='gallery'),
 
     path('debug/browse/', views.debug_browse, name='debug_browse'),
+    # Add this line to urlpatterns in core/urls.py
+    path('admin/sync-ovh/', views.admin_sync_from_ovh, name='admin_sync_ovh'),
 ]
