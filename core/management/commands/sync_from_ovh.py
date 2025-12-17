@@ -20,7 +20,7 @@ class Command(BaseCommand):
         parser.add_argument('--ftp-host', type=str, required=True, help='OVH FTP hostname')
         parser.add_argument('--ftp-user', type=str, required=True, help='FTP username')
         parser.add_argument('--ftp-pass', type=str, required=True, help='FTP password')
-        parser.add_argument('--ftp-path', type=str, default='/www/collection_cp/cartes',
+        parser.add_argument('--ftp-path', type=str, default='/collection_cp/cartes',
                             help='Base path on FTP server')
         parser.add_argument('--limit', type=int, help='Limit number of files per folder')
         parser.add_argument('--folder', type=str, choices=['Vignette', 'Grande', 'Dos', 'Zoom', 'animated_cp', 'all'],
@@ -178,4 +178,5 @@ class Command(BaseCommand):
                 count = len(list(local_path.glob('*.*')))
                 self.stdout.write(f"  {folder_name}: {count} files")
             else:
+
                 self.stdout.write(f"  {folder_name}: NOT FOUND")
