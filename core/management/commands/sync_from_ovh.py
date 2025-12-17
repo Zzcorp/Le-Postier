@@ -1,7 +1,7 @@
 # core/management/commands/sync_from_ovh.py
 """
-Management command to sync images from OVH FTP server to Render persistent disk.
-Run with: python manage.py sync_from_ovh
+Complete FTP sync from OVH to Render persistent disk.
+Downloads all postcard images and videos.
 """
 
 from django.core.management.base import BaseCommand
@@ -9,183 +9,254 @@ from django.conf import settings
 from pathlib import Path
 import ftplib
 import os
-from decouple import config
+import time
+from datetime import datetime
 
 
 class Command(BaseCommand):
-    help = 'Sync postcard images from OVH FTP server to local media storage'
+    help = 'Sync all postcard images and videos from OVH FTP server'
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            '--folder',
-            type=str,
-            default='all',
-            help='Specific folder to sync: Vignette, Grande, Dos, Zoom, animated_cp, or all'
-        )
-        parser.add_argument(
-            '--limit',
-            type=int,
-            default=0,
-            help='Limit number of files to download per folder (0 = no limit)'
-        )
-        parser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='Show what would be downloaded without actually downloading'
-        )
-        parser.add_argument(
-            '--skip-existing',
-            action='store_true',
-            default=True,
-            help='Skip files that already exist locally'
-        )
+        parser.add_argument('--ftp-host', type=str, help='FTP host')
+        parser.add_argument('--ftp-user', type=str, help='FTP username')
+        parser.add_argument('--ftp-pass', type=str, help='FTP password')
+        parser.add_argument('--ftp-path', type=str, default='/collection_cp/cartes',
+                            help='Base path on FTP server for postcard images')
+        parser.add_argument('--animated-path', type=str, default='/collection_cp/cartes/animated_cp',
+                            help='Path on FTP server for animated videos')
+        parser.add_argument('--folders', type=str, default='Vignette,Grande,Dos,Zoom',
+                            help='Comma-separated list of folders to sync')
+        parser.add_argument('--include-animated', action='store_true', default=True,
+                            help='Also sync animated videos')
+        parser.add_argument('--skip-existing', action='store_true', default=True,
+                            help='Skip files that already exist locally')
+        parser.add_argument('--limit', type=int, default=0,
+                            help='Limit files per folder (0 = no limit)')
+        parser.add_argument('--dry-run', action='store_true',
+                            help='Show what would be downloaded without downloading')
+        parser.add_argument('--verbose', action='store_true',
+                            help='Show detailed progress')
 
     def handle(self, *args, **options):
-        # FTP Configuration - get from environment variables
-        FTP_HOST = config('OVH_FTP_HOST', default='')
-        FTP_USER = config('OVH_FTP_USER', default='')
-        FTP_PASS = config('OVH_FTP_PASS', default='')
-        FTP_BASE_PATH = config('OVH_FTP_PATH', default='/collection_cp/cartes')
+        # Get FTP credentials
+        ftp_host = options.get('ftp_host') or os.environ.get('OVH_FTP_HOST', '')
+        ftp_user = options.get('ftp_user') or os.environ.get('OVH_FTP_USER', '')
+        ftp_pass = options.get('ftp_pass') or os.environ.get('OVH_FTP_PASS', '')
 
-        if not all([FTP_HOST, FTP_USER, FTP_PASS]):
+        if not all([ftp_host, ftp_user, ftp_pass]):
             self.stderr.write(self.style.ERROR(
-                'Missing FTP credentials. Set OVH_FTP_HOST, OVH_FTP_USER, OVH_FTP_PASS environment variables.'
+                'Missing FTP credentials!\n'
+                'Set via arguments or environment variables:\n'
+                '  OVH_FTP_HOST, OVH_FTP_USER, OVH_FTP_PASS'
             ))
             return
+
+        ftp_path = options['ftp_path']
+        animated_path = options['animated_path']
+        folders = [f.strip() for f in options['folders'].split(',')]
+        include_animated = options['include_animated']
+        skip_existing = options['skip_existing']
+        limit = options['limit']
+        dry_run = options['dry_run']
+        verbose = options['verbose']
 
         # Local paths
         media_root = Path(settings.MEDIA_ROOT)
 
-        # Folder mapping: FTP folder -> Local folder
-        folder_mapping = {
-            'Vignette': media_root / 'postcards' / 'Vignette',
-            'Grande': media_root / 'postcards' / 'Grande',
-            'Dos': media_root / 'postcards' / 'Dos',
-            'Zoom': media_root / 'postcards' / 'Zoom',
-        }
-
-        # Animated videos folder
-        animated_mapping = {
-            'animated_cp': media_root / 'animated_cp',
-        }
-
-        selected_folder = options['folder']
-        limit = options['limit']
-        dry_run = options['dry_run']
-        skip_existing = options['skip_existing']
-
+        self.stdout.write(f"\n{'=' * 70}")
+        self.stdout.write(f"OVH FTP to Render Sync")
+        self.stdout.write(f"{'=' * 70}")
+        self.stdout.write(f"FTP Host: {ftp_host}")
+        self.stdout.write(f"FTP Path: {ftp_path}")
+        self.stdout.write(f"Media Root: {media_root}")
+        self.stdout.write(f"Folders: {folders}")
+        self.stdout.write(f"Include Animated: {include_animated}")
+        self.stdout.write(f"Skip Existing: {skip_existing}")
+        if limit:
+            self.stdout.write(f"Limit per folder: {limit}")
         if dry_run:
-            self.stdout.write(self.style.WARNING('DRY RUN MODE - No files will be downloaded'))
+            self.stdout.write(self.style.WARNING("DRY RUN MODE"))
+        self.stdout.write(f"{'=' * 70}\n")
 
+        # Ensure local directories exist
+        if not dry_run:
+            self.create_directories(media_root, folders, include_animated)
+
+        # Connect to FTP
         try:
-            self.stdout.write(f'Connecting to FTP server {FTP_HOST}...')
-            ftp = ftplib.FTP(FTP_HOST, timeout=30)
-            ftp.login(FTP_USER, FTP_PASS)
-            self.stdout.write(self.style.SUCCESS(f'Connected to {FTP_HOST}'))
+            self.stdout.write(f"Connecting to {ftp_host}...")
+            ftp = ftplib.FTP(ftp_host, timeout=60)
+            ftp.login(ftp_user, ftp_pass)
+            ftp.set_pasv(True)  # Use passive mode
+            self.stdout.write(self.style.SUCCESS(f"✓ Connected successfully"))
 
-            # Sync postcard images
-            if selected_folder == 'all' or selected_folder in folder_mapping:
-                folders_to_sync = folder_mapping if selected_folder == 'all' else {
-                    selected_folder: folder_mapping[selected_folder]}
+            # Show FTP welcome message
+            if verbose:
+                self.stdout.write(f"  Server: {ftp.getwelcome()}")
 
-                for ftp_folder, local_folder in folders_to_sync.items():
-                    self.sync_folder(
-                        ftp,
-                        f'{FTP_BASE_PATH}/{ftp_folder}',
-                        local_folder,
-                        ftp_folder,
-                        limit,
-                        dry_run,
-                        skip_existing
-                    )
+            total_stats = {'downloaded': 0, 'skipped': 0, 'errors': 0, 'bytes': 0}
+
+            # Sync each postcard folder
+            for folder in folders:
+                remote_path = f"{ftp_path}/{folder}"
+                local_path = media_root / 'postcards' / folder
+
+                stats = self.sync_folder(
+                    ftp, remote_path, local_path, folder,
+                    limit, dry_run, skip_existing, verbose
+                )
+
+                for key in total_stats:
+                    total_stats[key] += stats.get(key, 0)
 
             # Sync animated videos
-            if selected_folder == 'all' or selected_folder == 'animated_cp':
-                # Animated videos might be in a different path
-                animated_ftp_path = config('OVH_FTP_ANIMATED_PATH', default='/collection_cp/cartes/animated_cp')
-
-                for ftp_folder, local_folder in animated_mapping.items():
-                    self.sync_folder(
-                        ftp,
-                        animated_ftp_path,
-                        local_folder,
-                        ftp_folder,
-                        limit,
-                        dry_run,
-                        skip_existing
-                    )
+            if include_animated:
+                local_animated = media_root / 'animated_cp'
+                stats = self.sync_folder(
+                    ftp, animated_path, local_animated, 'animated_cp',
+                    limit, dry_run, skip_existing, verbose,
+                    extensions=('.mp4', '.webm', '.MP4', '.WEBM')
+                )
+                for key in total_stats:
+                    total_stats[key] += stats.get(key, 0)
 
             ftp.quit()
-            self.stdout.write(self.style.SUCCESS('Sync completed!'))
 
-        except ftplib.error_perm as e:
-            self.stderr.write(self.style.ERROR(f'FTP permission error: {e}'))
-        except ftplib.error_temp as e:
-            self.stderr.write(self.style.ERROR(f'FTP temporary error: {e}'))
+            # Final summary
+            self.stdout.write(f"\n{'=' * 70}")
+            self.stdout.write(self.style.SUCCESS("SYNC COMPLETE"))
+            self.stdout.write(f"{'=' * 70}")
+            self.stdout.write(f"Total Downloaded: {total_stats['downloaded']}")
+            self.stdout.write(f"Total Skipped: {total_stats['skipped']}")
+            self.stdout.write(f"Total Errors: {total_stats['errors']}")
+            size_mb = total_stats['bytes'] / (1024 * 1024)
+            self.stdout.write(f"Total Size: {size_mb:.2f} MB")
+            self.stdout.write(f"{'=' * 70}\n")
+
+        except ftplib.all_errors as e:
+            self.stderr.write(self.style.ERROR(f"FTP Error: {e}"))
+            return
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Error: {e}'))
+            self.stderr.write(self.style.ERROR(f"Error: {e}"))
+            import traceback
+            traceback.print_exc()
+            return
 
-    def sync_folder(self, ftp, remote_path, local_path, folder_name, limit, dry_run, skip_existing):
-        """Sync a single folder from FTP to local storage"""
-        self.stdout.write(f'\n{"=" * 60}')
-        self.stdout.write(f'Syncing {folder_name}...')
-        self.stdout.write(f'  Remote: {remote_path}')
-        self.stdout.write(f'  Local:  {local_path}')
+    def create_directories(self, media_root, folders, include_animated):
+        """Create all necessary local directories"""
+        self.stdout.write("Creating local directories...")
 
-        # Create local directory if it doesn't exist
-        if not dry_run:
-            local_path.mkdir(parents=True, exist_ok=True)
+        for folder in folders:
+            path = media_root / 'postcards' / folder
+            path.mkdir(parents=True, exist_ok=True)
+            self.stdout.write(f"  ✓ {path}")
 
+        if include_animated:
+            path = media_root / 'animated_cp'
+            path.mkdir(parents=True, exist_ok=True)
+            self.stdout.write(f"  ✓ {path}")
+
+        # Also create signatures folder
+        (media_root / 'signatures').mkdir(parents=True, exist_ok=True)
+        self.stdout.write("")
+
+    def sync_folder(self, ftp, remote_path, local_path, folder_name,
+                    limit, dry_run, skip_existing, verbose,
+                    extensions=('.jpg', '.jpeg', '.png', '.gif', '.JPG', '.JPEG', '.PNG', '.GIF')):
+        """Sync a single folder from FTP"""
+
+        stats = {'downloaded': 0, 'skipped': 0, 'errors': 0, 'bytes': 0}
+
+        self.stdout.write(f"\n{'─' * 60}")
+        self.stdout.write(f"Syncing: {folder_name}")
+        self.stdout.write(f"  Remote: {remote_path}")
+        self.stdout.write(f"  Local: {local_path}")
+
+        # Try to change to remote directory
         try:
             ftp.cwd(remote_path)
-        except ftplib.error_perm:
-            self.stderr.write(self.style.WARNING(f'  Could not access {remote_path} - skipping'))
-            return
+        except ftplib.error_perm as e:
+            self.stderr.write(self.style.WARNING(f"  ✗ Cannot access {remote_path}: {e}"))
+            return stats
 
-        # Get list of files
+        # List files
         try:
-            files = ftp.nlst()
-        except ftplib.error_perm:
-            self.stderr.write(self.style.WARNING(f'  Could not list files in {remote_path} - skipping'))
-            return
+            files = []
+            ftp.retrlines('LIST', lambda x: files.append(x))
+        except ftplib.error_perm as e:
+            self.stderr.write(self.style.WARNING(f"  ✗ Cannot list files: {e}"))
+            return stats
 
-        # Filter for image/video files
-        valid_extensions = (
-        '.jpg', '.jpeg', '.png', '.gif', '.mp4', '.webm', '.JPG', '.JPEG', '.PNG', '.GIF', '.MP4', '.WEBM')
-        files = [f for f in files if f.lower().endswith(valid_extensions) or f.endswith(valid_extensions)]
+        # Parse file list
+        file_list = []
+        for line in files:
+            parts = line.split()
+            if len(parts) >= 9:
+                filename = ' '.join(parts[8:])  # Handle filenames with spaces
+                # Skip directories (lines starting with 'd')
+                if not line.startswith('d'):
+                    # Check extension
+                    if any(filename.endswith(ext) for ext in extensions):
+                        file_list.append(filename)
 
-        self.stdout.write(f'  Found {len(files)} files')
+        # Also try nlst for simpler listing
+        if not file_list:
+            try:
+                all_files = ftp.nlst()
+                file_list = [f for f in all_files
+                             if any(f.endswith(ext) for ext in extensions)]
+            except:
+                pass
 
-        if limit > 0:
-            files = files[:limit]
-            self.stdout.write(f'  Limited to {limit} files')
+        self.stdout.write(f"  Found {len(file_list)} files")
 
-        downloaded = 0
-        skipped = 0
-        errors = 0
+        if limit > 0 and len(file_list) > limit:
+            file_list = file_list[:limit]
+            self.stdout.write(f"  Limited to {limit} files")
 
-        for i, filename in enumerate(files, 1):
+        if not file_list:
+            return stats
+
+        # Download files
+        for i, filename in enumerate(file_list, 1):
             local_file = local_path / filename
 
+            # Skip existing
             if skip_existing and local_file.exists():
-                skipped += 1
+                stats['skipped'] += 1
+                if verbose:
+                    self.stdout.write(f"    [{i}/{len(file_list)}] Skip: {filename}")
                 continue
 
             if dry_run:
-                self.stdout.write(f'  [{i}/{len(files)}] Would download: {filename}')
-                downloaded += 1
-            else:
-                try:
-                    self.stdout.write(f'  [{i}/{len(files)}] Downloading: {filename}', ending='')
-                    with open(local_file, 'wb') as f:
-                        ftp.retrbinary(f'RETR {filename}', f.write)
-                    self.stdout.write(self.style.SUCCESS(' ✓'))
-                    downloaded += 1
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(f' ✗ Error: {e}'))
-                    errors += 1
+                self.stdout.write(f"    [{i}/{len(file_list)}] Would download: {filename}")
+                stats['downloaded'] += 1
+                continue
 
-        self.stdout.write(f'\n  Summary for {folder_name}:')
-        self.stdout.write(f'    Downloaded: {downloaded}')
-        self.stdout.write(f'    Skipped (existing): {skipped}')
-        self.stdout.write(f'    Errors: {errors}')
+            # Download file
+            try:
+                if verbose or i % 50 == 0 or i == len(file_list):
+                    self.stdout.write(f"    [{i}/{len(file_list)}] Downloading: {filename}", ending='')
+
+                with open(local_file, 'wb') as f:
+                    ftp.retrbinary(f'RETR {filename}', f.write)
+
+                file_size = local_file.stat().st_size
+                stats['bytes'] += file_size
+                stats['downloaded'] += 1
+
+                if verbose or i % 50 == 0 or i == len(file_list):
+                    self.stdout.write(self.style.SUCCESS(f" ✓ ({file_size / 1024:.1f} KB)"))
+
+            except Exception as e:
+                stats['errors'] += 1
+                self.stdout.write(self.style.ERROR(f" ✗ {e}"))
+                # Remove partial file
+                if local_file.exists():
+                    local_file.unlink()
+
+        # Summary for this folder
+        self.stdout.write(f"  Summary: {stats['downloaded']} downloaded, "
+                          f"{stats['skipped']} skipped, {stats['errors']} errors")
+
+        return stats

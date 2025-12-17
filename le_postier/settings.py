@@ -64,7 +64,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'le_postier.wsgi.application'
 
 # Database
-DATABASE_URL = config('DATABASE_URL', default='')
+DATABASE_URL = config('DATABASE_URL', default='postgresql://zzcorp:erc5uvp74IqqUFotZeQKT8BHAiMFxOOC@dpg-d51jlth5pdvs73e9m95g-a/z_data_db_zyx_u82e')
 
 if DATABASE_URL:
     DATABASES = {
@@ -116,22 +116,40 @@ POSTCARD_IMAGE_DIRS = ['Vignette', 'Grande', 'Dos', 'Zoom']
 ANIMATED_CP_DIR = 'animated_cp'
 SIGNATURES_DIR = 'signatures'
 
+
 def create_media_dirs():
     """Create media directories if they don't exist."""
     try:
-        # Create postcard directories
-        for subdir in POSTCARD_IMAGE_DIRS:
-            (MEDIA_ROOT / 'postcards' / subdir).mkdir(parents=True, exist_ok=True)
-        # Create animated postcards directory
-        (MEDIA_ROOT / ANIMATED_CP_DIR).mkdir(parents=True, exist_ok=True)
-        # Create signatures directory
-        (MEDIA_ROOT / SIGNATURES_DIR).mkdir(parents=True, exist_ok=True)
-        print(f"Media directories created/verified at: {MEDIA_ROOT}")
+        # Only create if MEDIA_ROOT exists (i.e., disk is mounted)
+        if MEDIA_ROOT.exists() or str(MEDIA_ROOT).startswith('/var/data'):
+            # Check if parent exists first
+            if not MEDIA_ROOT.parent.exists():
+                print(
+                    f"Media root parent {MEDIA_ROOT.parent} does not exist - skipping directory creation (build phase)")
+                return
+
+            # Create postcard directories
+            for subdir in POSTCARD_IMAGE_DIRS:
+                (MEDIA_ROOT / 'postcards' / subdir).mkdir(parents=True, exist_ok=True)
+            # Create animated postcards directory
+            (MEDIA_ROOT / ANIMATED_CP_DIR).mkdir(parents=True, exist_ok=True)
+            # Create signatures directory
+            (MEDIA_ROOT / SIGNATURES_DIR).mkdir(parents=True, exist_ok=True)
+            print(f"Media directories created/verified at: {MEDIA_ROOT}")
+    except OSError as e:
+        if "Read-only file system" in str(e):
+            print(f"Skipping media directory creation (build phase - disk not mounted yet)")
+        else:
+            print(f"Warning: Could not create media directories: {e}")
     except Exception as e:
         print(f"Warning: Could not create media directories: {e}")
 
-# Create directories on startup
-create_media_dirs()
+
+# Only try to create directories if not in build phase
+import os
+
+if os.environ.get('RENDER') != 'true' or os.path.exists('/var/data'):
+    create_media_dirs()
 
 # =============================================================================
 

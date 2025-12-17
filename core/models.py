@@ -126,12 +126,12 @@ class Postcard(models.Model):
             if file_path.exists():
                 return f'{settings.MEDIA_URL}postcards/{folder}/{padded}{ext}'
 
-        # Also try without padding (original number)
-        original_num = str(self.number).strip()
+        # Also try with original number (without padding)
+        original = str(self.number).strip()
         for ext in extensions:
-            file_path = base_path / f'{original_num}{ext}'
+            file_path = base_path / f'{original}{ext}'
             if file_path.exists():
-                return f'{settings.MEDIA_URL}postcards/{folder}/{original_num}{ext}'
+                return f'{settings.MEDIA_URL}postcards/{folder}/{original}{ext}'
 
         return ''
 
@@ -158,6 +158,9 @@ class Postcard(models.Model):
         Find all animated video files for this postcard.
         Supports: 000001.mp4, 000001_0.mp4, 000001_1.mp4, etc.
         """
+        from django.conf import settings
+        from pathlib import Path
+
         video_urls = []
         padded = self.get_padded_number()
         animated_dir = Path(settings.MEDIA_ROOT) / 'animated_cp'
@@ -173,7 +176,7 @@ class Postcard(models.Model):
                 break
 
         # Check for multiple videos: 000001_0.mp4, 000001_1.mp4, etc.
-        for i in range(20):  # Check up to 20 videos per postcard
+        for i in range(20):
             found = False
             for ext in ['.mp4', '.webm', '.MP4', '.WEBM']:
                 multi_file = animated_dir / f'{padded}_{i}{ext}'
@@ -182,17 +185,25 @@ class Postcard(models.Model):
                     found = True
                     break
             if not found and i > 0:
-                break  # Stop if we don't find the next number
+                break
 
         return video_urls
+
+    def check_has_vignette(self):
+        """Check if this postcard has a vignette image"""
+        return bool(self.get_vignette_url())
 
     def check_has_animation(self):
         """Check if this postcard has any animations"""
         return len(self.get_animated_urls()) > 0
 
-    def check_has_vignette(self):
-        """Check if this postcard has a vignette image"""
-        return bool(self.get_vignette_url())
+    def has_vignette(self):
+        """Alias for check_has_vignette"""
+        return self.check_has_vignette()
+
+    def has_animation(self):
+        """Alias for check_has_animation"""
+        return self.check_has_animation()
 
     def get_first_video_url(self):
         """Get the first video URL if any"""
@@ -214,11 +225,6 @@ class Postcard(models.Model):
         except Exception:
             self.save(update_fields=['has_images'])
 
-    def has_vignette(self):
-        """Alias for check_has_vignette for compatibility"""
-        return self.check_has_vignette()
-
-    # Add this method to your Postcard model for debugging
     def debug_image_paths(self):
         """Debug image path resolution"""
         from django.conf import settings
