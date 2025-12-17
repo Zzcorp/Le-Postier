@@ -16,16 +16,21 @@ python manage.py migrate
 echo "Creating admin user..."
 python manage.py create_admin || true
 
-# Check if migration should run
-if [ "$RUN_OVH_MIGRATION" = "false" ]; then
-    echo "Running OVH migration..."
-    python manage.py migrate_from_ovh \
-      --ftp-host=${OVH_FTP_HOST} \
-      --ftp-user=${OVH_FTP_USER} \
-      --ftp-pass=${OVH_FTP_PASS} \
-      --generate-csv
-    
-    echo "Migration completed!"
+# Sync images from OVH if credentials are provided
+if [ -n "$OVH_FTP_HOST" ] && [ -n "$OVH_FTP_USER" ] && [ -n "$OVH_FTP_PASS" ]; then
+    echo "Syncing images from OVH FTP..."
+    python manage.py sync_from_ovh \
+        --ftp-host="$OVH_FTP_HOST" \
+        --ftp-user="$OVH_FTP_USER" \
+        --ftp-pass="$OVH_FTP_PASS" \
+        --ftp-path="/collection_cp/cartes" \
+        --animated-path="/collection_cp/animated_cp" \
+        --folders="Vignette,Grande,Dos,Zoom" \
+        --include-animated \
+        --skip-existing
+    echo "Image sync completed!"
+else
+    echo "OVH FTP credentials not set, skipping image sync"
 fi
 
 echo "=== Build completed ==="
