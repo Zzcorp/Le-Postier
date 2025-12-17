@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# build.sh
+# Build script for Render
 
 set -o errexit
 
-echo "=== Starting build process ==="
-
+echo "Installing dependencies..."
+pip install --upgrade pip
 pip install -r requirements.txt
 
 echo "Collecting static files..."
@@ -13,24 +13,24 @@ python manage.py collectstatic --no-input
 echo "Running migrations..."
 python manage.py migrate
 
-echo "Creating admin user..."
+echo "Setting up media directories..."
+python -c "
+from django.conf import settings
+from pathlib import Path
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'le_postier.settings')
+import django
+django.setup()
+
+media_root = Path(settings.MEDIA_ROOT)
+for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
+    (media_root / 'postcards' / folder).mkdir(parents=True, exist_ok=True)
+(media_root / 'animated_cp').mkdir(parents=True, exist_ok=True)
+(media_root / 'signatures').mkdir(parents=True, exist_ok=True)
+print(f'Media directories created at {media_root}')
+"
+
+echo "Creating admin user if needed..."
 python manage.py create_admin || true
 
-# Sync images from OVH if credentials are provided
-if [ -n "$OVH_FTP_HOST" ] && [ -n "$OVH_FTP_USER" ] && [ -n "$OVH_FTP_PASS" ]; then
-    echo "Syncing images from OVH FTP..."
-    python manage.py sync_from_ovh \
-        --ftp-host="$OVH_FTP_HOST" \
-        --ftp-user="$OVH_FTP_USER" \
-        --ftp-pass="$OVH_FTP_PASS" \
-        --ftp-path="/collection_cp/cartes" \
-        --animated-path="/collection_cp/animated_cp" \
-        --folders="Vignette,Grande,Dos,Zoom" \
-        --include-animated \
-        --skip-existing
-    echo "Image sync completed!"
-else
-    echo "OVH FTP credentials not set, skipping image sync"
-fi
-
-echo "=== Build completed ==="
+echo "Build complete!"
