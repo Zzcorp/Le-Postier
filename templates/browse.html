@@ -177,14 +177,14 @@
         </button>
     </div>
  
-    <!-- IMPROVED Floating River Keywords Section -->
+    <!-- Floating River Keywords Section -->
     <div class="river-keywords-section" id="river-keywords-section">
         <div class="river-keywords-header">
             <h3>Explorez par thème</h3>
             <p>Cliquez sur un mot-clé</p>
         </div>
         <div class="river-keywords-container" id="river-keywords-container">
-            <!-- Keywords populated by JS with REDUCED count -->
+            <!-- Keywords populated by JS -->
         </div>
     </div>
  
@@ -200,8 +200,9 @@
                  data-vignette="{{ postcard.get_vignette_url }}"
                  data-grande="{{ postcard.get_grande_url }}"
                  data-dos="{{ postcard.get_dos_url }}"
-                 data-has-video="{% if postcard.animated_url %}true{% else %}false{% endif %}"
-                 data-video-url="{{ postcard.get_first_video_url|default:'' }}">
+                 data-has-video="{% if postcard.get_animated_urls %}true{% else %}false{% endif %}"
+                 data-video-url="{{ postcard.get_first_video_url|default:'' }}"
+                 onclick="showDetail({{ postcard.id }})">
                
                 <div class="card-image-wrapper">
                     {% with vignette_url=postcard.get_vignette_url %}
@@ -224,12 +225,19 @@
                     {% endif %}
                     {% endwith %}
                    
-                    {% if postcard.animated_url %}
+                    {% if postcard.get_animated_urls %}
+                    <!-- Static animation badge (always visible) -->
+                    <div class="animated-badge-static">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </div>
+                    <!-- Play button on hover -->
                     <a href="{% url 'animated_gallery' %}?highlight={{ postcard.id }}"
-                       class="animated-badge"
+                       class="animated-play-btn"
                        title="Voir l'animation"
                        onclick="event.stopPropagation();">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8 5v14l11-7z"/>
                         </svg>
                     </a>
@@ -238,7 +246,7 @@
                
                 <div class="card-overlay">
                     <div class="card-actions">
-                        <button class="action-btn" onclick="showDetail({{ postcard.id }})" title="Voir le détail">
+                        <button class="action-btn view-btn" onclick="event.stopPropagation(); showDetail({{ postcard.id }})" title="Voir le détail">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>
@@ -246,7 +254,7 @@
                         </button>
                        
                         <button class="action-btn like-btn {% if postcard.id in user_likes %}liked{% endif %}"
-                                onclick="toggleLike(event, {{ postcard.id }})"
+                                onclick="event.stopPropagation(); toggleLike(event, {{ postcard.id }})"
                                 title="J'aime"
                                 data-id="{{ postcard.id }}">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="{% if postcard.id in user_likes %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
@@ -254,19 +262,22 @@
                             </svg>
                         </button>
                        
-                        <button class="action-btn" onclick="showZoom({{ postcard.id }})" title="Agrandir">
+                        <button class="action-btn" onclick="event.stopPropagation(); showZoom({{ postcard.id }})" title="Agrandir">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"/>
                                 <path d="m21 21-4.35-4.35M11 8v6M8 11h6"/>
                             </svg>
                         </button>
                        
-                        {% if postcard.animated_url %}
-                        <button class="action-btn action-video" onclick="playAnimation(event, {{ postcard.id }})" title="Voir l'animation">
+                        {% if postcard.get_animated_urls %}
+                        <a href="{% url 'animated_gallery' %}?highlight={{ postcard.id }}" 
+                           class="action-btn action-video" 
+                           onclick="event.stopPropagation();" 
+                           title="Voir l'animation">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polygon points="5 3 19 12 5 21 5 3"/>
                             </svg>
-                        </button>
+                        </a>
                         {% endif %}
                     </div>
                     <p class="card-title">{{ postcard.title|truncatechars:50 }}</p>
@@ -346,11 +357,11 @@
                 <span id="popup-like-count">0</span>
             </button>
            
-            <button class="popup-action-btn" id="popup-video-btn" onclick="playPopupAnimation()" title="Voir l'animation" style="display:none;">
+            <a class="popup-action-btn" id="popup-video-btn" href="#" title="Voir l'animation" style="display:none;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="5 3 19 12 5 21 5 3"/>
                 </svg>
-            </button>
+            </a>
         </div>
         <h3 id="popup-title"></h3>
         <span id="popup-number"></span>
@@ -365,28 +376,6 @@
         </svg>
     </button>
     <img id="popup-zoom-image" src="" alt="">
-</div>
- 
-<!-- Animation Popup -->
-<div class="popup-modal popup-video-modal" id="popup-video">
-    <button class="popup-close" onclick="closeVideoPopup()" title="Fermer">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12"/>
-        </svg>
-    </button>
-    <div class="video-container">
-        <video id="popup-video-player" controls autoplay loop playsinline preload="auto">
-            <source src="" type="video/mp4">
-        </video>
-        <div class="video-loading" id="video-loading">
-            <div class="video-spinner"></div>
-            <p>Chargement...</p>
-        </div>
-    </div>
-    <div class="popup-video-info">
-        <h3 id="popup-video-title"></h3>
-        <span id="popup-video-number"></span>
-    </div>
 </div>
  
 <script>
@@ -407,29 +396,73 @@ const allPostcardsData = [
         zoom_url: "{{ postcard.get_zoom_url }}",
         vignette_url: "{{ postcard.get_vignette_url }}",
         likes_count: {{ postcard.likes_count|default:0 }},
-        has_video: {% if postcard.animated_url %}true{% else %}false{% endif %},
+        has_video: {% if postcard.get_animated_urls %}true{% else %}false{% endif %},
         video_url: "{{ postcard.get_first_video_url|default:'' }}"
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
 ];
  
-// IMPROVED: Reduced floating keywords - only 15-20 visible at a time
+// Expanded floating keywords with more variety
 const riverKeywords = [
+    // Primary navigation terms
     { word: 'Seine', size: 'large', importance: 1 },
     { word: 'Marne', size: 'large', importance: 1 },
     { word: 'Bateau', size: 'large', importance: 1 },
-    { word: 'Péniche', size: 'medium', importance: 2 },
-    { word: 'Navigation', size: 'medium', importance: 2 },
     { word: 'Paris', size: 'large', importance: 1 },
+    { word: 'Navigation', size: 'large', importance: 1 },
+    
+    // Secondary terms
+    { word: 'Péniche', size: 'medium', importance: 2 },
     { word: 'Pont', size: 'medium', importance: 2 },
     { word: 'Écluse', size: 'medium', importance: 2 },
     { word: 'Port', size: 'medium', importance: 2 },
-    { word: 'Quai', size: 'small', importance: 3 },
-    { word: 'Vapeur', size: 'small', importance: 3 },
     { word: 'Fleuve', size: 'medium', importance: 2 },
+    { word: 'Vapeur', size: 'medium', importance: 2 },
+    { word: 'Quai', size: 'medium', importance: 2 },
+    { word: 'Rivière', size: 'medium', importance: 2 },
+    { word: 'Canal', size: 'medium', importance: 2 },
+    
+    // Tertiary terms - more variety
     { word: 'Berge', size: 'small', importance: 3 },
     { word: 'Croisière', size: 'small', importance: 3 },
     { word: 'Marinier', size: 'small', importance: 3 },
+    { word: 'Barque', size: 'small', importance: 3 },
+    { word: 'Remorqueur', size: 'small', importance: 3 },
+    { word: 'Passeur', size: 'small', importance: 3 },
+    { word: 'Lavoir', size: 'small', importance: 3 },
+    { word: 'Pêcheur', size: 'small', importance: 3 },
+    { word: 'Île', size: 'small', importance: 3 },
+    { word: 'Crue', size: 'small', importance: 3 },
+    { word: 'Inondation', size: 'small', importance: 3 },
+    { word: 'Halage', size: 'small', importance: 3 },
+    { word: 'Chaland', size: 'small', importance: 3 },
+    { word: 'Bac', size: 'small', importance: 3 },
+    { word: 'Débarcadère', size: 'small', importance: 3 },
+    { word: 'Embarcation', size: 'small', importance: 3 },
+    { word: 'Aviron', size: 'small', importance: 3 },
+    { word: 'Voile', size: 'small', importance: 3 },
+    { word: 'Moulin', size: 'small', importance: 3 },
+    { word: 'Usine', size: 'small', importance: 3 },
+    
+    // Location terms
+    { word: 'Rouen', size: 'medium', importance: 2 },
+    { word: 'Lyon', size: 'medium', importance: 2 },
+    { word: 'Nantes', size: 'medium', importance: 2 },
+    { word: 'Bordeaux', size: 'small', importance: 3 },
+    { word: 'Conflans', size: 'small', importance: 3 },
+    { word: 'Charenton', size: 'small', importance: 3 },
+    { word: 'Argenteuil', size: 'small', importance: 3 },
+    { word: 'Nogent', size: 'small', importance: 3 },
+    { word: 'Joinville', size: 'small', importance: 3 },
+    
+    // Activity terms
+    { word: 'Promenade', size: 'small', importance: 3 },
+    { word: 'Baignade', size: 'small', importance: 3 },
+    { word: 'Canotage', size: 'small', importance: 3 },
+    { word: 'Régates', size: 'small', importance: 3 },
+    { word: 'Fête', size: 'small', importance: 3 },
+    
+    // Additional themes from database
     {% for theme in themes %}
     { word: '{{ theme.display_name|escapejs }}', size: 'medium', importance: 2 },
     {% endfor %}
@@ -441,7 +474,7 @@ let currentView = 'front';
 let currentPostcardId = null;
  
 // =============================================
-// IMPROVED FLOATING KEYWORDS - Less dense, smoother
+// FLOATING KEYWORDS
 // =============================================
 class FloatingKeywords {
     constructor() {
@@ -449,7 +482,7 @@ class FloatingKeywords {
         this.keywords = [];
         this.animationFrameId = null;
         this.isVisible = true;
-        this.maxVisibleKeywords = 12; // REDUCED from 30+ to 12
+        this.maxVisibleKeywords = 15;
        
         if (!this.container) return;
         this.init();
@@ -462,7 +495,6 @@ class FloatingKeywords {
     }
    
     createKeywords() {
-        // Only create limited number of keywords
         const selectedKeywords = this.selectKeywords();
        
         selectedKeywords.forEach((kw, index) => {
@@ -471,15 +503,12 @@ class FloatingKeywords {
             element.textContent = kw.word;
             element.dataset.word = kw.word;
            
-            // Spread keywords more evenly across the container
             const startX = (index / selectedKeywords.length) * 100;
             const startY = 15 + (index % 3) * 30 + Math.random() * 20;
            
-            // Slower, more gentle speeds
             const baseSpeed = kw.size === 'large' ? 0.15 : kw.size === 'medium' ? 0.2 : 0.25;
             const speed = baseSpeed + Math.random() * 0.1;
            
-            // Gentler wave motion
             const waveAmplitude = 8 + Math.random() * 12;
             const waveFrequency = 0.3 + Math.random() * 0.4;
             const waveOffset = Math.random() * Math.PI * 2;
@@ -514,9 +543,10 @@ class FloatingKeywords {
    
     selectKeywords() {
         // Select a balanced mix of keywords
-        const large = riverKeywords.filter(k => k.size === 'large').slice(0, 4);
-        const medium = riverKeywords.filter(k => k.size === 'medium').slice(0, 5);
-        const small = riverKeywords.filter(k => k.size === 'small').slice(0, 3);
+        const shuffled = [...riverKeywords].sort(() => Math.random() - 0.5);
+        const large = shuffled.filter(k => k.size === 'large').slice(0, 4);
+        const medium = shuffled.filter(k => k.size === 'medium').slice(0, 6);
+        const small = shuffled.filter(k => k.size === 'small').slice(0, 5);
         return [...large, ...medium, ...small];
     }
    
@@ -530,19 +560,15 @@ class FloatingKeywords {
             this.keywords.forEach(kw => {
                 const elapsed = (timestamp - kw.startTime) / 1000;
                
-                // Slow horizontal drift
                 kw.x -= kw.speed * 0.03;
                
-                // Wrap around smoothly
                 if (kw.x < -15) {
                     kw.x = 105;
                     kw.y = 15 + Math.random() * 70;
                 }
                
-                // Gentle vertical wave
                 const waveY = Math.sin(elapsed * kw.waveFrequency + kw.waveOffset) * kw.waveAmplitude;
                
-                // Smooth fade at edges
                 let opacity = 0.85;
                 if (kw.x > 85) opacity = (100 - kw.x) / 15;
                 else if (kw.x < 15) opacity = kw.x / 15;
@@ -571,16 +597,9 @@ class FloatingKeywords {
     }
    
     onKeywordClick(word) {
+        // Submit the search form with the keyword
         document.getElementById('searchInput').value = word;
-        window.searchEngine.performSearch(word);
-        document.getElementById('river-keywords-section').classList.add('searching');
-       
-        setTimeout(() => {
-            document.getElementById('results-section').scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }, 200);
+        document.getElementById('searchForm').submit();
     }
    
     show() {
@@ -589,7 +608,7 @@ class FloatingKeywords {
 }
  
 // =============================================
-// SEARCH SYSTEM
+// SEARCH SYSTEM - Server-side search
 // =============================================
 class SearchEngine {
     constructor() {
@@ -600,101 +619,23 @@ class SearchEngine {
    
     init() {
         this.searchInput.addEventListener('input', (e) => this.handleInput(e));
-        this.searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.performSearch(this.searchInput.value);
-            }
-        });
         this.updateClearButton();
     }
    
     handleInput(e) {
-        const query = e.target.value.trim();
         this.updateClearButton();
-       
-        if (!query) {
-            this.resetSearch();
-            return;
-        }
-       
-        clearTimeout(this.debounceTimer);
-        this.debounceTimer = setTimeout(() => {
-            this.performSearch(query);
-        }, 150);
     }
    
     updateClearButton() {
         const hasValue = this.searchInput.value.trim().length > 0;
         this.clearBtn.classList.toggle('visible', hasValue);
     }
-   
-    performSearch(query) {
-        if (!query.trim()) {
-            this.resetSearch();
-            return;
-        }
-       
-        const searchTerms = query.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
-        const cards = document.querySelectorAll('.postcard-card');
-        let visibleCount = 0;
-       
-        cards.forEach(card => {
-            const title = (card.dataset.title || '').toLowerCase();
-            const keywords = (card.dataset.keywords || '').toLowerCase();
-            const number = card.dataset.number || '';
-            const searchText = `${title} ${keywords} ${number}`;
-           
-            const matches = searchTerms.some(term => searchText.includes(term));
-           
-            card.style.display = matches ? '' : 'none';
-            if (matches) visibleCount++;
-        });
-       
-        filteredPostcards = allPostcardsData.filter(p => {
-            const searchText = `${p.title} ${p.keywords} ${p.number}`.toLowerCase();
-            return searchTerms.some(term => searchText.includes(term));
-        });
-       
-        this.updateUI(query, visibleCount);
-        document.getElementById('river-keywords-section').classList.add('searching');
-    }
-   
-    updateUI(query, count) {
-        document.getElementById('visible-count').textContent = count;
-        document.getElementById('noResults').style.display = count === 0 ? 'block' : 'none';
-       
-        document.getElementById('searchInfo').innerHTML = `
-            <p class="search-results-text">
-                <span class="result-count">${count}</span> résultat${count !== 1 ? 's' : ''} pour
-                "<span class="result-query">${query}</span>"
-            </p>
-        `;
-        this.updateClearButton();
-    }
-   
-    resetSearch() {
-        document.querySelectorAll('.postcard-card').forEach(card => {
-            card.style.display = '';
-        });
-       
-        filteredPostcards = [...allPostcardsData];
-        document.getElementById('visible-count').textContent = allPostcardsData.length;
-        document.getElementById('noResults').style.display = 'none';
-        document.getElementById('searchInfo').innerHTML = '';
-        document.getElementById('river-keywords-section').classList.remove('searching');
-        this.updateClearButton();
-    }
 }
  
 function clearSearch() {
     document.getElementById('searchInput').value = '';
-    document.getElementById('searchInput').focus();
-    window.searchEngine.resetSearch();
-   
-    if (window.floatingKeywords) {
-        window.floatingKeywords.show();
-    }
+    // Redirect to browse page without query
+    window.location.href = '{% url "browse" %}';
 }
  
 // =============================================
@@ -878,7 +819,15 @@ function showDetail(id) {
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
     document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
    
-    document.getElementById('popup-video-btn').style.display = postcard.has_video ? 'flex' : 'none';
+    // Update video button
+    const videoBtn = document.getElementById('popup-video-btn');
+    if (postcard.has_video) {
+        videoBtn.style.display = 'flex';
+        videoBtn.href = '{% url "animated_gallery" %}?highlight=' + id;
+    } else {
+        videoBtn.style.display = 'none';
+    }
+    
     document.getElementById('popup-flip').style.display = postcard.dos_url ? 'flex' : 'none';
    
     const cardLikeBtn = document.querySelector(`.like-btn[data-id="${id}"]`);
@@ -900,54 +849,6 @@ function showZoom(id) {
     document.getElementById('popup-overlay').classList.add('active');
     document.getElementById('popup-zoom').classList.add('active');
     document.body.style.overflow = 'hidden';
-}
- 
-function playAnimation(event, id) {
-    event.stopPropagation();
-   
-    const postcard = allPostcardsData.find(p => p.id === id);
-    if (!postcard || !postcard.video_url) return;
-   
-    const video = document.getElementById('popup-video-player');
-    const loading = document.getElementById('video-loading');
-   
-    document.getElementById('popup-video-title').textContent = postcard.title;
-    document.getElementById('popup-video-number').textContent = 'N° ' + postcard.number;
-   
-    loading.style.display = 'flex';
-    video.style.opacity = '0';
-   
-    const source = video.querySelector('source');
-    source.src = postcard.video_url;
-    video.load();
-   
-    video.oncanplay = () => {
-        loading.style.display = 'none';
-        video.style.opacity = '1';
-        video.play().catch(() => {});
-    };
-   
-    document.getElementById('popup-overlay').classList.add('active');
-    document.getElementById('popup-video').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
- 
-function playPopupAnimation() {
-    const postcard = allPostcardsData.find(p => p.id === currentPostcardId);
-    if (postcard && postcard.video_url) {
-        closeAllPopups();
-        setTimeout(() => playAnimation({stopPropagation: () => {}}, currentPostcardId), 100);
-    }
-}
- 
-function closeVideoPopup() {
-    const video = document.getElementById('popup-video-player');
-    video.pause();
-    video.removeAttribute('src');
-   
-    document.getElementById('popup-overlay').classList.remove('active');
-    document.getElementById('popup-video').classList.remove('active');
-    document.body.style.overflow = '';
 }
  
 function togglePostcardSide() {
@@ -992,7 +893,15 @@ function updatePopup() {
     document.getElementById('popup-title').textContent = postcard.title;
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
     document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
-    document.getElementById('popup-video-btn').style.display = postcard.has_video ? 'flex' : 'none';
+    
+    const videoBtn = document.getElementById('popup-video-btn');
+    if (postcard.has_video) {
+        videoBtn.style.display = 'flex';
+        videoBtn.href = '{% url "animated_gallery" %}?highlight=' + postcard.id;
+    } else {
+        videoBtn.style.display = 'none';
+    }
+    
     document.getElementById('popup-flip').style.display = postcard.dos_url ? 'flex' : 'none';
     document.getElementById('popup-flip').classList.remove('flipped');
    
@@ -1008,11 +917,7 @@ function closeAllPopups() {
     document.getElementById('popup-overlay').classList.remove('active');
     document.getElementById('popup-detail').classList.remove('active');
     document.getElementById('popup-zoom').classList.remove('active');
-    document.getElementById('popup-video').classList.remove('active');
     document.body.style.overflow = '';
-   
-    const video = document.getElementById('popup-video-player');
-    if (video) video.pause();
 }
  
 // =============================================
@@ -1142,11 +1047,6 @@ document.addEventListener('keydown', (e) => {
         else if (e.key === 'ArrowRight') cinemaNext();
         else if (e.key === ' ') { e.preventDefault(); toggleCinemaPlay(); }
         else if (e.key === 'Escape') closeCinema();
-        return;
-    }
-   
-    if (document.getElementById('popup-video').classList.contains('active')) {
-        if (e.key === 'Escape') closeVideoPopup();
         return;
     }
    
@@ -1572,24 +1472,65 @@ document.addEventListener('DOMContentLoaded', () => {
     display: flex; align-items: center; justify-content: center;
     background: rgba(0, 0, 0, 0.3);
 }
- 
-.animated-badge {
-    position: absolute; top: 8px; right: 8px;
-    display: flex; align-items: center; gap: 3px;
-    padding: 4px 8px;
+
+/* Static animation badge (always visible) */
+.animated-badge-static {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
     background: linear-gradient(135deg, #b5600b, #d1872c);
-    border-radius: 10px;
-    color: white; font-size: 0.65rem; font-weight: 600;
-    text-decoration: none;
+    border-radius: 50%;
+    color: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    transition: all 0.3s;
     z-index: 5;
 }
-.animated-badge:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 15px rgba(181, 96, 11, 0.5);
+
+.animated-badge-static svg {
+    width: 14px;
+    height: 14px;
 }
-.animated-badge svg { fill: white; }
+
+/* Play button on hover */
+.animated-play-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.95), rgba(209, 135, 44, 0.95));
+    border-radius: 50%;
+    color: white;
+    text-decoration: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 10;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.animated-play-btn svg {
+    margin-left: 3px;
+}
+
+.postcard-card:hover .animated-play-btn {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.animated-play-btn:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 6px 30px rgba(181, 96, 11, 0.6);
+}
  
 .card-overlay {
     position: absolute; inset: 0;
@@ -1610,6 +1551,7 @@ document.addEventListener('DOMContentLoaded', () => {
     color: white; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.2s;
+    text-decoration: none;
 }
 .action-btn:hover { background: #b5600b; border-color: #b5600b; transform: scale(1.1); }
 .action-btn.liked { background: rgba(255, 100, 100, 0.3); border-color: #ff6b6b; color: #ff6b6b; }
@@ -1729,36 +1671,6 @@ document.addEventListener('DOMContentLoaded', () => {
     cursor: zoom-in;
 }
  
-.popup-video-modal {
-    width: 90vw; max-width: 900px;
-    background: linear-gradient(165deg, #1f1a15, #0d0906);
-    border-radius: 16px; overflow: hidden;
-    border: 1px solid rgba(181, 96, 11, 0.3);
-}
-.video-container { position: relative; width: 100%; background: #000; }
-#popup-video-player { width: 100%; max-height: 60vh; display: block; background: #000; }
-.video-loading {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    background: rgba(0,0,0,0.9);
-}
-.video-spinner {
-    width: 40px; height: 40px;
-    border: 3px solid rgba(181, 96, 11, 0.3);
-    border-top-color: #b5600b; border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-bottom: 10px;
-}
-.video-loading p { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
- 
-.popup-video-info {
-    padding: 15px 20px;
-    background: linear-gradient(135deg, rgba(181, 96, 11, 0.3), rgba(181, 96, 11, 0.1));
-}
-#popup-video-title { color: white; font-size: 1rem; margin: 0 0 5px; }
-#popup-video-number { color: #b5600b; font-size: 0.85rem; }
- 
 /* ========================================
    RESPONSIVE
    ======================================== */
@@ -1782,6 +1694,16 @@ document.addEventListener('DOMContentLoaded', () => {
    
     .cinema-mode-selector { flex-wrap: wrap; justify-content: center; }
     .mode-btn { padding: 6px 10px; font-size: 0.75rem; }
+    
+    .animated-play-btn {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .animated-play-btn svg {
+        width: 20px;
+        height: 20px;
+    }
 }
  
 @media (max-width: 480px) {
@@ -1794,6 +1716,16 @@ document.addEventListener('DOMContentLoaded', () => {
    
     .river-keywords-container { height: 120px; }
     .keyword-small { display: none; }
+    
+    .animated-badge-static {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .animated-badge-static svg {
+        width: 12px;
+        height: 12px;
+    }
 }
 </style>
 {% endblock %}

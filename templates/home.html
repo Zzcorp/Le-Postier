@@ -14,13 +14,13 @@
             <div class="video-poster" id="video-poster">
                 <div class="poster-gradient"></div>
             </div>
-            <!-- Multiple video sources for diaporama -->
+            <!-- Video element for diaporama -->
             <video autoplay muted loop playsinline id="hero-video" class="hero-video" preload="auto">
                 <source id="video-source" src="" type="video/mp4">
             </video>
             <div class="video-overlay"></div>
             
-            <!-- Video transition overlay -->
+            <!-- Video transition overlay for fade effect -->
             <div class="video-transition" id="video-transition"></div>
         </div>
         
@@ -103,7 +103,7 @@
 </div>
 
 <script>
-// Animated videos for background diaporama
+// All animated videos passed from the view
 const animatedVideos = [
     {% for url in animated_videos %}
     "{{ url }}"{% if not forloop.last %},{% endif %}
@@ -111,7 +111,7 @@ const animatedVideos = [
 ];
 
 // Fallback static video if no animated ones
-const fallbackVideo = "https://collections.samathey.fr/static/video/Annimate_CPA_optimized_0.mp4";
+const fallbackVideo = "{% static 'video/Annimate_CPA_optimized_0.mp4' %}";
 
 class VideoCarousel {
     constructor() {
@@ -121,13 +121,14 @@ class VideoCarousel {
         this.indicatorsContainer = document.getElementById('video-indicators');
         this.videoPoster = document.getElementById('video-poster');
         
+        // Use all available videos from animated_cp folder
         this.videos = animatedVideos.length > 0 ? animatedVideos : [fallbackVideo];
         this.currentIndex = 0;
         this.isTransitioning = false;
         this.autoPlayInterval = null;
-        this.videoTimeout = null;
-        this.preloadedVideos = new Map();
         this.videoLoaded = false;
+        this.transitionDuration = 800; // ms for fade transition
+        this.displayDuration = 8000; // ms to show each video
         
         this.init();
     }
@@ -136,49 +137,25 @@ class VideoCarousel {
         // Shuffle videos for variety
         this.shuffleVideos();
         
-        // Limit to reasonable number
-        this.videos = this.videos.slice(0, 20);
+        // Limit to reasonable number for performance
+        this.videos = this.videos.slice(0, 50);
+        
+        console.log(`VideoCarousel: ${this.videos.length} videos available`);
         
         // Create indicators
         this.createIndicators();
         
-        // Start preloading first video immediately
-        this.preloadFirstVideo();
-        
-        // Set up event listeners
+        // Set up video event listeners
         this.videoElement.addEventListener('loadeddata', () => this.onVideoLoaded());
         this.videoElement.addEventListener('canplay', () => this.onVideoReady());
-        this.videoElement.addEventListener('ended', () => this.nextVideo());
-        this.videoElement.addEventListener('error', () => this.handleError());
+        this.videoElement.addEventListener('ended', () => this.onVideoEnded());
+        this.videoElement.addEventListener('error', (e) => this.handleError(e));
         
-        // Auto-advance every 15 seconds if video is still playing
+        // Load first video
+        this.loadVideo(0);
+        
+        // Start auto-advance timer
         this.startAutoAdvance();
-    }
-    
-    preloadFirstVideo() {
-        // Load first video immediately
-        const firstVideoUrl = this.videos[0];
-        this.videoSource.src = firstVideoUrl;
-        this.videoElement.load();
-        
-        // Also preload next videos in background
-        setTimeout(() => this.preloadVideos(1, 3), 100);
-    }
-    
-    onVideoLoaded() {
-        // Hide poster, show video
-        if (this.videoPoster) {
-            this.videoPoster.style.opacity = '0';
-            setTimeout(() => {
-                this.videoPoster.style.display = 'none';
-            }, 500);
-        }
-        this.videoLoaded = true;
-        
-        // Try to play
-        this.videoElement.play().catch(() => {
-            console.log('Autoplay prevented, video will play on interaction');
-        });
     }
     
     shuffleVideos() {
@@ -188,25 +165,11 @@ class VideoCarousel {
         }
     }
     
-    preloadVideos(startIndex, count) {
-        for (let i = 0; i < count; i++) {
-            const idx = (startIndex + i) % this.videos.length;
-            const url = this.videos[idx];
-            
-            if (!this.preloadedVideos.has(url)) {
-                const video = document.createElement('video');
-                video.preload = 'metadata';
-                video.src = url;
-                this.preloadedVideos.set(url, video);
-            }
-        }
-    }
-    
     createIndicators() {
         if (this.videos.length <= 1) return;
         
-        // Only show up to 8 indicators
-        const maxIndicators = Math.min(this.videos.length, 8);
+        // Show max 10 indicators
+        const maxIndicators = Math.min(this.videos.length, 10);
         
         for (let i = 0; i < maxIndicators; i++) {
             const dot = document.createElement('button');
@@ -221,6 +184,8 @@ class VideoCarousel {
     
     updateIndicators() {
         const dots = this.indicatorsContainer.querySelectorAll('.video-dot');
+        if (dots.length === 0) return;
+        
         const activeIndex = this.currentIndex % dots.length;
         
         dots.forEach((dot, i) => {
@@ -228,9 +193,34 @@ class VideoCarousel {
         });
     }
     
+    onVideoLoaded() {
+        console.log('Video loaded:', this.videos[this.currentIndex]);
+        
+        // Hide poster, show video with fade
+        if (this.videoPoster && this.videoPoster.style.display !== 'none') {
+            this.videoPoster.style.opacity = '0';
+            setTimeout(() => {
+                this.videoPoster.style.display = 'none';
+            }, 500);
+        }
+        
+        this.videoLoaded = true;
+    }
+    
     onVideoReady() {
+        // Fade out transition overlay
         this.transition.classList.remove('active');
         this.isTransitioning = false;
+        
+        // Try to play
+        this.videoElement.play().catch((err) => {
+            console.log('Autoplay prevented:', err);
+        });
+    }
+    
+    onVideoEnded() {
+        // Video naturally ended, go to next
+        this.nextVideo();
     }
     
     loadVideo(index) {
@@ -239,33 +229,41 @@ class VideoCarousel {
         this.currentIndex = index;
         const videoUrl = this.videos[index];
         
-        // Fade transition
+        console.log(`Loading video ${index + 1}/${this.videos.length}: ${videoUrl}`);
+        
+        // Start fade to black transition
         this.isTransitioning = true;
         this.transition.classList.add('active');
         
+        // After fade to black, switch video
         setTimeout(() => {
             this.videoSource.src = videoUrl;
             this.videoElement.load();
-            this.videoElement.play().catch(() => {});
             
-            // Timeout fallback
+            // Fallback: if video doesn't load in 3 seconds, skip to next
             setTimeout(() => {
                 if (this.isTransitioning) {
+                    console.log('Video load timeout, skipping...');
                     this.transition.classList.remove('active');
                     this.isTransitioning = false;
+                    this.nextVideo();
                 }
-            }, 2000);
+            }, 3000);
             
             this.updateIndicators();
-            
-            // Preload next videos
-            this.preloadVideos(index + 1, 2);
-        }, 200);
+        }, this.transitionDuration / 2);
     }
     
     nextVideo() {
         const nextIndex = (this.currentIndex + 1) % this.videos.length;
         this.loadVideo(nextIndex);
+        this.resetAutoAdvance();
+    }
+    
+    previousVideo() {
+        const prevIndex = (this.currentIndex - 1 + this.videos.length) % this.videos.length;
+        this.loadVideo(prevIndex);
+        this.resetAutoAdvance();
     }
     
     goToVideo(index) {
@@ -275,26 +273,38 @@ class VideoCarousel {
         }
     }
     
-    handleError() {
-        console.log('Video error, skipping to next');
-        // Remove problematic video
+    handleError(e) {
+        console.error('Video error:', e);
+        console.log('Skipping problematic video:', this.videos[this.currentIndex]);
+        
+        // Remove problematic video from list
         this.videos.splice(this.currentIndex, 1);
         
         if (this.videos.length === 0) {
             this.videos = [fallbackVideo];
+            this.currentIndex = 0;
+        } else {
+            // Adjust index if needed
+            if (this.currentIndex >= this.videos.length) {
+                this.currentIndex = 0;
+            }
         }
         
-        this.nextVideo();
+        // Reset transition state
+        this.transition.classList.remove('active');
+        this.isTransitioning = false;
+        
+        // Load next video
+        setTimeout(() => this.loadVideo(this.currentIndex), 500);
     }
     
     startAutoAdvance() {
-        // Clear existing
         this.stopAutoAdvance();
         
-        // Advance every 20 seconds
+        // Auto-advance every displayDuration ms
         this.autoPlayInterval = setInterval(() => {
             this.nextVideo();
-        }, 20000);
+        }, this.displayDuration);
     }
     
     stopAutoAdvance() {
@@ -312,7 +322,10 @@ class VideoCarousel {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    new VideoCarousel();
+    // Small delay to ensure everything is loaded
+    setTimeout(() => {
+        new VideoCarousel();
+    }, 100);
 });
 </script>
 
@@ -378,12 +391,13 @@ document.addEventListener('DOMContentLoaded', () => {
     z-index: 3;
 }
 
+/* Video Transition - Fade to black effect */
 .video-transition {
     position: absolute;
     inset: 0;
     background: #1a1208;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.4s ease;
     pointer-events: none;
     z-index: 4;
 }

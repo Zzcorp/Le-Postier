@@ -39,14 +39,12 @@
     <div class="gallery-controls animate-fade-in delay-3">
         <div class="sort-options">
             <button class="sort-btn active" data-sort="popular" onclick="sortGallery('popular')">
-                <!-- Heart icon -->
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
                 Plus aimées
             </button>
             <button class="sort-btn" data-sort="recent" onclick="sortGallery('recent')">
-                <!-- Clock icon -->
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/>
                     <polyline points="12 6 12 12 16 14"/>
@@ -54,7 +52,6 @@
                 Récentes
             </button>
             <button class="sort-btn" data-sort="number" onclick="sortGallery('number')">
-                <!-- List icon -->
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="8" y1="6" x2="21" y2="6"/>
                     <line x1="8" y1="12" x2="21" y2="12"/>
@@ -76,7 +73,8 @@
              data-number="{{ postcard.number }}"
              data-likes="{{ postcard.likes_count }}"
              data-title="{{ postcard.title }}"
-             data-animated-urls="{{ postcard.animated_url }}">
+             data-vignette="{{ postcard.get_vignette_url }}"
+             data-animated-urls='{{ postcard.get_animated_urls|safe }}'>
             
             <div class="card-video-container">
                 <video class="card-video" 
@@ -84,12 +82,11 @@
                        loop 
                        playsinline
                        preload="none"
-                       poster="{{ postcard.vignette_url }}"
+                       poster="{{ postcard.get_vignette_url }}"
                        data-src="{{ postcard.get_animated_urls.0 }}">
                 </video>
                 <div class="video-overlay">
                     <button class="play-btn" onclick="openAnimatedModal({{ postcard.id }})">
-                        <!-- Play icon -->
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
                             <polygon points="5 3 19 12 5 21 5 3"/>
                         </svg>
@@ -98,7 +95,6 @@
                 
                 {% if postcard.get_animated_urls|length > 1 %}
                 <div class="multi-video-badge">
-                    <!-- Multiple videos icon -->
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M23 7l-7 5 7 5V7z"/>
                         <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
@@ -116,7 +112,6 @@
                     <button class="like-btn {% if postcard.id in user_likes %}liked{% endif %}" 
                             onclick="toggleLike({{ postcard.id }}, true)"
                             data-postcard-id="{{ postcard.id }}">
-                        <!-- Heart icon -->
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="{% if postcard.id in user_likes %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                         </svg>
@@ -124,7 +119,6 @@
                     </button>
                     
                     <button class="suggest-btn" onclick="openSuggestModal({{ postcard.id }}, '{{ postcard.number }}')">
-                        <!-- Lightbulb icon -->
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 18h6"/>
                             <path d="M10 22h4"/>
@@ -145,12 +139,11 @@
     </div>
 </div>
 
-<!-- Animated Postcard Modal - SCROLLABLE -->
+<!-- Animated Postcard Modal -->
 <div class="animated-modal" id="animatedModal">
     <div class="modal-backdrop" onclick="closeAnimatedModal()"></div>
     <div class="modal-container">
         <button class="modal-close" onclick="closeAnimatedModal()">
-            <!-- X icon -->
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
@@ -160,8 +153,9 @@
         <!-- Scrollable Content -->
         <div class="modal-scroll-content">
             <div class="modal-video-section">
-                <video id="modalVideo" controls autoplay loop>
-                    <source src="" type="video/mp4">
+                <video id="modalVideo" controls autoplay loop playsinline>
+                    <source id="modalVideoSource" src="" type="video/mp4">
+                    Your browser does not support the video tag.
                 </video>
                 
                 <!-- Video selector for multiple videos -->
@@ -177,7 +171,6 @@
                 
                 <div class="modal-actions">
                     <button class="modal-like-btn" id="modalLikeBtn" onclick="toggleModalLike()">
-                        <!-- Heart icon -->
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                         </svg>
@@ -186,7 +179,6 @@
                     </button>
                     
                     <button class="modal-suggest-btn" onclick="showSuggestForm()">
-                        <!-- Lightbulb icon -->
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 18h6"/>
                             <path d="M10 22h4"/>
@@ -215,7 +207,6 @@
 <div class="success-modal" id="successModal">
     <div class="success-content">
         <div class="success-icon">
-            <!-- Check icon -->
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
             </svg>
@@ -343,28 +334,50 @@ function sortGallery(sortBy) {
     cards.forEach(card => grid.appendChild(card));
 }
 
-// Open animated modal
+// Open animated modal - FIXED VIDEO PLAYBACK
 function openAnimatedModal(postcardId) {
     const card = document.querySelector(`[data-id="${postcardId}"]`);
     if (!card) return;
     
     currentPostcardId = postcardId;
-    const urlsString = card.dataset.animatedUrls;
-    currentAnimatedUrls = urlsString.split(',').filter(u => u.trim());
+    
+    // Parse the animated URLs from the data attribute
+    let urlsData = card.dataset.animatedUrls;
+    try {
+        // Handle both JSON array and comma-separated string
+        if (urlsData.startsWith('[')) {
+            currentAnimatedUrls = JSON.parse(urlsData.replace(/'/g, '"'));
+        } else {
+            currentAnimatedUrls = urlsData.split(',').map(u => u.trim()).filter(u => u);
+        }
+    } catch(e) {
+        // Fallback: try to get from video element
+        const cardVideo = card.querySelector('.card-video');
+        if (cardVideo && cardVideo.src) {
+            currentAnimatedUrls = [cardVideo.src];
+        } else if (cardVideo && cardVideo.dataset.src) {
+            currentAnimatedUrls = [cardVideo.dataset.src];
+        } else {
+            currentAnimatedUrls = [];
+        }
+    }
+    
     currentVideoIndex = 0;
     
+    // Set modal info
     document.getElementById('modalNumber').textContent = 'N° ' + card.dataset.number;
     document.getElementById('modalTitle').textContent = card.dataset.title;
     document.getElementById('modalLikeCount').textContent = card.dataset.likes;
     
+    // Check if liked
     const likeBtn = card.querySelector('.like-btn');
-    document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn.classList.contains('liked'));
+    document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn && likeBtn.classList.contains('liked'));
     
+    // Get the video element
     const video = document.getElementById('modalVideo');
-    video.src = currentAnimatedUrls[0];
-    video.load();
-    video.play().catch(() => {});
+    const videoSource = document.getElementById('modalVideoSource');
     
+    // Set up video selector for multiple videos
     const selector = document.getElementById('videoSelector');
     const tabs = document.getElementById('videoTabs');
     
@@ -379,24 +392,59 @@ function openAnimatedModal(postcardId) {
         selector.style.display = 'none';
     }
     
+    // Load and play the first video
+    if (currentAnimatedUrls.length > 0) {
+        const videoUrl = currentAnimatedUrls[0];
+        
+        // Set the source
+        videoSource.src = videoUrl;
+        video.load();
+        
+        // Play when ready
+        video.oncanplay = function() {
+            video.play().catch(e => {
+                console.log('Autoplay prevented:', e);
+            });
+        };
+        
+        video.onerror = function() {
+            console.error('Video load error for:', videoUrl);
+        };
+    }
+    
+    // Show modal
     document.getElementById('animatedModal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
 function closeAnimatedModal() {
-    document.getElementById('modalVideo').pause();
+    const video = document.getElementById('modalVideo');
+    video.pause();
+    video.currentTime = 0;
+    
     document.getElementById('animatedModal').classList.remove('active');
     document.body.style.overflow = '';
     hideSuggestForm();
 }
 
+// Switch between multiple videos - FIXED
 function switchVideo(index) {
     currentVideoIndex = index;
     const video = document.getElementById('modalVideo');
-    video.src = currentAnimatedUrls[index];
-    video.load();
-    video.play().catch(() => {});
+    const videoSource = document.getElementById('modalVideoSource');
     
+    if (currentAnimatedUrls[index]) {
+        videoSource.src = currentAnimatedUrls[index];
+        video.load();
+        
+        video.oncanplay = function() {
+            video.play().catch(e => {
+                console.log('Autoplay prevented:', e);
+            });
+        };
+    }
+    
+    // Update tab active state
     document.querySelectorAll('.video-tab').forEach((tab, i) => {
         tab.classList.toggle('active', i === index);
     });
@@ -424,10 +472,15 @@ async function toggleLike(postcardId, isAnimated = true) {
                 likeBtn.classList.toggle('liked', data.liked);
                 likeCount.textContent = data.likes_count;
                 card.dataset.likes = data.likes_count;
+                
+                // Update SVG fill
+                const svg = likeBtn.querySelector('svg');
+                svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
             }
             
             if (currentPostcardId === postcardId) {
-                document.getElementById('modalLikeBtn').classList.toggle('liked', data.liked);
+                const modalBtn = document.getElementById('modalLikeBtn');
+                modalBtn.classList.toggle('liked', data.liked);
                 document.getElementById('modalLikeCount').textContent = data.likes_count;
             }
         }
@@ -508,10 +561,24 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// Check for highlight parameter (from browse page)
+function checkHighlight() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    
+    if (highlightId) {
+        // Wait for page to load then open the modal
+        setTimeout(() => {
+            openAnimatedModal(parseInt(highlightId));
+        }, 500);
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initLazyLoading();
     initHoverEffects();
+    checkHighlight();
 });
 
 window.addEventListener('load', () => {
@@ -520,7 +587,6 @@ window.addEventListener('load', () => {
 </script>
 
 <style>
-/* (Keep all existing styles - no changes needed for icons) */
 /* Loading Overlay */
 .loading-overlay {
     position: fixed;
@@ -917,6 +983,7 @@ window.addEventListener('load', () => {
     width: 100%;
     max-height: 50vh;
     display: block;
+    background: #000;
 }
 
 .video-selector {

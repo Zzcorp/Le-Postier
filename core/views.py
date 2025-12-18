@@ -100,8 +100,6 @@ def home(request):
         return HttpResponse(f"<h1>Home Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
-# In core/views.py - Update the browse function
-
 def browse(request):
     """Browse page - search and display postcards"""
     try:
@@ -111,14 +109,23 @@ def browse(request):
         postcards = Postcard.objects.all()
         themes = Theme.objects.all()
 
-        # Apply search filter
+        # Apply search filter - proper database query
         if query:
-            postcards = postcards.filter(
-                Q(title__icontains=query) |
-                Q(keywords__icontains=query) |
-                Q(number__icontains=query) |
-                Q(description__icontains=query)
-            )
+            # Split query into terms for better matching
+            search_terms = query.split()
+
+            # Build Q objects for each term
+            q_objects = Q()
+            for term in search_terms:
+                term_q = (
+                        Q(title__icontains=term) |
+                        Q(keywords__icontains=term) |
+                        Q(number__icontains=term) |
+                        Q(description__icontains=term)
+                )
+                q_objects &= term_q  # AND the terms together
+
+            postcards = postcards.filter(q_objects).distinct()
 
             # Log search
             SearchLog.objects.create(
@@ -128,8 +135,11 @@ def browse(request):
                 ip_address=get_client_ip(request)
             )
 
+        # Order by number
+        postcards = postcards.order_by('number')
+
         # Get postcards and check for images
-        postcards_list = list(postcards.order_by('number')[:500])
+        postcards_list = list(postcards[:500])
 
         # Filter those with images - using method that actually checks file existence
         postcards_with_images = []
