@@ -10,11 +10,11 @@ from pathlib import Path
 import ftplib
 import os
 import time
-from datetime import datetime
+import socket
 
 
 class Command(BaseCommand):
-    help = 'Sync all postcard images and videos from OVH FTP server'
+    help = 'Sync all postcard images and videos from OVH FTP server to persistent disk'
 
     def add_arguments(self, parser):
         parser.add_argument('--ftp-host', type=str, help='FTP host')
@@ -36,6 +36,10 @@ class Command(BaseCommand):
                             help='Show what would be downloaded without downloading')
         parser.add_argument('--verbose', action='store_true',
                             help='Show detailed progress')
+        parser.add_argument('--timeout', type=int, default=60,
+                            help='FTP timeout in seconds')
+        parser.add_argument('--retry', type=int, default=3,
+                            help='Number of retries for failed downloads')
 
     def handle(self, *args, **options):
         # Get FTP credentials
@@ -59,23 +63,26 @@ class Command(BaseCommand):
         limit = options['limit']
         dry_run = options['dry_run']
         verbose = options['verbose']
+        timeout = options['timeout']
+        retry_count = options['retry']
 
-        # Local paths
+        # Local paths - USE PERSISTENT DISK
         media_root = Path(settings.MEDIA_ROOT)
 
         self.stdout.write(f"\n{'=' * 70}")
-        self.stdout.write(f"OVH FTP to Render Sync")
+        self.stdout.write(f"OVH FTP to Render Persistent Disk Sync")
         self.stdout.write(f"{'=' * 70}")
         self.stdout.write(f"FTP Host: {ftp_host}")
         self.stdout.write(f"FTP Path: {ftp_path}")
-        self.stdout.write(f"Media Root: {media_root}")
-        self.stdout.write(f"Folders: {folders}")
+        self.stdout.write(f"Local Media Root: {media_root}")
+        self.stdout.write(f"Media Root exists: {media_root.exists()}")
+        self.stdout.write(f"Folders to sync: {folders}")
         self.stdout.write(f"Include Animated: {include_animated}")
         self.stdout.write(f"Skip Existing: {skip_existing}")
         if limit:
             self.stdout.write(f"Limit per folder: {limit}")
         if dry_run:
-            self.stdout.write(self.style.WARNING("DRY RUN MODE"))
+            self.stdout.write(self.style.WARNING("DRY RUN MODE - No files will be downloaded"))
         self.stdout.write(f"{'=' * 70}\n")
 
         # Ensure local directories exist
@@ -83,9 +90,11 @@ class Command(BaseCommand):
             self.create_directories(media_root, folders, include_animated)
 
         # Connect to FTP
+        ftp = None
         try:
             self.stdout.write(f"Connecting to {ftp_host}...")
-            ftp = ftplib.FTP(ftp_host, timeout=60)
+            ftp = ftplib.FTP(timeout=timeout)
+            ftp.connect(ftp_host)
             ftp.login(ftp_user, ftp_pass)
             ftp.set_pasv(True)  # Use passive mode
             self.stdout.write(self.style.SUCCESS(f"✓ Connected successfully"))
@@ -103,7 +112,7 @@ class Command(BaseCommand):
 
                 stats = self.sync_folder(
                     ftp, remote_path, local_path, folder,
-                    limit, dry_run, skip_existing, verbose
+                    limit, dry_run, skip_existing, verbose, retry_count
                 )
 
                 for key in total_stats:
@@ -114,13 +123,11 @@ class Command(BaseCommand):
                 local_animated = media_root / 'animated_cp'
                 stats = self.sync_folder(
                     ftp, animated_path, local_animated, 'animated_cp',
-                    limit, dry_run, skip_existing, verbose,
+                    limit, dry_run, skip_existing, verbose, retry_count,
                     extensions=('.mp4', '.webm', '.MP4', '.WEBM')
                 )
                 for key in total_stats:
                     total_stats[key] += stats.get(key, 0)
-
-            ftp.quit()
 
             # Final summary
             self.stdout.write(f"\n{'=' * 70}")
@@ -136,15 +143,28 @@ class Command(BaseCommand):
         except ftplib.all_errors as e:
             self.stderr.write(self.style.ERROR(f"FTP Error: {e}"))
             return
+        except socket.timeout as e:
+            self.stderr.write(self.style.ERROR(f"Connection timeout: {e}"))
+            return
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"Error: {e}"))
             import traceback
             traceback.print_exc()
             return
+        finally:
+            if ftp:
+                try:
+                    ftp.quit()
+                except:
+                    pass
 
     def create_directories(self, media_root, folders, include_animated):
         """Create all necessary local directories"""
-        self.stdout.write("Creating local directories...")
+        self.stdout.write("Creating local directories on persistent disk...")
+
+        # Ensure media root exists
+        media_root.mkdir(parents=True, exist_ok=True)
+        self.stdout.write(f"  ✓ {media_root}")
 
         for folder in folders:
             path = media_root / 'postcards' / folder
@@ -157,11 +177,13 @@ class Command(BaseCommand):
             self.stdout.write(f"  ✓ {path}")
 
         # Also create signatures folder
-        (media_root / 'signatures').mkdir(parents=True, exist_ok=True)
+        sig_path = media_root / 'signatures'
+        sig_path.mkdir(parents=True, exist_ok=True)
+        self.stdout.write(f"  ✓ {sig_path}")
         self.stdout.write("")
 
     def sync_folder(self, ftp, remote_path, local_path, folder_name,
-                    limit, dry_run, skip_existing, verbose,
+                    limit, dry_run, skip_existing, verbose, retry_count,
                     extensions=('.jpg', '.jpeg', '.png', '.gif', '.JPG', '.JPEG', '.PNG', '.GIF')):
         """Sync a single folder from FTP"""
 
@@ -172,6 +194,9 @@ class Command(BaseCommand):
         self.stdout.write(f"  Remote: {remote_path}")
         self.stdout.write(f"  Local: {local_path}")
 
+        # Ensure local path exists
+        local_path.mkdir(parents=True, exist_ok=True)
+
         # Try to change to remote directory
         try:
             ftp.cwd(remote_path)
@@ -179,32 +204,36 @@ class Command(BaseCommand):
             self.stderr.write(self.style.WARNING(f"  ✗ Cannot access {remote_path}: {e}"))
             return stats
 
-        # List files
-        try:
-            files = []
-            ftp.retrlines('LIST', lambda x: files.append(x))
-        except ftplib.error_perm as e:
-            self.stderr.write(self.style.WARNING(f"  ✗ Cannot list files: {e}"))
-            return stats
-
-        # Parse file list
+        # List files using MLSD (more reliable) or fallback to LIST
         file_list = []
-        for line in files:
-            parts = line.split()
-            if len(parts) >= 9:
-                filename = ' '.join(parts[8:])  # Handle filenames with spaces
-                # Skip directories (lines starting with 'd')
-                if not line.startswith('d'):
-                    # Check extension
-                    if any(filename.endswith(ext) for ext in extensions):
-                        file_list.append(filename)
+        try:
+            # Try MLSD first (more reliable)
+            for name, facts in ftp.mlsd():
+                if facts.get('type') == 'file':
+                    if any(name.lower().endswith(ext.lower()) for ext in extensions):
+                        file_list.append(name)
+        except:
+            # Fallback to LIST
+            try:
+                files = []
+                ftp.retrlines('LIST', lambda x: files.append(x))
 
-        # Also try nlst for simpler listing
+                for line in files:
+                    parts = line.split()
+                    if len(parts) >= 9 and not line.startswith('d'):
+                        filename = ' '.join(parts[8:])
+                        if any(filename.lower().endswith(ext.lower()) for ext in extensions):
+                            file_list.append(filename)
+            except ftplib.error_perm as e:
+                self.stderr.write(self.style.WARNING(f"  ✗ Cannot list files: {e}"))
+                return stats
+
+        # Also try nlst as final fallback
         if not file_list:
             try:
                 all_files = ftp.nlst()
                 file_list = [f for f in all_files
-                             if any(f.endswith(ext) for ext in extensions)]
+                             if any(f.lower().endswith(ext.lower()) for ext in extensions)]
             except:
                 pass
 
@@ -222,7 +251,7 @@ class Command(BaseCommand):
             local_file = local_path / filename
 
             # Skip existing
-            if skip_existing and local_file.exists():
+            if skip_existing and local_file.exists() and local_file.stat().st_size > 0:
                 stats['skipped'] += 1
                 if verbose:
                     self.stdout.write(f"    [{i}/{len(file_list)}] Skip: {filename}")
@@ -233,27 +262,40 @@ class Command(BaseCommand):
                 stats['downloaded'] += 1
                 continue
 
-            # Download file
-            try:
-                if verbose or i % 50 == 0 or i == len(file_list):
-                    self.stdout.write(f"    [{i}/{len(file_list)}] Downloading: {filename}", ending='')
+            # Download file with retry
+            success = False
+            for attempt in range(retry_count):
+                try:
+                    if verbose or i % 50 == 0 or i == len(file_list):
+                        self.stdout.write(f"    [{i}/{len(file_list)}] Downloading: {filename}", ending='')
 
-                with open(local_file, 'wb') as f:
-                    ftp.retrbinary(f'RETR {filename}', f.write)
+                    with open(local_file, 'wb') as f:
+                        ftp.retrbinary(f'RETR {filename}', f.write)
 
-                file_size = local_file.stat().st_size
-                stats['bytes'] += file_size
-                stats['downloaded'] += 1
+                    file_size = local_file.stat().st_size
+                    stats['bytes'] += file_size
+                    stats['downloaded'] += 1
+                    success = True
 
-                if verbose or i % 50 == 0 or i == len(file_list):
-                    self.stdout.write(self.style.SUCCESS(f" ✓ ({file_size / 1024:.1f} KB)"))
+                    if verbose or i % 50 == 0 or i == len(file_list):
+                        self.stdout.write(self.style.SUCCESS(f" ✓ ({file_size / 1024:.1f} KB)"))
+                    break
 
-            except Exception as e:
-                stats['errors'] += 1
-                self.stdout.write(self.style.ERROR(f" ✗ {e}"))
-                # Remove partial file
-                if local_file.exists():
-                    local_file.unlink()
+                except Exception as e:
+                    if attempt < retry_count - 1:
+                        time.sleep(1)  # Wait before retry
+                        # Reconnect if needed
+                        try:
+                            ftp.pwd()
+                        except:
+                            # Connection lost, but we can't reconnect here easily
+                            pass
+                    else:
+                        stats['errors'] += 1
+                        self.stdout.write(self.style.ERROR(f" ✗ {e}"))
+                        # Remove partial file
+                        if local_file.exists():
+                            local_file.unlink()
 
         # Summary for this folder
         self.stdout.write(f"  Summary: {stats['downloaded']} downloaded, "

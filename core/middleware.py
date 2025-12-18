@@ -8,6 +8,7 @@ from django.conf import settings
 from pathlib import Path
 import mimetypes
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,12 @@ class MediaServeMiddleware:
         self.media_url = settings.MEDIA_URL.rstrip('/')
         self.media_root = Path(settings.MEDIA_ROOT)
 
+        # Log media configuration on startup
+        logger.info(f"MediaServeMiddleware initialized:")
+        logger.info(f"  MEDIA_URL: {self.media_url}")
+        logger.info(f"  MEDIA_ROOT: {self.media_root}")
+        logger.info(f"  MEDIA_ROOT exists: {self.media_root.exists()}")
+
     def __call__(self, request):
         # Check if this is a media file request
         if request.path.startswith(self.media_url + '/'):
@@ -36,10 +43,14 @@ class MediaServeMiddleware:
 
         # Security: prevent directory traversal
         if '..' in relative_path or relative_path.startswith('/'):
+            logger.warning(f"Invalid path attempted: {relative_path}")
             raise Http404("Invalid path")
 
         # Build the full file path
         file_path = self.media_root / relative_path
+
+        # Log the request for debugging
+        logger.debug(f"Media request: {request.path} -> {file_path}")
 
         # Check if file exists
         if not file_path.exists() or not file_path.is_file():
@@ -50,6 +61,7 @@ class MediaServeMiddleware:
         try:
             file_path.resolve().relative_to(self.media_root.resolve())
         except ValueError:
+            logger.warning(f"Path traversal attempt: {file_path}")
             raise Http404("Invalid path")
 
         # Determine content type
@@ -68,7 +80,7 @@ class MediaServeMiddleware:
             response['Cache-Control'] = 'public, max-age=86400'  # 1 day
 
             # For videos, support range requests
-            if content_type.startswith('video/'):
+            if content_type and content_type.startswith('video/'):
                 response['Accept-Ranges'] = 'bytes'
 
             return response

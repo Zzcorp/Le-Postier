@@ -64,7 +64,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'le_postier.wsgi.application'
 
 # Database
-DATABASE_URL = config('DATABASE_URL', default='postgresql://zzcorp:erc5uvp74IqqUFotZeQKT8BHAiMFxOOC@dpg-d51jlth5pdvs73e9m95g-a/z_data_db_zyx_u82e')
+DATABASE_URL = config('DATABASE_URL', default='postgresql://zzcorp:F7MOzQAw4FIdFKXWW0NzBfbSKsM8KEAP@dpg-d51k9aumcj7s73ee13pg-a/z_data_db_zyx_uqwh')
 
 if DATABASE_URL:
     DATABASES = {
@@ -106,50 +106,20 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # =============================================================================
 MEDIA_URL = '/media/'
 
-# On Render, use the mounted persistent disk path
-# Set via environment variable: MEDIA_ROOT=/var/data/media
-# Locally, defaults to BASE_DIR / 'media'
-MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+# CRITICAL: On Render, use the mounted persistent disk path
+# The persistent disk should be mounted at /var/data
+# Set MEDIA_ROOT=/var/data/media in Render environment variables
+if os.environ.get('RENDER'):
+    # On Render, always use persistent disk
+    MEDIA_ROOT = Path('/var/data/media')
+else:
+    # Locally, use project media folder
+    MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
 
 # Postcard image subdirectories
 POSTCARD_IMAGE_DIRS = ['Vignette', 'Grande', 'Dos', 'Zoom']
 ANIMATED_CP_DIR = 'animated_cp'
 SIGNATURES_DIR = 'signatures'
-
-
-def create_media_dirs():
-    """Create media directories if they don't exist."""
-    try:
-        # Only create if MEDIA_ROOT exists (i.e., disk is mounted)
-        if MEDIA_ROOT.exists() or str(MEDIA_ROOT).startswith('/var/data'):
-            # Check if parent exists first
-            if not MEDIA_ROOT.parent.exists():
-                print(
-                    f"Media root parent {MEDIA_ROOT.parent} does not exist - skipping directory creation (build phase)")
-                return
-
-            # Create postcard directories
-            for subdir in POSTCARD_IMAGE_DIRS:
-                (MEDIA_ROOT / 'postcards' / subdir).mkdir(parents=True, exist_ok=True)
-            # Create animated postcards directory
-            (MEDIA_ROOT / ANIMATED_CP_DIR).mkdir(parents=True, exist_ok=True)
-            # Create signatures directory
-            (MEDIA_ROOT / SIGNATURES_DIR).mkdir(parents=True, exist_ok=True)
-            print(f"Media directories created/verified at: {MEDIA_ROOT}")
-    except OSError as e:
-        if "Read-only file system" in str(e):
-            print(f"Skipping media directory creation (build phase - disk not mounted yet)")
-        else:
-            print(f"Warning: Could not create media directories: {e}")
-    except Exception as e:
-        print(f"Warning: Could not create media directories: {e}")
-
-
-# Only try to create directories if not in build phase
-import os
-
-if os.environ.get('RENDER') != 'true' or os.path.exists('/var/data'):
-    create_media_dirs()
 
 # =============================================================================
 

@@ -42,6 +42,8 @@ class Command(BaseCommand):
                             help='Column index for description (-1 to skip)')
         parser.add_argument('--rarity-col', type=int, default=-1,
                             help='Column index for rarity (-1 to skip)')
+        parser.add_argument('--preview', action='store_true',
+                            help='Preview CSV structure and first rows')
 
     def handle(self, *args, **options):
         csv_path = Path(options['csv_file'])
@@ -80,7 +82,12 @@ class Command(BaseCommand):
         # Preview first few rows
         self.stdout.write("\nPreview (first 3 rows):")
         for i, row in enumerate(rows[:3]):
-            self.stdout.write(f"  Row {i + 1}: {row[:4]}...")
+            preview = [str(c)[:30] for c in row[:4]]
+            self.stdout.write(f"  Row {i + 1}: {preview}")
+
+        if options['preview']:
+            self.stdout.write("\nPreview mode - no import performed")
+            return
 
         if options['dry_run']:
             self.stdout.write(self.style.WARNING("\n[DRY RUN] - No changes will be made"))
@@ -173,6 +180,7 @@ class Command(BaseCommand):
                 try:
                     # Extract number
                     if number_col >= len(row):
+                        errors += 1
                         continue
 
                     number = str(row[number_col]).strip()

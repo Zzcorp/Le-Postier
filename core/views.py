@@ -1289,3 +1289,65 @@ def debug_browse(request):
         output.append(f"  {p.number}: vignette={vignette or 'NOT FOUND'}")
 
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>")
+
+
+# Add to core/views.py
+
+def debug_media(request):
+    """Debug view to check media configuration"""
+    from django.conf import settings
+    from pathlib import Path
+    import os
+
+    media_root = Path(settings.MEDIA_ROOT)
+
+    output = []
+    output.append("=" * 60)
+    output.append("MEDIA DEBUG INFO")
+    output.append("=" * 60)
+    output.append("")
+    output.append(f"RENDER env: {os.environ.get('RENDER', 'not set')}")
+    output.append(f"MEDIA_ROOT: {settings.MEDIA_ROOT}")
+    output.append(f"MEDIA_URL: {settings.MEDIA_URL}")
+    output.append(f"Media root exists: {media_root.exists()}")
+    output.append("")
+
+    # Check folders
+    for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
+        folder_path = media_root / 'postcards' / folder
+        if folder_path.exists():
+            files = list(folder_path.glob('*.*'))
+            output.append(f"{folder}: {len(files)} files")
+            if files[:3]:
+                output.append(f"  Sample: {', '.join(f.name for f in files[:3])}")
+        else:
+            output.append(f"{folder}: NOT FOUND at {folder_path}")
+
+    # Animated
+    animated_path = media_root / 'animated_cp'
+    if animated_path.exists():
+        files = list(animated_path.glob('*.*'))
+        output.append(f"animated_cp: {len(files)} files")
+    else:
+        output.append(f"animated_cp: NOT FOUND")
+
+    output.append("")
+
+    # Database
+    total = Postcard.objects.count()
+    with_images = Postcard.objects.filter(has_images=True).count()
+    output.append(f"Database: {total} postcards, {with_images} with images")
+
+    # Test first postcard
+    if total > 0:
+        sample = Postcard.objects.first()
+        output.append("")
+        output.append(f"Sample postcard #{sample.number}:")
+        output.append(f"  get_vignette_url(): {sample.get_vignette_url() or 'NOT FOUND'}")
+        output.append(f"  get_grande_url(): {sample.get_grande_url() or 'NOT FOUND'}")
+        output.append(f"  get_animated_urls(): {sample.get_animated_urls()}")
+
+    output.append("")
+    output.append("=" * 60)
+
+    return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")

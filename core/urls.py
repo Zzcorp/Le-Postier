@@ -55,4 +55,5 @@ urlpatterns = [
     path('galerie/', views.decouvrir, name='gallery'),
 
     path('debug/browse/', views.debug_browse, name='debug_browse'),
+    path('debug/media/', views.debug_media, name='debug_media'),
 ]
