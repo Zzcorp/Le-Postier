@@ -64,7 +64,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'le_postier.wsgi.application'
 
 # Database
-DATABASE_URL = config('DATABASE_URL', default='postgresql://zzcorp:F7MOzQAw4FIdFKXWW0NzBfbSKsM8KEAP@dpg-d51k9aumcj7s73ee13pg-a/z_data_db_zyx_uqwh')
+DATABASE_URL = config('DATABASE_URL', default='')
 
 if DATABASE_URL:
     DATABASES = {
@@ -106,15 +106,23 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # =============================================================================
 MEDIA_URL = '/media/'
 
-# CRITICAL: On Render, use the mounted persistent disk path
-# The persistent disk should be mounted at /var/data
-# Set MEDIA_ROOT=/var/data/media in Render environment variables
-# if os.environ.get('RENDER'):
-    # On Render, always use persistent disk
-MEDIA_ROOT = Path('/var/data/media')
-"""else:
-    # Locally, use project media folder
-    MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))"""
+# CRITICAL: Determine MEDIA_ROOT based on environment
+# Check for RENDER environment variable OR if /var/data exists (Render persistent disk)
+IS_RENDER = os.environ.get('RENDER', 'false').lower() == 'true'
+PERSISTENT_DISK_EXISTS = Path('/var/data').exists()
+
+if IS_RENDER or PERSISTENT_DISK_EXISTS:
+    # On Render with persistent disk - ALWAYS use /var/data/media
+    MEDIA_ROOT = Path('/var/data/media')
+    # Ensure directory exists
+    MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+else:
+    # Local development - use project media folder
+    MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+
+# Log the media root for debugging
+print(f"[SETTINGS] IS_RENDER={IS_RENDER}, PERSISTENT_DISK_EXISTS={PERSISTENT_DISK_EXISTS}")
+print(f"[SETTINGS] MEDIA_ROOT={MEDIA_ROOT}")
 
 # Postcard image subdirectories
 POSTCARD_IMAGE_DIRS = ['Vignette', 'Grande', 'Dos', 'Zoom']
@@ -181,5 +189,4 @@ LOGGING = {
 
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
-
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB

@@ -1291,7 +1291,7 @@ def debug_browse(request):
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>")
 
 
-# Add to core/views.py
+# Add these to core/views.py - replace the existing debug views
 
 def debug_media(request):
     """Debug view to check media configuration"""
@@ -1299,7 +1299,14 @@ def debug_media(request):
     from pathlib import Path
     import os
 
-    media_root = Path(settings.MEDIA_ROOT)
+    # Get the actual media root being used
+    is_render = os.environ.get('RENDER', 'false').lower() == 'true'
+    persistent_exists = Path('/var/data').exists()
+
+    if is_render or persistent_exists:
+        actual_media_root = Path('/var/data/media')
+    else:
+        actual_media_root = Path(settings.MEDIA_ROOT)
 
     output = []
     output.append("=" * 60)
@@ -1307,14 +1314,16 @@ def debug_media(request):
     output.append("=" * 60)
     output.append("")
     output.append(f"RENDER env: {os.environ.get('RENDER', 'not set')}")
-    output.append(f"MEDIA_ROOT: {settings.MEDIA_ROOT}")
+    output.append(f"/var/data exists: {persistent_exists}")
+    output.append(f"settings.MEDIA_ROOT: {settings.MEDIA_ROOT}")
+    output.append(f"Actual MEDIA_ROOT used: {actual_media_root}")
     output.append(f"MEDIA_URL: {settings.MEDIA_URL}")
-    output.append(f"Media root exists: {media_root.exists()}")
+    output.append(f"Media root exists: {actual_media_root.exists()}")
     output.append("")
 
     # Check folders
     for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
-        folder_path = media_root / 'postcards' / folder
+        folder_path = actual_media_root / 'postcards' / folder
         if folder_path.exists():
             files = list(folder_path.glob('*.*'))
             output.append(f"{folder}: {len(files)} files")
@@ -1324,16 +1333,17 @@ def debug_media(request):
             output.append(f"{folder}: NOT FOUND at {folder_path}")
 
     # Animated
-    animated_path = media_root / 'animated_cp'
+    animated_path = actual_media_root / 'animated_cp'
     if animated_path.exists():
         files = list(animated_path.glob('*.*'))
         output.append(f"animated_cp: {len(files)} files")
     else:
-        output.append(f"animated_cp: NOT FOUND")
+        output.append(f"animated_cp: NOT FOUND at {animated_path}")
 
     output.append("")
 
     # Database
+    from core.models import Postcard
     total = Postcard.objects.count()
     with_images = Postcard.objects.filter(has_images=True).count()
     output.append(f"Database: {total} postcards, {with_images} with images")
@@ -1346,6 +1356,10 @@ def debug_media(request):
         output.append(f"  get_vignette_url(): {sample.get_vignette_url() or 'NOT FOUND'}")
         output.append(f"  get_grande_url(): {sample.get_grande_url() or 'NOT FOUND'}")
         output.append(f"  get_animated_urls(): {sample.get_animated_urls()}")
+
+        # Show debug paths
+        debug_paths = sample.debug_image_paths()
+        output.append(f"  debug media_root: {debug_paths.get('media_root', 'N/A')}")
 
     output.append("")
     output.append("=" * 60)

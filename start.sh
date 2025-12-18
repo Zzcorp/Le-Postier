@@ -7,7 +7,18 @@ echo "=========================================="
 
 # Show environment
 echo "RENDER: $RENDER"
-echo "MEDIA_ROOT: ${MEDIA_ROOT:-/var/data/media}"
+echo "Checking /var/data..."
+
+# Check if persistent disk is mounted
+if [ -d "/var/data" ]; then
+    echo "✓ Persistent disk mounted at /var/data"
+    MEDIA_ROOT="/var/data/media"
+else
+    echo "✗ WARNING: /var/data not found - using fallback"
+    MEDIA_ROOT="./media"
+fi
+
+echo "MEDIA_ROOT will be: $MEDIA_ROOT"
 
 # Create media directories on persistent disk
 echo ""
@@ -16,13 +27,13 @@ python -c "
 import os
 from pathlib import Path
 
-# Always use persistent disk on Render
-if os.environ.get('RENDER'):
+# Always use persistent disk if it exists
+if Path('/var/data').exists():
     media_root = Path('/var/data/media')
+    print(f'Using persistent disk: {media_root}')
 else:
-    media_root = Path(os.environ.get('MEDIA_ROOT', 'media'))
-
-print(f'Media root: {media_root}')
+    media_root = Path('media')
+    print(f'Using local folder: {media_root}')
 
 directories = [
     media_root / 'postcards' / 'Vignette',

@@ -13,6 +13,13 @@ import os
 logger = logging.getLogger(__name__)
 
 
+def get_media_root():
+    """Get the correct media root path - always use persistent disk on Render"""
+    if os.environ.get('RENDER', 'false').lower() == 'true' or Path('/var/data').exists():
+        return Path('/var/data/media')
+    return Path(settings.MEDIA_ROOT)
+
+
 class MediaServeMiddleware:
     """
     Middleware to serve media files from the persistent disk.
@@ -22,7 +29,9 @@ class MediaServeMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
         self.media_url = settings.MEDIA_URL.rstrip('/')
-        self.media_root = Path(settings.MEDIA_ROOT)
+
+        # CRITICAL: Use the correct media root
+        self.media_root = get_media_root()
 
         # Log media configuration on startup
         logger.info(f"MediaServeMiddleware initialized:")

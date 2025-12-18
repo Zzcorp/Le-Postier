@@ -8,6 +8,14 @@ from pathlib import Path
 import os
 
 
+def get_media_root():
+    """Get the correct media root path - always use persistent disk on Render"""
+    from django.conf import settings
+    if os.environ.get('RENDER', 'false').lower() == 'true' or Path('/var/data').exists():
+        return Path('/var/data/media')
+    return Path(settings.MEDIA_ROOT)
+
+
 class CustomUser(AbstractUser):
     USER_CATEGORIES = [
         ('subscribed_unverified', 'Inscrit - Non vérifié'),
@@ -110,10 +118,11 @@ class Postcard(models.Model):
         Returns the URL if found, empty string otherwise.
         """
         from django.conf import settings
-        from pathlib import Path
 
+        # Use the correct media root
+        media_root = get_media_root()
         padded = self.get_padded_number()
-        base_path = Path(settings.MEDIA_ROOT) / 'postcards' / folder
+        base_path = media_root / 'postcards' / folder
 
         if not base_path.exists():
             return ''
@@ -159,11 +168,13 @@ class Postcard(models.Model):
         Supports: 000001.mp4, 000001_0.mp4, 000001_1.mp4, etc.
         """
         from django.conf import settings
-        from pathlib import Path
 
         video_urls = []
         padded = self.get_padded_number()
-        animated_dir = Path(settings.MEDIA_ROOT) / 'animated_cp'
+
+        # Use the correct media root
+        media_root = get_media_root()
+        animated_dir = media_root / 'animated_cp'
 
         if not animated_dir.exists():
             return video_urls
@@ -228,13 +239,17 @@ class Postcard(models.Model):
     def debug_image_paths(self):
         """Debug image path resolution"""
         from django.conf import settings
-        from pathlib import Path
 
+        # Use the correct media root
+        media_root = get_media_root()
         padded = self.get_padded_number()
-        results = {}
+        results = {
+            'media_root': str(media_root),
+            'padded_number': padded,
+        }
 
         for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
-            base_path = Path(settings.MEDIA_ROOT) / 'postcards' / folder
+            base_path = media_root / 'postcards' / folder
             results[folder] = {
                 'base_path': str(base_path),
                 'exists': base_path.exists(),
@@ -250,7 +265,7 @@ class Postcard(models.Model):
                     break
 
         # Check animated
-        animated_path = Path(settings.MEDIA_ROOT) / 'animated_cp'
+        animated_path = media_root / 'animated_cp'
         results['animated'] = {
             'base_path': str(animated_path),
             'exists': animated_path.exists(),

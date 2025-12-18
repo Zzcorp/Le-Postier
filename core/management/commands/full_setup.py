@@ -10,6 +10,13 @@ from pathlib import Path
 import os
 
 
+def get_media_root():
+    """Get the correct media root path - always use persistent disk on Render"""
+    if os.environ.get('RENDER', 'false').lower() == 'true' or Path('/var/data').exists():
+        return Path('/var/data/media')
+    return Path(settings.MEDIA_ROOT)
+
+
 class Command(BaseCommand):
     help = 'Complete setup: create dirs, sync images from OVH, import CSV, update flags'
 
@@ -18,23 +25,21 @@ class Command(BaseCommand):
         parser.add_argument('--ftp-host', type=str, help='FTP host')
         parser.add_argument('--ftp-user', type=str, help='FTP username')
         parser.add_argument('--ftp-pass', type=str, help='FTP password')
-        parser.add_argument('--skip-sync', action='store_true',
-                            help='Skip FTP sync')
-        parser.add_argument('--skip-import', action='store_true',
-                            help='Skip CSV import')
-        parser.add_argument('--limit', type=int, default=0,
-                            help='Limit files/rows for testing')
-        parser.add_argument('--dry-run', action='store_true',
-                            help='Preview without making changes')
+        parser.add_argument('--skip-sync', action='store_true', help='Skip FTP sync')
+        parser.add_argument('--skip-import', action='store_true', help='Skip CSV import')
+        parser.add_argument('--limit', type=int, default=0, help='Limit files/rows for testing')
+        parser.add_argument('--dry-run', action='store_true', help='Preview without making changes')
 
     def handle(self, *args, **options):
-        media_root = Path(settings.MEDIA_ROOT)
+        # CRITICAL: Use the correct media root
+        media_root = get_media_root()
 
         self.stdout.write(f"\n{'=' * 70}")
         self.stdout.write("LE POSTIER - COMPLETE SETUP")
         self.stdout.write(f"{'=' * 70}")
-        self.stdout.write(f"Media Root: {media_root}")
-        self.stdout.write(f"On Render: {os.environ.get('RENDER', 'false')}")
+        self.stdout.write(f"RENDER env: {os.environ.get('RENDER', 'not set')}")
+        self.stdout.write(f"/var/data exists: {Path('/var/data').exists()}")
+        self.stdout.write(self.style.SUCCESS(f"Media Root: {media_root}"))
         self.stdout.write(f"{'=' * 70}\n")
 
         # Step 0: Create directories
@@ -75,9 +80,7 @@ class Command(BaseCommand):
         if not options['skip_import'] and options.get('csv'):
             self.stdout.write(self.style.HTTP_INFO("\nSTEP 2: Importing CSV data..."))
 
-            import_kwargs = {
-                'update': True,
-            }
+            import_kwargs = {'update': True}
             if options['limit']:
                 import_kwargs['limit'] = options['limit']
             if options['dry_run']:
@@ -104,7 +107,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("SETUP COMPLETE!"))
         self.stdout.write(f"{'=' * 70}")
 
-        # Show status
         self.show_status(media_root)
 
     def create_directories(self, media_root):
@@ -136,7 +138,7 @@ class Command(BaseCommand):
         self.stdout.write(f"  Total postcards: {total}")
         self.stdout.write(f"  With images: {with_images}")
 
-        self.stdout.write(f"\nMedia Status:")
+        self.stdout.write(f"\nMedia Status ({media_root}):")
         for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
             path = media_root / 'postcards' / folder
             if path.exists():
