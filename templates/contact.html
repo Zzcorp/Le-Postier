@@ -201,7 +201,7 @@
     padding: 5%;
 }
 
-/* Message Input */
+/* Message Input - ADJUSTED: reduced top by 230px equivalent (using percentage for responsiveness) */
 .message-input {
     grid-column: 1;
     grid-row: 1 / 3;
@@ -213,7 +213,9 @@
     color: #4a3728;
     line-height: 1.6;
     padding: 10px;
+    padding-top: 5%; /* Reduced from default - bringing content up */
     height: 100%;
+    margin-top: -5%; /* Pull the message area up */
 }
 
 .message-input:focus {
@@ -282,7 +284,7 @@
     }
 }
 
-/* Recipient Area */
+/* Recipient Area - ADJUSTED: 30px higher and 50px more to the right */
 .recipient-area {
     grid-column: 2;
     grid-row: 2;
@@ -291,6 +293,9 @@
     justify-content: center;
     align-items: center;
     padding: 20px;
+    padding-right: 10px; /* Reduced right padding to shift content right */
+    margin-top: -30px; /* Move 30px higher */
+    margin-left: 50px; /* Move 50px to the right */
 }
 
 .recipient-placeholder {
@@ -455,6 +460,11 @@
     animation: float 2s ease-in-out infinite;
 }
 
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
 .success-message h3 {
     color: #ffc168;
     font-size: 1.8rem;
@@ -476,6 +486,8 @@
         grid-column: 1;
         grid-row: 3;
         min-height: 150px;
+        margin-top: 0;
+        padding-top: 10px;
     }
     
     .stamp-area {
@@ -487,86 +499,14 @@
     .recipient-area {
         grid-column: 1;
         grid-row: 2;
+        margin-top: 0;
+        margin-left: 0;
     }
     
     .interactive-elements {
         flex-direction: column;
         gap: 20px;
     }
-}
-
-#contact_form {
-    position: relative;
-    margin-top: -150px; /* Reduced from -350px */
-    height: 150px; /* Reduced from 350px */
-    z-index: 20;
-}
-
-#contact_text {
-    position: absolute;
-    left: 20px;
-    top: 30px; /* Adjusted */
-    width: 270px;
-    height: 100px; /* Reduced */
-    padding: 15px;
-    background-color: transparent;
-    border: none;
-    outline: none;
-    resize: none;
-    font-family: "Eskapade", cursive, 'Georgia', serif;
-    font-size: 18px;
-    color: #6f573f;
-    line-height: 1.4;
-}
-
-/* Signature repositioned: 25px more right, 20px more up */
-#contact_recipient {
-    position: absolute;
-    right: 140px; /* Was 165px, now 165-25=140px (25px more to the right) */
-    top: 105px; /* Was 125px, now 125-20=105px (20px higher) */
-    height: 65px;
-    opacity: 0;
-    transition: all 0.5s ease;
-}
-
-#contact_recipient.active {
-    opacity: 1;
-    animation: write-in 0.8s ease;
-}
-
-/* Stamp position adjusted for smaller form */
-#timbre_1_colle {
-    position: absolute;
-    right: 65px;
-    top: -10px; /* Adjusted for smaller form */
-    height: 70px; /* Slightly smaller */
-    opacity: 0;
-    transition: all 0.5s ease;
-    filter: drop-shadow(2px 2px 5px rgba(0, 0, 0, 0.3));
-}
-
-/* Instructions text adjusted */
-#contact_p {
-    margin-top: 180px; /* Reduced from 380px */
-    padding: 20px;
-    text-align: center;
-    color: #b5600b;
-    font-size: 16px;
-    background: rgba(32, 32, 32, 0.5);
-    border-radius: 10px;
-    backdrop-filter: blur(5px);
-}
-
-/* Postcard image adjusted */
-#cp_contact {
-    width: 100%;
-    max-width: 545px;
-    height: auto;
-    max-height: 350px; /* Limit height */
-    object-fit: contain;
-    border-radius: 15px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-    transition: transform 0.3s;
 }
 </style>
 
