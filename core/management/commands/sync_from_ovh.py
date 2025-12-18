@@ -173,7 +173,7 @@ class Command(BaseCommand):
         self.stdout.write("Creating local directories on persistent disk...")
 
         # Ensure media root exists
-        media_root.mkdir(parents=True
+        media_root.mkdir(parents=True)
         self.stdout.write(f"  ✓ {media_root}")
 
         for folder in folders:
@@ -287,5 +287,6 @@ class Command(BaseCommand):
 
         self.stdout.write(f"  Summary: {stats['downloaded']} downloaded, "
                           f"{stats['skipped']} skipped, {stats['errors']} errors")
+
 
         return stats
