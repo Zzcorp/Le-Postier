@@ -109,12 +109,12 @@ MEDIA_URL = '/media/'
 # CRITICAL: On Render, use the mounted persistent disk path
 # The persistent disk should be mounted at /var/data
 # Set MEDIA_ROOT=/var/data/media in Render environment variables
-if os.environ.get('RENDER'):
+# if os.environ.get('RENDER'):
     # On Render, always use persistent disk
-    MEDIA_ROOT = Path('/var/data/media')
-else:
+MEDIA_ROOT = Path('/var/data/media')
+"""else:
     # Locally, use project media folder
-    MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+    MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))"""
 
 # Postcard image subdirectories
 POSTCARD_IMAGE_DIRS = ['Vignette', 'Grande', 'Dos', 'Zoom']
@@ -181,4 +181,5 @@ LOGGING = {
 
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
+
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
