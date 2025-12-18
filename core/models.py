@@ -11,6 +11,9 @@ import os
 def get_media_root():
     """Get the correct media root path - always use persistent disk on Render"""
     from django.conf import settings
+    import os
+    from pathlib import Path
+
     if os.environ.get('RENDER', 'false').lower() == 'true' or Path('/var/data').exists():
         return Path('/var/data/media')
     return Path(settings.MEDIA_ROOT)

@@ -169,11 +169,11 @@ class Command(BaseCommand):
                     pass
 
     def create_directories(self, media_root, folders, include_animated):
-        """Create all necessary local directories"""
+        """Create all necessary local directories - FIXED with exist_ok=True"""
         self.stdout.write("Creating local directories on persistent disk...")
 
-        # Ensure media root exists
-        media_root.mkdir(parents=True)
+        # Ensure media root exists - FIXED: added exist_ok=True
+        media_root.mkdir(parents=True, exist_ok=True)
         self.stdout.write(f"  ✓ {media_root}")
 
         for folder in folders:
@@ -279,14 +279,21 @@ class Command(BaseCommand):
                 except Exception as e:
                     if attempt < retry_count - 1:
                         time.sleep(1)
+                        # Reconnect FTP if needed
+                        try:
+                            ftp.voidcmd("NOOP")
+                        except:
+                            pass
                     else:
                         stats['errors'] += 1
                         self.stdout.write(self.style.ERROR(f" ✗ {e}"))
                         if local_file.exists():
-                            local_file.unlink()
+                            try:
+                                local_file.unlink()
+                            except:
+                                pass
 
         self.stdout.write(f"  Summary: {stats['downloaded']} downloaded, "
                           f"{stats['skipped']} skipped, {stats['errors']} errors")
-
 
         return stats

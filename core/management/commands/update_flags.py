@@ -85,7 +85,7 @@ class Command(BaseCommand):
         total = postcards.count()
 
         if total == 0:
-            self.stdout.write(self.style.WARNING("No postcards in database. Run import_csv first."))
+            self.stdout.write(self.style.WARNING("No postcards in database. Run import_csv or populate_from_images first."))
             return
 
         updated = 0
@@ -112,7 +112,7 @@ class Command(BaseCommand):
             if has_animation:
                 has_animation_count += 1
 
-            if verbose and (i + 1) % 200 == 0:
+            if verbose and (i + 1) % 500 == 0:
                 self.stdout.write(f"  Progress: {i + 1}/{total}")
 
         self.stdout.write(f"\n{'=' * 60}")

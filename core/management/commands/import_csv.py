@@ -2,6 +2,7 @@
 """
 Import postcard metadata from CSV file.
 Handles various CSV formats and encodings.
+Updates existing postcards with title, keywords, description.
 """
 
 from django.core.management.base import BaseCommand
@@ -24,6 +25,8 @@ class Command(BaseCommand):
                             help='File encoding (auto, utf-8, latin-1, etc.)')
         parser.add_argument('--update', action='store_true',
                             help='Update existing postcards')
+        parser.add_argument('--create-missing', action='store_true',
+                            help='Create postcards that do not exist')
         parser.add_argument('--dry-run', action='store_true',
                             help='Preview without saving')
         parser.add_argument('--clear', action='store_true',
@@ -32,6 +35,9 @@ class Command(BaseCommand):
                             help='Limit number of imports')
         parser.add_argument('--skip-header', action='store_true', default=True,
                             help='Skip first row as header')
+        parser.add_argument('--preview', action='store_true',
+                            help='Preview CSV structure and first rows')
+        # Column mapping
         parser.add_argument('--number-col', type=int, default=0,
                             help='Column index for postcard number')
         parser.add_argument('--title-col', type=int, default=1,
@@ -42,8 +48,6 @@ class Command(BaseCommand):
                             help='Column index for description (-1 to skip)')
         parser.add_argument('--rarity-col', type=int, default=-1,
                             help='Column index for rarity (-1 to skip)')
-        parser.add_argument('--preview', action='store_true',
-                            help='Preview CSV structure and first rows')
 
     def handle(self, *args, **options):
         csv_path = Path(options['csv_file'])
@@ -74,10 +78,11 @@ class Command(BaseCommand):
         self.stdout.write(f"Total rows: {len(rows)}")
 
         # Skip header if needed
+        header = None
         if options['skip_header'] and rows:
             header = rows[0]
             rows = rows[1:]
-            self.stdout.write(f"Header: {header[:5]}...")
+            self.stdout.write(f"Header: {header[:5]}{'...' if len(header) > 5 else ''}")
 
         # Preview first few rows
         self.stdout.write("\nPreview (first 3 rows):")
@@ -87,6 +92,7 @@ class Command(BaseCommand):
 
         if options['preview']:
             self.stdout.write("\nPreview mode - no import performed")
+            self.show_column_analysis(rows[:100], header)
             return
 
         if options['dry_run']:
@@ -154,6 +160,29 @@ class Command(BaseCommand):
 
         return rows
 
+    def show_column_analysis(self, rows, header):
+        """Analyze columns to help with mapping"""
+        self.stdout.write("\n" + "=" * 50)
+        self.stdout.write("Column Analysis")
+        self.stdout.write("=" * 50)
+
+        if not rows:
+            return
+
+        num_cols = max(len(row) for row in rows)
+
+        for col_idx in range(min(num_cols, 10)):
+            samples = []
+            for row in rows[:5]:
+                if col_idx < len(row):
+                    val = str(row[col_idx])[:40]
+                    samples.append(val)
+
+            col_name = header[col_idx] if header and col_idx < len(header) else f"Column {col_idx}"
+            self.stdout.write(f"\n[{col_idx}] {col_name}:")
+            for s in samples:
+                self.stdout.write(f"    {s}")
+
     def import_rows(self, rows, options):
         """Import rows to database"""
         number_col = options['number_col']
@@ -162,6 +191,7 @@ class Command(BaseCommand):
         desc_col = options['desc_col']
         rarity_col = options['rarity_col']
         update_existing = options['update']
+        create_missing = options.get('create_missing', True)
         dry_run = options['dry_run']
         limit = options['limit']
 
@@ -171,6 +201,7 @@ class Command(BaseCommand):
         created = 0
         updated = 0
         skipped = 0
+        not_found = 0
         errors = 0
 
         self.stdout.write(f"\nImporting {len(rows)} rows...")
@@ -220,38 +251,34 @@ class Command(BaseCommand):
                         created += 1
                         continue
 
-                    # Create or update
-                    if update_existing:
-                        postcard, is_new = Postcard.objects.update_or_create(
-                            number=number,
-                            defaults={
-                                'title': title[:500],
-                                'description': description,
-                                'keywords': keywords,
-                                'rarity': rarity,
-                            }
-                        )
-                        if is_new:
-                            created += 1
-                        else:
+                    # Check if postcard exists
+                    try:
+                        postcard = Postcard.objects.get(number=number)
+                        if update_existing:
+                            postcard.title = title[:500]
+                            postcard.description = description
+                            postcard.keywords = keywords
+                            postcard.rarity = rarity
+                            postcard.save()
                             updated += 1
-                    else:
-                        postcard, is_new = Postcard.objects.get_or_create(
-                            number=number,
-                            defaults={
-                                'title': title[:500],
-                                'description': description,
-                                'keywords': keywords,
-                                'rarity': rarity,
-                            }
-                        )
-                        if is_new:
-                            created += 1
                         else:
                             skipped += 1
+                    except Postcard.DoesNotExist:
+                        if create_missing:
+                            Postcard.objects.create(
+                                number=number,
+                                title=title[:500],
+                                description=description,
+                                keywords=keywords,
+                                rarity=rarity,
+                                has_images=False,  # Will be updated by update_flags
+                            )
+                            created += 1
+                        else:
+                            not_found += 1
 
                     # Progress indicator
-                    if (i + 1) % 200 == 0:
+                    if (i + 1) % 500 == 0:
                         self.stdout.write(f"  Progress: {i + 1}/{len(rows)}")
 
                 except Exception as e:
@@ -266,6 +293,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Created: {created}")
         self.stdout.write(f"Updated: {updated}")
         self.stdout.write(f"Skipped: {skipped}")
+        self.stdout.write(f"Not Found: {not_found}")
         self.stdout.write(f"Errors: {errors}")
         self.stdout.write(f"Total in DB: {Postcard.objects.count()}")
         self.stdout.write(f"{'=' * 70}\n")
