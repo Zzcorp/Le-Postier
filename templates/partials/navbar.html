@@ -56,13 +56,10 @@
                     </svg>
                 </a>
             </li>
-            <!-- Découvrir - Icon only -->
+            <!-- Découvrir/La Galerie - Using image icon -->
             <li>
                 <a href="{% url 'decouvrir' %}" class="nav-link nav-icon-only" title="La Galerie">
-                    <svg class="nav-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-                    </svg>
+                    <img src="{% static 'images/gallerie_icone.png' %}" alt="Galerie" class="nav-img-icon">
                 </a>
             </li>
             <!-- La Poste - Feather/Quill pen icon (elegant writing) -->
@@ -217,11 +214,8 @@
             Présentation
         </a>
         <a href="{% url 'decouvrir' %}" class="mobile-nav-link">
-            <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-            </svg>
-            Découvrir
+            <img src="{% static 'images/gallerie_icone.png' %}" alt="Galerie" class="mobile-nav-img-icon">
+            La Galerie
         </a>
         <a href="{% url 'la_poste' %}" class="mobile-nav-link">
             <svg class="mobile-nav-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -479,7 +473,16 @@ window.addEventListener('resize', function() {
     transition: transform 0.2s ease;
 }
 
-.nav-link:hover .nav-svg-icon {
+/* Image icon styling for navbar */
+.nav-img-icon {
+    width: 20px;
+    height: 20px;
+    filter: brightness(0) invert(1);
+    transition: transform 0.2s ease;
+}
+
+.nav-link:hover .nav-svg-icon,
+.nav-link:hover .nav-img-icon {
     transform: scale(1.1);
 }
 
@@ -557,8 +560,7 @@ window.addEventListener('resize', function() {
 .dropdown-user-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
+    gap: 12px;padding: 16px;
     background: linear-gradient(135deg, rgba(181, 96, 11, 0.12), rgba(181, 96, 11, 0.06));
 }
 
@@ -738,8 +740,22 @@ window.addEventListener('resize', function() {
     stroke: rgba(255, 255, 255, 0.6);
 }
 
+/* Mobile image icon */
+.mobile-nav-img-icon {
+    width: 20px;
+    height: 20px;
+    filter: brightness(0) invert(1);
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
 .mobile-nav-link:hover .mobile-nav-icon-svg {
     stroke: #ffc168;
+}
+
+.mobile-nav-link:hover .mobile-nav-img-icon {
+    opacity: 1;
+    filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(10deg);
 }
 
 .mobile-nav-divider {

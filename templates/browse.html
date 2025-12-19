@@ -200,6 +200,7 @@
                  data-vignette="{{ postcard.get_vignette_url }}"
                  data-grande="{{ postcard.get_grande_url }}"
                  data-dos="{{ postcard.get_dos_url }}"
+                 data-zoom="{{ postcard.get_zoom_url }}"
                  data-has-video="{% if postcard.get_animated_urls %}true{% else %}false{% endif %}"
                  data-video-url="{{ postcard.get_first_video_url|default:'' }}"
                  onclick="showDetail({{ postcard.id }})">
@@ -226,7 +227,6 @@
                     {% endwith %}
                    
                     {% if postcard.get_animated_urls %}
-                    <!-- Static animation badge (always visible) -->
                     <div class="animated-badge-static">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8 5v14l11-7z"/>
@@ -253,7 +253,7 @@
                             </svg>
                         </button>
                        
-                        <button class="action-btn" onclick="event.stopPropagation(); showZoom({{ postcard.id }})" title="Agrandir">
+                        <button class="action-btn zoom-btn" onclick="event.stopPropagation(); showZoom({{ postcard.id }})" title="Agrandir">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"/>
                                 <path d="m21 21-4.35-4.35M11 8v6M8 11h6"/>
@@ -305,10 +305,10 @@
 </div>
  
 <!-- Detail Popup -->
-<div class="popup-overlay" id="popup-overlay" onclick="closeAllPopups()"></div>
+<div class="popup-overlay" id="popup-overlay"></div>
  
 <div class="popup-modal" id="popup-detail">
-    <button class="popup-close" onclick="closeAllPopups()" title="Fermer">
+    <button class="popup-close" onclick="closeDetailPopup()" title="Fermer">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
@@ -359,41 +359,54 @@
     </div>
 </div>
  
-<!-- Zoom Popup with Enhanced Controls -->
-<div class="popup-modal popup-zoom-modal" id="popup-zoom">
-    <button class="popup-close" onclick="closeAllPopups()" title="Fermer">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12"/>
-        </svg>
-    </button>
-    
-    <div class="zoom-container" id="zoom-container">
-        <img id="popup-zoom-image" src="" alt="Zoom">
-    </div>
-    
-    <div class="zoom-controls">
-        <button class="zoom-btn" onclick="zoomOut()" title="Zoom arrière">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                <line x1="8" y1="11" x2="14" y2="11"/>
+<!-- Enhanced Zoom Modal -->
+<div class="zoom-modal" id="zoom-modal">
+    <div class="zoom-backdrop" onclick="closeZoomPopup()"></div>
+    <div class="zoom-content">
+        <button class="zoom-close-btn" onclick="closeZoomPopup()" title="Fermer (Échap)">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
         </button>
-        <span class="zoom-level" id="zoom-level-display">100%</span>
-        <button class="zoom-btn" onclick="zoomIn()" title="Zoom avant">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                <line x1="11" y1="8" x2="11" y2="14"/>
-                <line x1="8" y1="11" x2="14" y2="11"/>
-            </svg>
-        </button>
-        <button class="zoom-btn" onclick="resetZoom()" title="Réinitialiser">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                <path d="M3 3v5h5"/>
-            </svg>
-        </button>
+        
+        <div class="zoom-image-wrapper" id="zoom-image-wrapper">
+            <img id="zoom-image" src="" alt="Zoom" draggable="false">
+        </div>
+        
+        <div class="zoom-toolbar">
+            <button class="zoom-tool-btn" onclick="zoomOut()" title="Zoom arrière (-)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    <line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+            </button>
+            <span class="zoom-level" id="zoom-level">100%</span>
+            <button class="zoom-tool-btn" onclick="zoomIn()" title="Zoom avant (+)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    <line x1="11" y1="8" x2="11" y2="14"/>
+                    <line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+            </button>
+            <div class="zoom-separator"></div>
+            <button class="zoom-tool-btn" onclick="resetZoom()" title="Réinitialiser (0)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                </svg>
+            </button>
+            <button class="zoom-tool-btn" onclick="fitToScreen()" title="Ajuster à l'écran (F)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="zoom-instructions">
+            <span>🖱️ Molette pour zoomer • Glisser pour déplacer • Double-clic pour zoom rapide</span>
+        </div>
     </div>
 </div>
  
@@ -421,30 +434,12 @@ const allPostcardsData = [
     {% endfor %}
 ];
  
-// Expanded floating keywords with specific historical terms
+// Expanded floating keywords
 const riverKeywords = [
-    // Primary navigation terms
     { word: 'Seine', size: 'large', importance: 1 },
     { word: 'Marne', size: 'large', importance: 1 },
     { word: 'Bateau', size: 'large', importance: 1 },
     { word: 'Paris', size: 'large', importance: 1 },
-    
-    // REQUESTED SPECIFIC KEYWORDS - Large/Medium
-    { word: 'Système Gabet', size: 'large', importance: 1 },
-    { word: 'Machine de Marly', size: 'large', importance: 1 },
-    { word: 'Bateau Touriste', size: 'large', importance: 1 },
-    { word: 'Yacht Le Druide', size: 'medium', importance: 2 },
-    
-    // REQUESTED SPECIFIC KEYWORDS - Medium
-    { word: 'Traversée de Paris à la nage', size: 'medium', importance: 2 },
-    { word: 'Restaurant du Vieux Garçon', size: 'medium', importance: 2 },
-    { word: 'Accident pont archevêché', size: 'medium', importance: 2 },
-    { word: 'Championnat monde natation', size: 'medium', importance: 2 },
-    { word: 'Casino Tanton', size: 'medium', importance: 2 },
-    { word: 'Spa français', size: 'medium', importance: 2 },
-    { word: 'Cafuts', size: 'medium', importance: 2 },
-    
-    // Secondary terms
     { word: 'Péniche', size: 'medium', importance: 2 },
     { word: 'Pont', size: 'medium', importance: 2 },
     { word: 'Écluse', size: 'medium', importance: 2 },
@@ -453,8 +448,6 @@ const riverKeywords = [
     { word: 'Vapeur', size: 'medium', importance: 2 },
     { word: 'Quai', size: 'medium', importance: 2 },
     { word: 'Navigation', size: 'medium', importance: 2 },
-    
-    // Tertiary terms
     { word: 'Berge', size: 'small', importance: 3 },
     { word: 'Croisière', size: 'small', importance: 3 },
     { word: 'Marinier', size: 'small', importance: 3 },
@@ -463,17 +456,6 @@ const riverKeywords = [
     { word: 'Lavoir', size: 'small', importance: 3 },
     { word: 'Pêcheur', size: 'small', importance: 3 },
     { word: 'Inondation', size: 'small', importance: 3 },
-    { word: 'Halage', size: 'small', importance: 3 },
-    { word: 'Chaland', size: 'small', importance: 3 },
-    { word: 'Bac', size: 'small', importance: 3 },
-    
-    // Location terms
-    { word: 'Rouen', size: 'medium', importance: 2 },
-    { word: 'Conflans', size: 'small', importance: 3 },
-    { word: 'Charenton', size: 'small', importance: 3 },
-    { word: 'Argenteuil', size: 'small', importance: 3 },
-    
-    // Additional themes from database
     {% for theme in themes %}
     { word: '{{ theme.display_name|escapejs }}', size: 'medium', importance: 2 },
     {% endfor %}
@@ -483,6 +465,349 @@ let filteredPostcards = [...allPostcardsData];
 let currentIndex = 0;
 let currentView = 'front';
 let currentPostcardId = null;
+let popupsOpen = false;
+
+// =============================================
+// ZOOM FUNCTIONALITY - COMPLETELY REWRITTEN
+// =============================================
+let zoomState = {
+    scale: 1,
+    minScale: 0.5,
+    maxScale: 5,
+    x: 0,
+    y: 0,
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0
+};
+
+function showZoom(id) {
+    const postcard = allPostcardsData.find(p => p.id === id);
+    if (!postcard) return;
+    
+    const modal = document.getElementById('zoom-modal');
+    const img = document.getElementById('zoom-image');
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    
+    // Reset zoom state
+    zoomState = {
+        scale: 1,
+        minScale: 0.5,
+        maxScale: 5,
+        x: 0,
+        y: 0,
+        isDragging: false,
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0
+    };
+    
+    // Use zoom URL or fall back to grande
+    const imageUrl = postcard.zoom_url || postcard.grande_url || postcard.vignette_url;
+    
+    img.onload = function() {
+        // Reset transform after image loads
+        updateZoomTransform();
+        updateZoomLevel();
+    };
+    
+    img.src = imageUrl;
+    
+    // Show modal
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    popupsOpen = true;
+    
+    // Initialize zoom controls
+    initZoomControls();
+}
+
+function closeZoomPopup() {
+    const modal = document.getElementById('zoom-modal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    popupsOpen = false;
+    
+    // Clean up event listeners
+    removeZoomControls();
+}
+
+function initZoomControls() {
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    const img = document.getElementById('zoom-image');
+    
+    // Mouse wheel zoom
+    wrapper.addEventListener('wheel', handleWheel, { passive: false });
+    
+    // Drag to pan
+    wrapper.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // Double click to zoom
+    wrapper.addEventListener('dblclick', handleDoubleClick);
+    
+    // Touch support
+    wrapper.addEventListener('touchstart', handleTouchStart, { passive: false });
+    wrapper.addEventListener('touchmove', handleTouchMove, { passive: false });
+    wrapper.addEventListener('touchend', handleTouchEnd);
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleZoomKeyboard);
+}
+
+function removeZoomControls() {
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    
+    wrapper.removeEventListener('wheel', handleWheel);
+    wrapper.removeEventListener('mousedown', handleMouseDown);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    wrapper.removeEventListener('dblclick', handleDoubleClick);
+    wrapper.removeEventListener('touchstart', handleTouchStart);
+    wrapper.removeEventListener('touchmove', handleTouchMove);
+    wrapper.removeEventListener('touchend', handleTouchEnd);
+    document.removeEventListener('keydown', handleZoomKeyboard);
+}
+
+function handleWheel(e) {
+    e.preventDefault();
+    
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    const rect = wrapper.getBoundingClientRect();
+    
+    // Get mouse position relative to image center
+    const mouseX = e.clientX - rect.left - rect.width / 2;
+    const mouseY = e.clientY - rect.top - rect.height / 2;
+    
+    // Determine zoom direction
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newScale = Math.min(Math.max(zoomState.scale + delta, zoomState.minScale), zoomState.maxScale);
+    
+    if (newScale !== zoomState.scale) {
+        // Adjust position to zoom towards mouse pointer
+        const scaleFactor = newScale / zoomState.scale;
+        zoomState.x = mouseX - (mouseX - zoomState.x) * scaleFactor;
+        zoomState.y = mouseY - (mouseY - zoomState.y) * scaleFactor;
+        zoomState.scale = newScale;
+        
+        updateZoomTransform();
+        updateZoomLevel();
+    }
+}
+
+function handleMouseDown(e) {
+    if (e.button !== 0) return; // Only left click
+    
+    zoomState.isDragging = true;
+    zoomState.startX = e.clientX - zoomState.x;
+    zoomState.startY = e.clientY - zoomState.y;
+    
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    wrapper.style.cursor = 'grabbing';
+    
+    e.preventDefault();
+}
+
+function handleMouseMove(e) {
+    if (!zoomState.isDragging) return;
+    
+    zoomState.x = e.clientX - zoomState.startX;
+    zoomState.y = e.clientY - zoomState.startY;
+    
+    updateZoomTransform();
+}
+
+function handleMouseUp() {
+    zoomState.isDragging = false;
+    
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    if (wrapper) {
+        wrapper.style.cursor = zoomState.scale > 1 ? 'grab' : 'zoom-in';
+    }
+}
+
+function handleDoubleClick(e) {
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    const rect = wrapper.getBoundingClientRect();
+    
+    // Get click position
+    const mouseX = e.clientX - rect.left - rect.width / 2;
+    const mouseY = e.clientY - rect.top - rect.height / 2;
+    
+    if (zoomState.scale < 2) {
+        // Zoom in to 2x centered on click
+        const targetScale = 2;
+        const scaleFactor = targetScale / zoomState.scale;
+        zoomState.x = mouseX - (mouseX - zoomState.x) * scaleFactor;
+        zoomState.y = mouseY - (mouseY - zoomState.y) * scaleFactor;
+        zoomState.scale = targetScale;
+    } else {
+        // Reset zoom
+        zoomState.scale = 1;
+        zoomState.x = 0;
+        zoomState.y = 0;
+    }
+    
+    updateZoomTransform(true);
+    updateZoomLevel();
+}
+
+// Touch handling
+let lastTouchDistance = 0;
+let lastTouchCenter = { x: 0, y: 0 };
+
+function handleTouchStart(e) {
+    if (e.touches.length === 2) {
+        // Pinch zoom start
+        lastTouchDistance = getTouchDistance(e.touches);
+        lastTouchCenter = getTouchCenter(e.touches);
+        e.preventDefault();
+    } else if (e.touches.length === 1) {
+        // Single touch drag
+        zoomState.isDragging = true;
+        zoomState.startX = e.touches[0].clientX - zoomState.x;
+        zoomState.startY = e.touches[0].clientY - zoomState.y;
+        e.preventDefault();
+    }
+}
+
+function handleTouchMove(e) {
+    if (e.touches.length === 2) {
+        // Pinch zoom
+        const newDistance = getTouchDistance(e.touches);
+        const newCenter = getTouchCenter(e.touches);
+        
+        const scaleDelta = (newDistance - lastTouchDistance) * 0.01;
+        const newScale = Math.min(Math.max(zoomState.scale + scaleDelta, zoomState.minScale), zoomState.maxScale);
+        
+        if (newScale !== zoomState.scale) {
+            zoomState.scale = newScale;
+            updateZoomTransform();
+            updateZoomLevel();
+        }
+        
+        lastTouchDistance = newDistance;
+        lastTouchCenter = newCenter;
+        e.preventDefault();
+    } else if (e.touches.length === 1 && zoomState.isDragging) {
+        // Single touch drag
+        zoomState.x = e.touches[0].clientX - zoomState.startX;
+        zoomState.y = e.touches[0].clientY - zoomState.startY;
+        updateZoomTransform();
+        e.preventDefault();
+    }
+}
+
+function handleTouchEnd() {
+    zoomState.isDragging = false;
+    lastTouchDistance = 0;
+}
+
+function getTouchDistance(touches) {
+    return Math.hypot(
+        touches[0].clientX - touches[1].clientX,
+        touches[0].clientY - touches[1].clientY
+    );
+}
+
+function getTouchCenter(touches) {
+    return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+}
+
+function handleZoomKeyboard(e) {
+    if (!document.getElementById('zoom-modal').classList.contains('active')) return;
+    
+    switch(e.key) {
+        case '+':
+        case '=':
+            e.preventDefault();
+            zoomIn();
+            break;
+        case '-':
+            e.preventDefault();
+            zoomOut();
+            break;
+        case '0':
+            e.preventDefault();
+            resetZoom();
+            break;
+        case 'f':
+        case 'F':
+            e.preventDefault();
+            fitToScreen();
+            break;
+        case 'Escape':
+            closeZoomPopup();
+            break;
+    }
+}
+
+function zoomIn() {
+    zoomState.scale = Math.min(zoomState.scale + 0.25, zoomState.maxScale);
+    updateZoomTransform(true);
+    updateZoomLevel();
+}
+
+function zoomOut() {
+    zoomState.scale = Math.max(zoomState.scale - 0.25, zoomState.minScale);
+    updateZoomTransform(true);
+    updateZoomLevel();
+}
+
+function resetZoom() {
+    zoomState.scale = 1;
+    zoomState.x = 0;
+    zoomState.y = 0;
+    updateZoomTransform(true);
+    updateZoomLevel();
+}
+
+function fitToScreen() {
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    const img = document.getElementById('zoom-image');
+    
+    if (!img.naturalWidth || !img.naturalHeight) return;
+    
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const scaleX = (wrapperRect.width - 40) / img.naturalWidth;
+    const scaleY = (wrapperRect.height - 40) / img.naturalHeight;
+    
+    zoomState.scale = Math.min(scaleX, scaleY, 1);
+    zoomState.x = 0;
+    zoomState.y = 0;
+    
+    updateZoomTransform(true);
+    updateZoomLevel();
+}
+
+function updateZoomTransform(animate = false) {
+    const img = document.getElementById('zoom-image');
+    const wrapper = document.getElementById('zoom-image-wrapper');
+    
+    if (animate) {
+        img.style.transition = 'transform 0.3s ease';
+        setTimeout(() => { img.style.transition = ''; }, 300);
+    } else {
+        img.style.transition = '';
+    }
+    
+    img.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px) scale(${zoomState.scale})`;
+    
+    // Update cursor
+    wrapper.style.cursor = zoomState.scale > 1 ? 'grab' : 'zoom-in';
+}
+
+function updateZoomLevel() {
+    const levelDisplay = document.getElementById('zoom-level');
+    levelDisplay.textContent = Math.round(zoomState.scale * 100) + '%';
+}
  
 // =============================================
 // FLOATING KEYWORDS
@@ -553,7 +878,6 @@ class FloatingKeywords {
     }
    
     selectKeywords() {
-        // Select a balanced mix of keywords
         const shuffled = [...riverKeywords].sort(() => Math.random() - 0.5);
         const large = shuffled.filter(k => k.size === 'large').slice(0, 4);
         const medium = shuffled.filter(k => k.size === 'medium').slice(0, 6);
@@ -608,18 +932,13 @@ class FloatingKeywords {
     }
    
     onKeywordClick(word) {
-        // Submit the search form with the keyword
         document.getElementById('searchInput').value = word;
         document.getElementById('searchForm').submit();
-    }
-   
-    show() {
-        document.getElementById('river-keywords-section').classList.remove('searching');
     }
 }
  
 // =============================================
-// SEARCH SYSTEM - Server-side search
+// SEARCH SYSTEM
 // =============================================
 class SearchEngine {
     constructor() {
@@ -645,7 +964,6 @@ class SearchEngine {
  
 function clearSearch() {
     document.getElementById('searchInput').value = '';
-    // Redirect to browse page without query
     window.location.href = '{% url "browse" %}';
 }
  
@@ -670,6 +988,7 @@ function openCinema() {
     cinemaIndex = 0;
     document.getElementById('cinemaModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    popupsOpen = true;
     updateCinemaDisplay();
 }
  
@@ -677,6 +996,7 @@ function closeCinema() {
     stopCinemaPlay();
     document.getElementById('cinemaModal').classList.remove('active');
     document.body.style.overflow = '';
+    popupsOpen = false;
    
     const video = document.getElementById('cinemaVideo');
     video.pause();
@@ -814,7 +1134,7 @@ function stopCinemaPlay() {
 }
  
 // =============================================
-// POPUPS
+// DETAIL POPUP
 // =============================================
 function showDetail(id) {
     const postcard = filteredPostcards.find(p => p.id === id) || allPostcardsData.find(p => p.id === id);
@@ -830,7 +1150,6 @@ function showDetail(id) {
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
     document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
    
-    // Update video button
     const videoBtn = document.getElementById('popup-video-btn');
     if (postcard.has_video) {
         videoBtn.style.display = 'flex';
@@ -848,18 +1167,16 @@ function showDetail(id) {
     document.getElementById('popup-overlay').classList.add('active');
     document.getElementById('popup-detail').classList.add('active');
     document.body.style.overflow = 'hidden';
+    popupsOpen = true;
    
     updateNavButtons();
 }
  
-function showZoom(id) {
-    const postcard = allPostcardsData.find(p => p.id === id);
-    if (!postcard) return;
-   
-    document.getElementById('popup-zoom-image').src = postcard.zoom_url || postcard.grande_url;
-    document.getElementById('popup-overlay').classList.add('active');
-    document.getElementById('popup-zoom').classList.add('active');
-    document.body.style.overflow = 'hidden';
+function closeDetailPopup() {
+    document.getElementById('popup-overlay').classList.remove('active');
+    document.getElementById('popup-detail').classList.remove('active');
+    document.body.style.overflow = '';
+    popupsOpen = false;
 }
  
 function togglePostcardSide() {
@@ -922,13 +1239,6 @@ function updatePopup() {
 function updateNavButtons() {
     document.getElementById('popup-prev').style.display = currentIndex > 0 ? 'flex' : 'none';
     document.getElementById('popup-next').style.display = currentIndex < filteredPostcards.length - 1 ? 'flex' : 'none';
-}
- 
-function closeAllPopups() {
-    document.getElementById('popup-overlay').classList.remove('active');
-    document.getElementById('popup-detail').classList.remove('active');
-    document.getElementById('popup-zoom').classList.remove('active');
-    document.body.style.overflow = '';
 }
  
 // =============================================
@@ -1051,8 +1361,11 @@ class LoadingManager {
     }
 }
  
-// Keyboard
+// =============================================
+// KEYBOARD NAVIGATION - FIXED
+// =============================================
 document.addEventListener('keydown', (e) => {
+    // Cinema modal
     if (document.getElementById('cinemaModal').classList.contains('active')) {
         if (e.key === 'ArrowLeft') cinemaPrev();
         else if (e.key === 'ArrowRight') cinemaNext();
@@ -1060,17 +1373,31 @@ document.addEventListener('keydown', (e) => {
         else if (e.key === 'Escape') closeCinema();
         return;
     }
+    
+    // Zoom modal - handled by its own keyboard handler
+    if (document.getElementById('zoom-modal').classList.contains('active')) {
+        return; // Let the zoom keyboard handler deal with it
+    }
    
+    // Detail popup
     if (document.getElementById('popup-detail').classList.contains('active')) {
         if (e.key === 'ArrowLeft') previousImage();
         else if (e.key === 'ArrowRight') nextImage();
-        else if (e.key === 'Escape') closeAllPopups();
-    } else if (document.getElementById('popup-zoom').classList.contains('active')) {
-        if (e.key === 'Escape') closeAllPopups();
+        else if (e.key === 'Escape') closeDetailPopup();
+        return;
+    }
+});
+
+// Click on overlay to close detail popup
+document.getElementById('popup-overlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeDetailPopup();
     }
 });
  
-// Initialize
+// =============================================
+// INITIALIZE
+// =============================================
 document.addEventListener('DOMContentLoaded', () => {
     const loadingManager = new LoadingManager();
     loadingManager.start();
@@ -1086,188 +1413,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('load', () => loadingManager.hide());
     setTimeout(() => loadingManager.hide(), 1000);
 });
-// =============================================
-// ENHANCED ZOOM FUNCTIONALITY
-// =============================================
-let zoomLevel = 1;
-let isDragging = false;
-let startX, startY, scrollLeft, scrollTop;
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 4;
-const ZOOM_STEP = 0.5;
-
-function showZoom(id) {
-    const postcard = allPostcardsData.find(p => p.id === id);
-    if (!postcard) return;
-    
-    // Reset zoom
-    zoomLevel = 1;
-    
-    const container = document.getElementById('zoom-container');
-    const img = document.getElementById('popup-zoom-image');
-    
-    img.src = postcard.zoom_url || postcard.grande_url;
-    img.style.transform = 'scale(1)';
-    container.classList.remove('zoomed');
-    
-    document.getElementById('popup-overlay').classList.add('active');
-    document.getElementById('popup-zoom').classList.add('active');
-    document.body.style.overflow = 'hidden';
-    
-    updateZoomDisplay();
-    initZoomControls();
-}
-
-function initZoomControls() {
-    const container = document.getElementById('zoom-container');
-    const img = document.getElementById('popup-zoom-image');
-    
-    // Double-click to toggle zoom
-    img.ondblclick = function(e) {
-        e.preventDefault();
-        if (zoomLevel === 1) {
-            zoomIn();
-        } else {
-            resetZoom();
-        }
-    };
-    
-    // Mouse wheel zoom
-    container.onwheel = function(e) {
-        e.preventDefault();
-        if (e.deltaY < 0) {
-            zoomIn();
-        } else {
-            zoomOut();
-        }
-    };
-    
-    // Drag to pan when zoomed
-    container.onmousedown = function(e) {
-        if (zoomLevel <= 1) return;
-        isDragging = true;
-        container.classList.add('dragging');
-        startX = e.pageX - container.offsetLeft;
-        startY = e.pageY - container.offsetTop;
-        scrollLeft = container.scrollLeft;
-        scrollTop = container.scrollTop;
-    };
-    
-    container.onmousemove = function(e) {
-        if (!isDragging) return;
-        e.preventDefault();
-        const x = e.pageX - container.offsetLeft;
-        const y = e.pageY - container.offsetTop;
-        const walkX = (x - startX) * 1.5;
-        const walkY = (y - startY) * 1.5;
-        container.scrollLeft = scrollLeft - walkX;
-        container.scrollTop = scrollTop - walkY;
-    };
-    
-    container.onmouseup = function() {
-        isDragging = false;
-        container.classList.remove('dragging');
-    };
-    
-    container.onmouseleave = function() {
-        isDragging = false;
-        container.classList.remove('dragging');
-    };
-    
-    // Touch support
-    let lastTouchDistance = 0;
-    
-    container.ontouchstart = function(e) {
-        if (e.touches.length === 2) {
-            lastTouchDistance = Math.hypot(
-                e.touches[0].pageX - e.touches[1].pageX,
-                e.touches[0].pageY - e.touches[1].pageY
-            );
-        } else if (e.touches.length === 1 && zoomLevel > 1) {
-            isDragging = true;
-            startX = e.touches[0].pageX - container.offsetLeft;
-            startY = e.touches[0].pageY - container.offsetTop;
-            scrollLeft = container.scrollLeft;
-            scrollTop = container.scrollTop;
-        }
-    };
-    
-    container.ontouchmove = function(e) {
-        if (e.touches.length === 2) {
-            e.preventDefault();
-            const distance = Math.hypot(
-                e.touches[0].pageX - e.touches[1].pageX,
-                e.touches[0].pageY - e.touches[1].pageY
-            );
-            
-            if (lastTouchDistance > 0) {
-                if (distance > lastTouchDistance + 10) {
-                    zoomIn();
-                    lastTouchDistance = distance;
-                } else if (distance < lastTouchDistance - 10) {
-                    zoomOut();
-                    lastTouchDistance = distance;
-                }
-            }
-        } else if (isDragging && e.touches.length === 1) {
-            e.preventDefault();
-            const x = e.touches[0].pageX - container.offsetLeft;
-            const y = e.touches[0].pageY - container.offsetTop;
-            const walkX = (x - startX) * 1.5;
-            const walkY = (y - startY) * 1.5;
-            container.scrollLeft = scrollLeft - walkX;
-            container.scrollTop = scrollTop - walkY;
-        }
-    };
-    
-    container.ontouchend = function() {
-        isDragging = false;
-        lastTouchDistance = 0;
-    };
-}
-
-function zoomIn() {
-    if (zoomLevel < MAX_ZOOM) {
-        zoomLevel = Math.min(zoomLevel + ZOOM_STEP, MAX_ZOOM);
-        applyZoom();
-    }
-}
-
-function zoomOut() {
-    if (zoomLevel > MIN_ZOOM) {
-        zoomLevel = Math.max(zoomLevel - ZOOM_STEP, MIN_ZOOM);
-        applyZoom();
-    }
-}
-
-function resetZoom() {
-    zoomLevel = 1;
-    applyZoom();
-}
-
-function applyZoom() {
-    const container = document.getElementById('zoom-container');
-    const img = document.getElementById('popup-zoom-image');
-    
-    img.style.transform = `scale(${zoomLevel})`;
-    
-    if (zoomLevel > 1) {
-        container.classList.add('zoomed');
-    } else {
-        container.classList.remove('zoomed');
-        container.scrollLeft = 0;
-        container.scrollTop = 0;
-    }
-    
-    updateZoomDisplay();
-}
-
-function updateZoomDisplay() {
-    const display = document.getElementById('zoom-level-display');
-    if (display) {
-        display.textContent = Math.round(zoomLevel * 100) + '%';
-    }
-}
 </script>
  
 <style>
@@ -1502,16 +1647,6 @@ function updateZoomDisplay() {
     z-index: 10;
 }
  
-.floating-keyword.clicked {
-    animation: keyword-click 0.5s ease;
-}
- 
-@keyframes keyword-click {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.3); background: #b5600b; border-color: #ffc168; }
-    100% { transform: scale(1); }
-}
- 
 /* Keyword sizes */
 .keyword-large {
     padding: 12px 24px;
@@ -1666,7 +1801,7 @@ function updateZoomDisplay() {
     background: rgba(0, 0, 0, 0.3);
 }
 
-/* Static animation badge (always visible) */
+/* Static animation badge */
 .animated-badge-static {
     position: absolute;
     top: 8px;
@@ -1686,43 +1821,6 @@ function updateZoomDisplay() {
 .animated-badge-static svg {
     width: 14px;
     height: 14px;
-}
-
-/* Play button on hover */
-.animated-play-btn {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, rgba(181, 96, 11, 0.95), rgba(209, 135, 44, 0.95));
-    border-radius: 50%;
-    color: white;
-    text-decoration: none;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    z-index: 10;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-}
-
-.animated-play-btn svg {
-    margin-left: 3px;
-}
-
-.postcard-card:hover .animated-play-btn {
-    opacity: 1;
-    visibility: visible;
-    transform: translate(-50%, -50%) scale(1);
-}
-
-.animated-play-btn:hover {
-    transform: translate(-50%, -50%) scale(1.1);
-    box-shadow: 0 6px 30px rgba(181, 96, 11, 0.6);
 }
  
 .card-overlay {
@@ -1772,7 +1870,7 @@ function updateZoomDisplay() {
 .browse-footer { text-align: center; padding: 30px; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
  
 /* ========================================
-   POPUPS
+   DETAIL POPUP
    ======================================== */
 .popup-overlay {
     position: fixed; inset: 0; z-index: 3000;
@@ -1790,6 +1888,10 @@ function updateZoomDisplay() {
     transition: all 0.3s;
 }
 .popup-modal.active { opacity: 1; visibility: visible; }
+
+#popup-detail {
+    max-width: 90vw;
+}
  
 .popup-close {
     position: absolute; top: -45px; right: 0;
@@ -1856,12 +1958,151 @@ function updateZoomDisplay() {
 #popup-title { color: white; font-size: 1rem; margin: 0; flex: 1; }
 #popup-number { color: rgba(255,255,255,0.8); font-size: 0.85rem; }
  
-.popup-zoom-modal { background: transparent; }
-#popup-zoom-image {
-    max-width: 90vw; max-height: 90vh;
-    border-radius: 8px;
-    box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+/* ========================================
+   ENHANCED ZOOM MODAL
+   ======================================== */
+.zoom-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-modal.active {
+    display: flex;
+}
+
+.zoom-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.zoom-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.zoom-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    z-index: 10;
+}
+
+.zoom-close-btn:hover {
+    background: #b5600b;
+    border-color: #b5600b;
+    transform: rotate(90deg);
+}
+
+.zoom-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 100px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
     cursor: zoom-in;
+}
+
+#zoom-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    transform-origin: center center;
+    transition: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Zoom Toolbar */
+.zoom-toolbar {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 20px;
+    border-radius: 30px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.zoom-tool-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.zoom-tool-btn:hover {
+    background: #b5600b;
+    border-color: #b5600b;
+    transform: scale(1.1);
+}
+
+.zoom-tool-btn svg {
+    stroke: white;
+}
+
+.zoom-level {
+    color: white;
+    font-size: 0.9rem;
+    min-width: 50px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.zoom-separator {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 5px;
+}
+
+.zoom-instructions {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    text-align: center;
+    white-space: nowrap;
 }
  
 /* ========================================
@@ -1888,14 +2129,19 @@ function updateZoomDisplay() {
     .cinema-mode-selector { flex-wrap: wrap; justify-content: center; }
     .mode-btn { padding: 6px 10px; font-size: 0.75rem; }
     
-    .animated-play-btn {
-        width: 50px;
-        height: 50px;
+    .zoom-toolbar {
+        padding: 8px 15px;
+        gap: 8px;
+        bottom: 70px;
     }
     
-    .animated-play-btn svg {
-        width: 20px;
-        height: 20px;
+    .zoom-tool-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .zoom-instructions {
+        display: none;
     }
 }
  
@@ -1919,84 +2165,11 @@ function updateZoomDisplay() {
         width: 12px;
         height: 12px;
     }
-}
-
-/* Enhanced Zoom Modal */
-.popup-zoom-modal {
-    background: transparent;
-}
-
-.zoom-container {
-    position: relative;
-    max-width: 95vw;
-    max-height: 95vh;
-    overflow: hidden;
-    cursor: zoom-in;
-}
-
-.zoom-container.zoomed {
-    cursor: grab;
-    overflow: auto;
-}
-
-.zoom-container.zoomed.dragging {
-    cursor: grabbing;
-}
-
-#popup-zoom-image {
-    max-width: 90vw;
-    max-height: 90vh;
-    border-radius: 8px;
-    box-shadow: 0 10px 50px rgba(0,0,0,0.5);
-    transition: transform 0.3s ease;
-    transform-origin: center center;
-}
-
-.zoom-container.zoomed #popup-zoom-image {
-    max-width: none;
-    max-height: none;
-    cursor: grab;
-}
-
-/* Zoom Controls */
-.zoom-controls {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px 20px;
-    border-radius: 30px;
-    z-index: 10;
-}
-
-.zoom-btn {
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.zoom-btn:hover {
-    background: #b5600b;
-    border-color: #b5600b;
-}
-
-.zoom-level {
-    color: white;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    font-size: 0.9rem;
+    
+    .zoom-toolbar {
+        width: calc(100% - 40px);
+        justify-content: center;
+    }
 }
 </style>
 {% endblock %}

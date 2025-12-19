@@ -15,7 +15,7 @@
                 <div class="poster-gradient"></div>
             </div>
             <!-- Video element for diaporama -->
-            <video autoplay muted loop playsinline id="hero-video" class="hero-video" preload="auto">
+            <video autoplay muted loop playsinline id="hero-video" class="hero-video" preload="none">
                 <source id="video-source" src="" type="video/mp4">
             </video>
             <div class="video-overlay"></div>
@@ -127,10 +127,11 @@ class VideoCarousel {
         this.isTransitioning = false;
         this.autoPlayTimeout = null;
         this.videoLoaded = false;
-        this.transitionDuration = 600; // ms for fade transition
-        this.minDisplayDuration = 6000; // Minimum time to show each video (6 seconds)
-        this.maxWaitTime = 8000; // Max time to wait for video to load before skipping
+        this.transitionDuration = 600;
+        this.minDisplayDuration = 6000;
+        this.maxWaitTime = 8000;
         this.videoStartTime = 0;
+        this.userInteracted = false;
         
         this.init();
     }
@@ -156,8 +157,26 @@ class VideoCarousel {
         this.videoElement.addEventListener('stalled', () => this.onVideoStalled());
         this.videoElement.addEventListener('waiting', () => this.onVideoWaiting());
         
-        // Load first video
-        this.loadVideo(0);
+        // Wait for user interaction before loading video (mobile autoplay policy)
+        this.setupUserInteractionHandler();
+        
+        // Load first video after a short delay
+        setTimeout(() => this.loadVideo(0), 500);
+    }
+    
+    setupUserInteractionHandler() {
+        const startVideo = () => {
+            if (!this.userInteracted) {
+                this.userInteracted = true;
+                if (this.videoElement.paused && this.videoElement.src) {
+                    this.videoElement.play().catch(() => {});
+                }
+            }
+        };
+        
+        document.addEventListener('click', startVideo, { once: true });
+        document.addEventListener('touchstart', startVideo, { once: true });
+        document.addEventListener('scroll', startVideo, { once: true });
     }
     
     shuffleVideos() {
@@ -170,7 +189,6 @@ class VideoCarousel {
     createIndicators() {
         if (this.videos.length <= 1) return;
         
-        // Show max 10 indicators
         const maxIndicators = Math.min(this.videos.length, 10);
         
         for (let i = 0; i < maxIndicators; i++) {
@@ -225,20 +243,15 @@ class VideoCarousel {
         console.log('Video playing');
         this.videoStartTime = Date.now();
         
-        // Clear any existing timeout
         this.clearAutoAdvance();
         
-        // Schedule next video based on video duration or minimum display time
         const videoDuration = this.videoElement.duration;
         let nextVideoDelay;
         
         if (videoDuration && isFinite(videoDuration) && videoDuration > 0) {
-            // Use actual video duration, but ensure minimum display time
             nextVideoDelay = Math.max(videoDuration * 1000, this.minDisplayDuration);
-            // Cap at 20 seconds max
             nextVideoDelay = Math.min(nextVideoDelay, 20000);
         } else {
-            // Fallback to minimum display duration
             nextVideoDelay = this.minDisplayDuration;
         }
         
@@ -251,19 +264,16 @@ class VideoCarousel {
     
     onVideoEnded() {
         console.log('Video ended naturally');
-        // Video naturally ended, go to next immediately
         this.clearAutoAdvance();
         this.nextVideo();
     }
     
     onVideoStalled() {
         console.log('Video stalled');
-        // Don't immediately skip, give it time to recover
     }
     
     onVideoWaiting() {
         console.log('Video waiting/buffering');
-        // Don't immediately skip, give it time to buffer
     }
     
     loadVideo(index) {
@@ -274,17 +284,13 @@ class VideoCarousel {
         
         console.log(`Loading video ${index + 1}/${this.videos.length}: ${videoUrl}`);
         
-        // Clear any existing timeout
         this.clearAutoAdvance();
-        
-        // Reset video loaded state
         this.videoLoaded = false;
         
         // Start fade to black transition
         this.isTransitioning = true;
         this.transition.classList.add('active');
         
-        // Set a timeout to handle videos that fail to load
         const loadTimeout = setTimeout(() => {
             if (this.isTransitioning) {
                 console.log('Video load timeout, skipping to next...');
@@ -292,13 +298,13 @@ class VideoCarousel {
             }
         }, this.maxWaitTime);
         
-        // After fade to black, switch video
         setTimeout(() => {
-            // Clear the load timeout when we start loading
             this.videoElement.oncanplaythrough = () => {
                 clearTimeout(loadTimeout);
             };
             
+            // Set preload to auto only when loading this specific video
+            this.videoElement.preload = 'auto';
             this.videoSource.src = videoUrl;
             this.videoElement.load();
             
@@ -309,11 +315,9 @@ class VideoCarousel {
     handleLoadTimeout() {
         console.log('Handling load timeout');
         
-        // Reset transition state
         this.transition.classList.remove('active');
         this.isTransitioning = false;
         
-        // Remove problematic video and try next
         this.videos.splice(this.currentIndex, 1);
         
         if (this.videos.length === 0) {
@@ -323,17 +327,14 @@ class VideoCarousel {
             this.currentIndex = 0;
         }
         
-        // Try next video after a short delay
         setTimeout(() => this.loadVideo(this.currentIndex), 500);
     }
     
     nextVideo() {
         if (this.isTransitioning) return;
         
-        // Check if current video has been displayed for minimum time
         const elapsed = Date.now() - this.videoStartTime;
         if (elapsed < this.minDisplayDuration && this.videoStartTime > 0) {
-            // Wait for remaining time before switching
             const remaining = this.minDisplayDuration - elapsed;
             console.log(`Waiting ${remaining}ms before next video`);
             this.autoPlayTimeout = setTimeout(() => this.nextVideo(), remaining);
@@ -361,24 +362,20 @@ class VideoCarousel {
         console.error('Video error:', e);
         console.log('Skipping problematic video:', this.videos[this.currentIndex]);
         
-        // Reset transition state
         this.transition.classList.remove('active');
         this.isTransitioning = false;
         
-        // Remove problematic video from list
         this.videos.splice(this.currentIndex, 1);
         
         if (this.videos.length === 0) {
             this.videos = [fallbackVideo];
             this.currentIndex = 0;
         } else {
-            // Adjust index if needed
             if (this.currentIndex >= this.videos.length) {
                 this.currentIndex = 0;
             }
         }
         
-        // Load next video after a short delay
         setTimeout(() => this.loadVideo(this.currentIndex), 500);
     }
     
@@ -392,7 +389,6 @@ class VideoCarousel {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Small delay to ensure everything is loaded
     setTimeout(() => {
         new VideoCarousel();
     }, 100);
