@@ -225,6 +225,53 @@ let currentVideoIndex = 0;
 let loadedCount = 0;
 const totalCount = {{ total_count }};
 
+class OptimizedVideoCarousel {
+    constructor() {
+        this.observer = null;
+        this.loadedVideos = new Set();
+        this.init();
+    }
+    
+    init() {
+        // Use Intersection Observer for lazy loading
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    this.loadVideo(entry.target);
+                }
+            });
+        }, {
+            rootMargin: '100px',
+            threshold: 0.1
+        });
+        
+        // Observe all video containers
+        document.querySelectorAll('.animated-card').forEach(card => {
+            this.observer.observe(card);
+        });
+    }
+    
+    loadVideo(card) {
+        const video = card.querySelector('.card-video');
+        const src = video.dataset.src;
+        
+        if (src && !this.loadedVideos.has(src)) {
+            // Use a smaller preview/poster if available
+            video.preload = 'metadata'; // Only load metadata, not full video
+            video.src = src;
+            this.loadedVideos.add(src);
+            
+            // Mark as loaded
+            card.classList.add('video-loaded');
+        }
+    }
+}
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    new OptimizedVideoCarousel();
+});
+
 // Loading Management
 class LoadingManager {
     constructor() {
