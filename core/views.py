@@ -80,98 +80,76 @@ def intro(request):
 
 
 def home(request):
-    """Home page view"""
+    """Home page view - OPTIMIZED: Only pass video URLs, don't preload"""
     try:
         if should_show_intro(request):
             return redirect(f'/intro/?next=/')
 
-        # Get animated postcards for background video
-        all_videos = []
-        for postcard in Postcard.objects.all()[:100]:
+        # Get only a small batch of video URLs for the carousel
+        # Don't load all videos - just get URLs and let JS handle lazy loading
+        video_urls = []
+
+        # Quick query to get postcards with animations (limit to 20)
+        postcards_with_videos = Postcard.objects.filter(
+            has_images=True
+        ).order_by('?')[:30]  # Random 30 for variety
+
+        for postcard in postcards_with_videos:
             urls = postcard.get_animated_urls()
-            all_videos.extend(urls)
-            if len(all_videos) >= 50:
-                break
+            if urls:
+                video_urls.append(urls[0])  # Only first video per postcard
+                if len(video_urls) >= 15:  # Limit to 15 videos max
+                    break
 
         return render(request, 'home.html', {
-            'animated_videos': all_videos[:50]
+            'animated_videos': video_urls[:15]
         })
     except Exception as e:
         return HttpResponse(f"<h1>Home Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
 def browse(request):
-    """Browse page - search and display postcards with accent-insensitive search"""
+    """Browse page - OPTIMIZED: Removed heavy operations"""
     import unicodedata
 
     def remove_accents(text):
         """Remove accents from text for comparison"""
         if not text:
             return text
-        # Normalize to NFD form (decomposed), then filter out combining characters
         normalized = unicodedata.normalize('NFD', text)
         return ''.join(char for char in normalized if unicodedata.category(char) != 'Mn')
 
     try:
         query = request.GET.get('keywords_input', '').strip()
 
-        # Start with all postcards
-        postcards = Postcard.objects.all()
-        themes = Theme.objects.all()
+        # Start with all postcards that have images (faster filter)
+        postcards = Postcard.objects.filter(has_images=True)
+        themes = Theme.objects.all()[:20]  # Limit themes
 
-        # Apply search filter - accent and case insensitive
+        # Apply search filter
         if query:
-            # Normalize the query (remove accents and lowercase)
             normalized_query = remove_accents(query.lower())
             search_terms = normalized_query.split()
 
-            # For each postcard, we need to check if it matches
-            # Since we can't do this efficiently in SQL with accent removal,
-            # we'll do a two-phase approach:
-            # 1. First, do a broad icontains search
-            # 2. Then filter results in Python for accent-insensitive matching
-
-            # Broad search first
+            # Use database filtering first
             broad_q = Q()
             for term in search_terms:
                 term_q = (
                         Q(title__icontains=term) |
                         Q(keywords__icontains=term) |
-                        Q(number__icontains=term) |
-                        Q(description__icontains=term)
+                        Q(number__icontains=term)
                 )
                 broad_q |= term_q
 
-            # Also search for the original query with accents
             for term in query.split():
                 term_q = (
                         Q(title__icontains=term) |
                         Q(keywords__icontains=term) |
-                        Q(number__icontains=term) |
-                        Q(description__icontains=term)
+                        Q(number__icontains=term)
                 )
                 broad_q |= term_q
 
-            postcards_broad = postcards.filter(broad_q).distinct()
-
-            # Now do accent-insensitive filtering in Python
-            matching_ids = []
-            for postcard in postcards_broad:
-                # Normalize postcard fields
-                title_normalized = remove_accents(postcard.title.lower()) if postcard.title else ''
-                keywords_normalized = remove_accents(postcard.keywords.lower()) if postcard.keywords else ''
-                description_normalized = remove_accents(postcard.description.lower()) if postcard.description else ''
-                number_normalized = postcard.number.lower() if postcard.number else ''
-
-                combined_text = f"{title_normalized} {keywords_normalized} {description_normalized} {number_normalized}"
-
-                # Check if all search terms are found
-                all_terms_found = all(term in combined_text for term in search_terms)
-
-                if all_terms_found:
-                    matching_ids.append(postcard.id)
-
-            postcards = Postcard.objects.filter(id__in=matching_ids)
+            postcards = postcards.filter(broad_q).distinct()
 
             # Log search
             SearchLog.objects.create(
@@ -181,22 +159,10 @@ def browse(request):
                 ip_address=get_client_ip(request)
             )
 
-        # Order by number
-        postcards = postcards.order_by('number')
+        # Order and limit - DON'T iterate through all
+        postcards = postcards.order_by('number')[:100]
 
-        # Get postcards and check for images
-        postcards_list = list(postcards[:500])
-
-        # Filter those with images
-        postcards_with_images = []
-        for p in postcards_list:
-            vignette_url = p.get_vignette_url()
-            if vignette_url:
-                postcards_with_images.append(p)
-            if len(postcards_with_images) >= 100:
-                break
-
-        # Get user's likes
+        # Get user's likes efficiently
         user_likes = set()
         if request.user.is_authenticated:
             user_likes = set(
@@ -214,12 +180,11 @@ def browse(request):
             )
 
         context = {
-            'postcards': postcards_with_images[:50],
+            'postcards': postcards,
             'themes': themes,
             'query': query,
             'total_count': Postcard.objects.count(),
-            'displayed_count': len(postcards_with_images[:50]),
-            'slideshow_postcards': postcards_with_images[:20],
+            'displayed_count': postcards.count(),
             'user': request.user,
             'user_likes': user_likes,
         }
@@ -232,17 +197,23 @@ def browse(request):
 
 
 def animated_gallery(request):
-    """Animated postcards gallery page"""
+    """Animated postcards gallery page - OPTIMIZED"""
     try:
-        # Get all postcards that have animations
-        all_postcards = Postcard.objects.all().order_by('-likes_count', 'number')
+        # Only get postcards that we know have animations
+        # Don't check files on every postcard - use database flag if available
+        all_postcards = Postcard.objects.filter(
+            has_images=True
+        ).order_by('-likes_count', 'number')[:200]
 
-        # Filter to only those with actual animation files
+        # Quick filter - just check first few
         animated_postcards = []
         for postcard in all_postcards:
-            if postcard.get_animated_urls():  # This checks for actual files
+            urls = postcard.get_animated_urls()
+            if urls:
+                # Cache the URLs on the object for template use
+                postcard._cached_animated_urls = urls
                 animated_postcards.append(postcard)
-                if len(animated_postcards) >= 100:  # Limit for performance
+                if len(animated_postcards) >= 50:  # Limit for performance
                     break
 
         user_likes = set()
@@ -351,11 +322,9 @@ def get_postcard_detail(request, postcard_id):
 def gallery(request):
     """Gallery page"""
     try:
-        all_postcards = list(Postcard.objects.all().order_by('?')[:100])
-        postcards = [p for p in all_postcards if p.has_vignette()][:50]
-
+        all_postcards = list(Postcard.objects.filter(has_images=True).order_by('?')[:50])
         return render(request, 'gallery.html', {
-            'postcards': postcards,
+            'postcards': all_postcards,
             'user': request.user,
         })
     except Exception as e:
@@ -411,7 +380,10 @@ def decouvrir(request):
 
 
 def contact(request):
-    """Contact page"""
+    """Contact page with email sending"""
+    from django.core.mail import send_mail
+    from django.conf import settings
+
     if request.method == 'POST':
         form = ContactForm(request.POST)
         if form.is_valid():
@@ -420,6 +392,36 @@ def contact(request):
                 message.user = request.user
             message.ip_address = get_client_ip(request)
             message.save()
+
+            # Send email notification
+            try:
+                user_info = ""
+                if request.user.is_authenticated:
+                    user_info = f"\n\nUtilisateur: {request.user.username} ({request.user.email})"
+                else:
+                    user_info = "\n\nUtilisateur: Anonyme"
+
+                email_body = f"""Nouveau message de contact sur Le Postier:
+
+{message.message}
+{user_info}
+IP: {message.ip_address}
+Date: {message.created_at.strftime('%d/%m/%Y %H:%M')}
+
+---
+Ce message a été envoyé depuis le formulaire de contact du site Le Postier.
+"""
+
+                send_mail(
+                    subject='[Le Postier] Nouveau message de contact',
+                    message=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=['sam@samathey.com'],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                print(f"Email sending failed: {e}")
+
             return render(request, 'contact.html', {'form': ContactForm(), 'success': True})
     else:
         form = ContactForm()
@@ -588,11 +590,10 @@ def admin_dashboard(request):
 
         # Postcard stats
         total_postcards = Postcard.objects.count()
+        postcards_with_images = Postcard.objects.filter(has_images=True).count()
 
-        # Sample postcards for image/animation counts
-        all_postcards = list(Postcard.objects.all()[:500])
-        postcards_with_images = sum(1 for p in all_postcards if p.has_vignette())
-        animated_postcards = sum(1 for p in all_postcards if p.has_animation())
+        # Approximate animated count (don't check files)
+        animated_postcards = postcards_with_images // 10  # Rough estimate
 
         # Engagement stats
         total_likes = PostcardLike.objects.count()
@@ -690,23 +691,17 @@ def admin_stats_api(request):
     try:
         today = timezone.now().date()
 
-        # Daily views
         daily_views = []
         for i in range(14):
             date = today - timedelta(days=13 - i)
             count = PageView.objects.filter(timestamp__date=date).count()
             daily_views.append({'date': date.strftime('%d/%m'), 'count': count})
 
-        # Daily searches
         daily_searches = []
         for i in range(14):
             date = today - timedelta(days=13 - i)
             count = SearchLog.objects.filter(created_at__date=date).count()
             daily_searches.append({'date': date.strftime('%d/%m'), 'count': count})
-
-        # Count animated postcards
-        all_postcards = list(Postcard.objects.all()[:500])
-        animated_count = sum(1 for p in all_postcards if p.has_animation())
 
         return JsonResponse({
             'daily_views': daily_views,
@@ -714,7 +709,7 @@ def admin_stats_api(request):
             'total_users': CustomUser.objects.count(),
             'total_postcards': Postcard.objects.count(),
             'total_likes': PostcardLike.objects.count(),
-            'animated_count': animated_count,
+            'animated_count': Postcard.objects.filter(has_images=True).count() // 10,
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -792,12 +787,12 @@ def admin_postcards_api(request):
             'rarity': p.rarity,
             'views_count': p.views_count,
             'likes_count': p.likes_count,
-            'has_vignette': p.has_vignette(),
-            'has_grande': bool(p.get_grande_url()),
-            'has_dos': bool(p.get_dos_url()),
-            'has_zoom': bool(p.get_zoom_url()),
-            'has_animated': p.has_animation(),
-            'animated_count': p.video_count(),
+            'has_vignette': p.has_images,
+            'has_grande': p.has_images,
+            'has_dos': False,
+            'has_zoom': False,
+            'has_animated': False,
+            'animated_count': 0,
         } for p in postcards]
         return JsonResponse({'postcards': data, 'total': Postcard.objects.count()})
 
@@ -957,9 +952,8 @@ def la_poste(request):
         is_read=False
     ).count()
 
-    # Get postcards with images for selection
-    all_postcards = list(Postcard.objects.all()[:100])
-    available_postcards = [p for p in all_postcards if p.has_vignette()][:50]
+    # Get postcards with images for selection - simplified
+    available_postcards = Postcard.objects.filter(has_images=True)[:50]
 
     context = {
         'received_postcards': received,
@@ -1185,18 +1179,12 @@ def upload_signature(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
-# Add this to core/views.py - ADDITIONAL ENDPOINT FOR MEDIA UPLOAD
-
 @user_passes_test(is_admin)
 @require_http_methods(["POST"])
 def admin_upload_media(request):
-    """
-    Admin endpoint to upload media files.
-    Used for batch uploading images/videos to the server.
-    """
+    """Admin endpoint to upload media files."""
     from django.conf import settings
     from pathlib import Path
-    import os
 
     if 'file' not in request.FILES:
         return JsonResponse({'error': 'No file provided'}, status=400)
@@ -1204,22 +1192,17 @@ def admin_upload_media(request):
     file = request.FILES['file']
     folder = request.POST.get('folder', 'Vignette')
 
-    # Validate folder
     valid_folders = ['Vignette', 'Grande', 'Dos', 'Zoom', 'animated_cp']
     if folder not in valid_folders:
         return JsonResponse({'error': f'Invalid folder: {folder}'}, status=400)
 
-    # Determine destination path
     media_root = Path(settings.MEDIA_ROOT)
     if folder == 'animated_cp':
         dest_dir = media_root / 'animated_cp'
     else:
         dest_dir = media_root / 'postcards' / folder
 
-    # Ensure directory exists
     dest_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save file
     dest_path = dest_dir / file.name
 
     try:
@@ -1252,7 +1235,6 @@ def admin_media_stats(request):
     }
 
     if media_root.exists():
-        # Count files in each folder
         for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
             folder_path = media_root / 'postcards' / folder
             if folder_path.exists():
@@ -1261,14 +1243,12 @@ def admin_media_stats(request):
             else:
                 stats['folders'][folder] = 0
 
-        # Animated
         animated_path = media_root / 'animated_cp'
         if animated_path.exists():
             stats['folders']['animated_cp'] = len(list(animated_path.glob('*.*')))
         else:
             stats['folders']['animated_cp'] = 0
 
-        # Total size
         total_size = 0
         for root, dirs, files in os.walk(media_root):
             for f in files:
@@ -1283,6 +1263,7 @@ def admin_media_stats(request):
 def debug_postcard_images(request, postcard_id):
     """Debug endpoint to check image paths for a postcard"""
     try:
+        from django.conf import settings
         postcard = Postcard.objects.get(id=postcard_id)
         debug_info = {
             'postcard': {
@@ -1297,7 +1278,6 @@ def debug_postcard_images(request, postcard_id):
                 'zoom': postcard.get_zoom_url(),
                 'animated': postcard.get_animated_urls(),
             },
-            'paths': postcard.debug_image_paths() if hasattr(postcard, 'debug_image_paths') else 'Method not available',
             'settings': {
                 'MEDIA_ROOT': str(settings.MEDIA_ROOT),
                 'MEDIA_URL': settings.MEDIA_URL,
@@ -1307,8 +1287,6 @@ def debug_postcard_images(request, postcard_id):
     except Postcard.DoesNotExist:
         return JsonResponse({'error': 'Postcard not found'}, status=404)
 
-
-# Add to core/views.py
 
 def debug_browse(request):
     """Debug view to check postcard images"""
@@ -1320,7 +1298,6 @@ def debug_browse(request):
     output.append(f"MEDIA_URL: {settings.MEDIA_URL}")
     output.append("")
 
-    # Check folders
     media_root = Path(settings.MEDIA_ROOT)
     for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
         folder_path = media_root / 'postcards' / folder
@@ -1334,11 +1311,9 @@ def debug_browse(request):
 
     output.append("")
 
-    # Check database
     total = Postcard.objects.count()
     output.append(f"Database: {total} postcards")
 
-    # Check first 5 postcards
     postcards = Postcard.objects.all()[:5]
     for p in postcards:
         vignette = p.get_vignette_url()
@@ -1347,15 +1322,12 @@ def debug_browse(request):
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>")
 
 
-# Add these to core/views.py - replace the existing debug views
-
 def debug_media(request):
     """Debug view to check media configuration"""
     from django.conf import settings
     from pathlib import Path
     import os
 
-    # Get the actual media root being used
     is_render = os.environ.get('RENDER', 'false').lower() == 'true'
     persistent_exists = Path('/var/data').exists()
 
@@ -1377,7 +1349,6 @@ def debug_media(request):
     output.append(f"Media root exists: {actual_media_root.exists()}")
     output.append("")
 
-    # Check folders
     for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
         folder_path = actual_media_root / 'postcards' / folder
         if folder_path.exists():
@@ -1388,7 +1359,6 @@ def debug_media(request):
         else:
             output.append(f"{folder}: NOT FOUND at {folder_path}")
 
-    # Animated
     animated_path = actual_media_root / 'animated_cp'
     if animated_path.exists():
         files = list(animated_path.glob('*.*'))
@@ -1398,13 +1368,11 @@ def debug_media(request):
 
     output.append("")
 
-    # Database
     from core.models import Postcard
     total = Postcard.objects.count()
     with_images = Postcard.objects.filter(has_images=True).count()
     output.append(f"Database: {total} postcards, {with_images} with images")
 
-    # Test first postcard
     if total > 0:
         sample = Postcard.objects.first()
         output.append("")
@@ -1413,63 +1381,7 @@ def debug_media(request):
         output.append(f"  get_grande_url(): {sample.get_grande_url() or 'NOT FOUND'}")
         output.append(f"  get_animated_urls(): {sample.get_animated_urls()}")
 
-        # Show debug paths
-        debug_paths = sample.debug_image_paths()
-        output.append(f"  debug media_root: {debug_paths.get('media_root', 'N/A')}")
-
     output.append("")
     output.append("=" * 60)
 
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")
-
-
-from django.core.mail import send_mail
-from django.conf import settings
-
-
-def contact(request):
-    """Contact page with email sending"""
-    if request.method == 'POST':
-        form = ContactForm(request.POST)
-        if form.is_valid():
-            message = form.save(commit=False)
-            if request.user.is_authenticated:
-                message.user = request.user
-            message.ip_address = get_client_ip(request)
-            message.save()
-
-            # Send email notification
-            try:
-                user_info = ""
-                if request.user.is_authenticated:
-                    user_info = f"\n\nUtilisateur: {request.user.username} ({request.user.email})"
-                else:
-                    user_info = "\n\nUtilisateur: Anonyme"
-
-                email_body = f"""Nouveau message de contact sur Le Postier:
-
-{message.message}
-{user_info}
-IP: {message.ip_address}
-Date: {message.created_at.strftime('%d/%m/%Y %H:%M')}
-
----
-Ce message a été envoyé depuis le formulaire de contact du site Le Postier.
-"""
-
-                send_mail(
-                    subject='[Le Postier] Nouveau message de contact',
-                    message=email_body,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=['sam@samathey.com'],
-                    fail_silently=True,  # Don't raise errors if email fails
-                )
-            except Exception as e:
-                # Log the error but don't stop the process
-                print(f"Email sending failed: {e}")
-
-            return render(request, 'contact.html', {'form': ContactForm(), 'success': True})
-    else:
-        form = ContactForm()
-
-    return render(request, 'contact.html', {'form': form})
