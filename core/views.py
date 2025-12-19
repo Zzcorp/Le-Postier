@@ -443,19 +443,40 @@ def profile_activity(request):
 def update_profile(request):
     """Update user profile via AJAX"""
     try:
-        data = json.loads(request.body)
+        # Handle both JSON and form data
+        if request.content_type and 'application/json' in request.content_type:
+            data = json.loads(request.body)
+        else:
+            data = request.POST.dict()
+
         user = request.user
+        updated_fields = []
 
-        allowed_fields = ['bio', 'country', 'city', 'website', 'show_activity', 'show_connections', 'allow_messages']
-
-        for field in allowed_fields:
+        # Text fields
+        allowed_text_fields = ['bio', 'country', 'city', 'website']
+        for field in allowed_text_fields:
             if field in data:
                 setattr(user, field, data[field])
+                updated_fields.append(field)
 
-        user.save()
-        log_activity(user, 'profile_update', f'Champs mis à jour: {", ".join(data.keys())}', request)
+        # Boolean fields
+        allowed_bool_fields = ['show_activity', 'show_connections', 'allow_messages']
+        for field in allowed_bool_fields:
+            if field in data:
+                value = data[field]
+                if isinstance(value, str):
+                    value = value.lower() in ('true', '1', 'yes', 'on')
+                setattr(user, field, bool(value))
+                updated_fields.append(field)
 
-        return JsonResponse({'success': True})
+        if updated_fields:
+            user.save()
+            log_activity(user, 'profile_update', f'Champs mis à jour: {", ".join(updated_fields)}', request)
+
+        return JsonResponse({'success': True, 'updated_fields': updated_fields})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Format JSON invalide'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -492,17 +513,25 @@ def upload_signature(request):
 @login_required
 @require_http_methods(["POST"])
 def upload_cover(request):
-    """Upload profile cover image"""
+    """Upload profile cover image - handles both file upload and URL"""
     try:
-        if 'cover' in request.FILES:
-            file = request.FILES['cover']
+        # Check for file upload with various possible key names
+        file = None
+        for key in ['cover', 'cover_image', 'file', 'image']:
+            if key in request.FILES:
+                file = request.FILES[key]
+                break
 
+        if file:
+            # Validate file size (max 5MB)
             if file.size > 5 * 1024 * 1024:
-                return JsonResponse({'error': 'File too large (max 5MB)'}, status=400)
+                return JsonResponse({'error': 'Fichier trop volumineux (max 5MB)'}, status=400)
 
+            # Validate file type
             if not file.content_type.startswith('image/'):
-                return JsonResponse({'error': 'Invalid file type'}, status=400)
+                return JsonResponse({'error': 'Type de fichier non valide'}, status=400)
 
+            # Save to profile_cover field
             request.user.profile_cover = file
             request.user.save(update_fields=['profile_cover'])
 
@@ -512,31 +541,69 @@ def upload_cover(request):
                 'success': True,
                 'url': request.user.profile_cover.url
             })
-        elif 'cover_url' in request.POST:
-            import requests
+
+        # Check for URL in POST data (from postcard selection)
+        cover_url = request.POST.get('cover_url') or request.POST.get('url')
+
+        # Also check JSON body
+        if not cover_url:
+            try:
+                data = json.loads(request.body)
+                cover_url = data.get('cover_url') or data.get('url')
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        if cover_url:
+            import requests as http_requests
             from django.core.files.base import ContentFile
             import uuid
 
-            cover_url = request.POST.get('cover_url')
+            try:
+                # Download the image from URL
+                response = http_requests.get(cover_url, timeout=10)
+                if response.status_code == 200:
+                    # Determine file extension
+                    content_type = response.headers.get('content-type', 'image/jpeg')
+                    if 'jpeg' in content_type or 'jpg' in content_type:
+                        ext = 'jpg'
+                    elif 'png' in content_type:
+                        ext = 'png'
+                    elif 'gif' in content_type:
+                        ext = 'gif'
+                    elif 'webp' in content_type:
+                        ext = 'webp'
+                    else:
+                        ext = 'jpg'
 
-            response = requests.get(cover_url, timeout=10)
-            if response.status_code == 200:
-                content_type = response.headers.get('content-type', 'image/jpeg')
-                ext = 'jpg' if 'jpeg' in content_type else content_type.split('/')[-1]
+                    # Generate unique filename
+                    filename = f"cover_{request.user.id}_{uuid.uuid4().hex[:8]}.{ext}"
 
-                filename = f"cover_{request.user.id}_{uuid.uuid4().hex[:8]}.{ext}"
-                request.user.profile_cover.save(filename, ContentFile(response.content))
+                    # Save the image
+                    request.user.profile_cover.save(filename, ContentFile(response.content))
 
-                return JsonResponse({
-                    'success': True,
-                    'url': request.user.profile_cover.url
-                })
-            else:
-                return JsonResponse({'error': 'Impossible de télécharger l\'image'}, status=400)
+                    log_activity(request.user, 'profile_update', 'Image de couverture mise à jour depuis URL', request)
 
-        return JsonResponse({'error': 'Aucune image fournie'}, status=400)
+                    return JsonResponse({
+                        'success': True,
+                        'url': request.user.profile_cover.url
+                    })
+                else:
+                    return JsonResponse({
+                        'error': f'Impossible de télécharger l\'image (status: {response.status_code})'
+                    }, status=400)
+            except http_requests.exceptions.Timeout:
+                return JsonResponse({'error': 'Délai d\'attente dépassé pour le téléchargement'}, status=400)
+            except http_requests.exceptions.RequestException as e:
+                return JsonResponse({'error': f'Erreur de téléchargement: {str(e)}'}, status=400)
+
+        # No file or URL provided
+        return JsonResponse({
+            'error': 'Aucune image fournie. Envoyez un fichier ou une URL.'
+        }, status=400)
 
     except Exception as e:
+        import traceback
+        print(f"Upload cover error: {traceback.format_exc()}")
         return JsonResponse({'error': str(e)}, status=400)
 
 
