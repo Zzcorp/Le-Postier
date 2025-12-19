@@ -197,23 +197,20 @@ def browse(request):
 
 
 def animated_gallery(request):
-    """Animated postcards gallery page - OPTIMIZED"""
+    """Animated postcards gallery page"""
     try:
-        # Only get postcards that we know have animations
-        # Don't check files on every postcard - use database flag if available
-        all_postcards = Postcard.objects.filter(
-            has_images=True
-        ).order_by('-likes_count', 'number')[:200]
+        # Get all postcards that have animations
+        all_postcards = Postcard.objects.all().order_by('-likes_count', 'number')
 
-        # Quick filter - just check first few
+        # Filter to only those with actual animation files
         animated_postcards = []
         for postcard in all_postcards:
-            urls = postcard.get_animated_urls()
-            if urls:
-                # Cache the URLs on the object for template use
-                postcard._cached_animated_urls = urls
+            video_urls = postcard.get_animated_urls()
+            if video_urls:  # This checks for actual files
+                # Add video_count attribute for template
+                postcard.video_count = len(video_urls)
                 animated_postcards.append(postcard)
-                if len(animated_postcards) >= 50:  # Limit for performance
+                if len(animated_postcards) >= 100:  # Limit for performance
                     break
 
         user_likes = set()

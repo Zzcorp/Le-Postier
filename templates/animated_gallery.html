@@ -74,41 +74,45 @@
              data-likes="{{ postcard.likes_count }}"
              data-title="{{ postcard.title }}"
              data-vignette="{{ postcard.get_vignette_url }}"
-             data-animated-urls='{{ postcard.get_animated_urls|safe }}'>
+             data-video-url="{{ postcard.get_first_video_url }}">
             
             <div class="card-video-container">
-                <!-- Poster Image (shown by default) -->
+                <!-- Poster/Thumbnail Image -->
                 <img class="card-poster" 
                      src="{{ postcard.get_vignette_url }}" 
                      alt="{{ postcard.title }}"
                      loading="lazy">
                 
-                <!-- Video (hidden until clicked) -->
+                <!-- Video element - only loads on hover/interaction -->
                 <video class="card-video" 
                        muted 
                        loop 
                        playsinline
                        preload="none"
-                       style="display: none;"
-                       data-src="{{ postcard.get_animated_urls.0 }}">
+                       data-src="{{ postcard.get_first_video_url }}">
                 </video>
                 
+                <!-- Loading indicator for video -->
+                <div class="video-loading-indicator">
+                    <div class="mini-spinner"></div>
+                </div>
+                
                 <!-- Play overlay -->
-                <div class="video-overlay" onclick="openAnimatedModal({{ postcard.id }})">
-                    <button class="play-btn">
+                <div class="video-overlay">
+                    <button class="play-btn" onclick="openAnimatedModal({{ postcard.id }})">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
                             <polygon points="5 3 19 12 5 21 5 3"/>
                         </svg>
                     </button>
                 </div>
                 
-                {% if postcard.get_animated_urls|length > 1 %}
+                {% if postcard.video_count > 1 %}
                 <div class="multi-video-badge">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M23 7l-7 5 7 5V7z"/>
                         <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                     </svg>
-                    {{ postcard.get_animated_urls|length }}
+                    {{ postcard.video_count }}
                 </div>
                 {% endif %}
             </div>
@@ -119,7 +123,7 @@
                 
                 <div class="card-actions">
                     <button class="like-btn {% if postcard.id in user_likes %}liked{% endif %}" 
-                            onclick="toggleLike({{ postcard.id }}, true)"
+                            onclick="toggleLike(event, {{ postcard.id }}, true)"
                             data-postcard-id="{{ postcard.id }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="{% if postcard.id in user_likes %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -162,7 +166,7 @@
         <!-- Scrollable Content -->
         <div class="modal-scroll-content">
             <div class="modal-video-section">
-                <!-- Loading indicator for modal video -->
+                <!-- Loading state for modal video -->
                 <div class="modal-video-loading" id="modalVideoLoading">
                     <div class="modal-spinner"></div>
                     <p>Chargement de la vidéo...</p>
@@ -239,20 +243,176 @@ let currentAnimatedUrls = [];
 let currentVideoIndex = 0;
 const totalCount = {{ total_count }};
 
-// Loading Management - simplified since we're not preloading videos
+// ===========================================
+// VIDEO HOVER MANAGER - Handles hover to play
+// ===========================================
+class VideoHoverManager {
+    constructor() {
+        this.activeVideo = null;
+        this.loadingVideos = new Set();
+        this.loadedVideos = new Set();
+        this.hoverTimeout = null;
+        this.init();
+    }
+    
+    init() {
+        document.querySelectorAll('.animated-card').forEach(card => {
+            card.addEventListener('mouseenter', (e) => this.handleMouseEnter(card));
+            card.addEventListener('mouseleave', (e) => this.handleMouseLeave(card));
+            card.addEventListener('touchstart', (e) => this.handleTouchStart(card, e));
+        });
+    }
+    
+    handleMouseEnter(card) {
+        // Clear any pending timeout
+        if (this.hoverTimeout) {
+            clearTimeout(this.hoverTimeout);
+        }
+        
+        // Small delay to prevent accidental triggers
+        this.hoverTimeout = setTimeout(() => {
+            this.loadAndPlayVideo(card);
+        }, 150);
+    }
+    
+    handleMouseLeave(card) {
+        // Clear pending timeout
+        if (this.hoverTimeout) {
+            clearTimeout(this.hoverTimeout);
+            this.hoverTimeout = null;
+        }
+        
+        this.stopVideo(card);
+    }
+    
+    handleTouchStart(card, event) {
+        // For touch devices, toggle play/pause
+        const video = card.querySelector('.card-video');
+        if (video && video.src) {
+            if (video.paused) {
+                this.loadAndPlayVideo(card);
+            } else {
+                this.stopVideo(card);
+            }
+        } else {
+            this.loadAndPlayVideo(card);
+        }
+    }
+    
+    loadAndPlayVideo(card) {
+        const video = card.querySelector('.card-video');
+        const poster = card.querySelector('.card-poster');
+        const loadingIndicator = card.querySelector('.video-loading-indicator');
+        const videoSrc = video.dataset.src;
+        
+        if (!videoSrc) {
+            console.log('No video source for card');
+            return;
+        }
+        
+        // Show loading indicator
+        if (loadingIndicator) {
+            loadingIndicator.classList.add('visible');
+        }
+        
+        // If video not yet loaded, load it
+        if (!video.src || video.src === '') {
+            video.src = videoSrc;
+            
+            // Set up load handlers
+            video.onloadeddata = () => {
+                this.loadedVideos.add(videoSrc);
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('visible');
+                }
+                // Hide poster and show video
+                if (poster) poster.style.opacity = '0';
+                video.style.opacity = '1';
+                this.playVideo(video);
+            };
+            
+            video.onerror = (e) => {
+                console.error('Video load error:', videoSrc, e);
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('visible');
+                }
+                // Show poster on error
+                if (poster) poster.style.opacity = '1';
+                video.style.opacity = '0';
+            };
+            
+            video.load();
+        } else {
+            // Video already loaded, just play
+            if (loadingIndicator) {
+                loadingIndicator.classList.remove('visible');
+            }
+            if (poster) poster.style.opacity = '0';
+            video.style.opacity = '1';
+            this.playVideo(video);
+        }
+        
+        // Track active video
+        this.activeVideo = video;
+    }
+    
+    playVideo(video) {
+        if (video && video.readyState >= 2) {
+            video.currentTime = 0;
+            video.play().catch(err => {
+                console.log('Autoplay prevented:', err);
+            });
+        } else if (video) {
+            // Wait for enough data
+            video.oncanplay = () => {
+                video.play().catch(err => {
+                    console.log('Autoplay prevented:', err);
+                });
+            };
+        }
+    }
+    
+    stopVideo(card) {
+        const video = card.querySelector('.card-video');
+        const poster = card.querySelector('.card-poster');
+        const loadingIndicator = card.querySelector('.video-loading-indicator');
+        
+        if (video) {
+            video.pause();
+            video.currentTime = 0;
+            video.style.opacity = '0';
+        }
+        
+        if (poster) {
+            poster.style.opacity = '1';
+        }
+        
+        if (loadingIndicator) {
+            loadingIndicator.classList.remove('visible');
+        }
+        
+        if (this.activeVideo === video) {
+            this.activeVideo = null;
+        }
+    }
+}
+
+// ===========================================
+// LOADING MANAGER
+// ===========================================
 class LoadingManager {
     constructor() {
         this.overlay = document.getElementById('loading-overlay');
         this.bar = document.getElementById('loading-bar');
         this.countEl = document.getElementById('loading-count');
         this.startTime = Date.now();
-        this.minDisplayTime = 800; // Shorter since we're not loading videos
+        this.minDisplayTime = 800; // Minimum time to show loading
     }
     
     start() {
         let progress = 0;
         const tick = () => {
-            progress += (100 - progress) * 0.1;
+            progress += (100 - progress) * 0.08;
             this.bar.style.width = progress + '%';
             if (progress < 95) requestAnimationFrame(tick);
         };
@@ -260,7 +420,9 @@ class LoadingManager {
     }
     
     updateCount(loaded, total) {
-        this.countEl.textContent = `${loaded} / ${total}`;
+        if (this.countEl) {
+            this.countEl.textContent = `${loaded} / ${total}`;
+        }
         const progress = (loaded / total) * 100;
         this.bar.style.width = Math.max(progress, parseFloat(this.bar.style.width) || 0) + '%';
     }
@@ -281,35 +443,9 @@ class LoadingManager {
 const loadingManager = new LoadingManager();
 loadingManager.start();
 
-// Count loaded poster images
-function initImageLoading() {
-    const cards = document.querySelectorAll('.animated-card');
-    let loaded = 0;
-    
-    cards.forEach(card => {
-        const poster = card.querySelector('.card-poster');
-        if (poster) {
-            if (poster.complete) {
-                loaded++;
-                loadingManager.updateCount(loaded, totalCount);
-            } else {
-                poster.addEventListener('load', () => {
-                    loaded++;
-                    loadingManager.updateCount(loaded, totalCount);
-                });
-                poster.addEventListener('error', () => {
-                    loaded++;
-                    loadingManager.updateCount(loaded, totalCount);
-                });
-            }
-        }
-    });
-    
-    // Hide loading after a short delay
-    setTimeout(() => loadingManager.hide(), 1000);
-}
-
-// Sort gallery
+// ===========================================
+// SORT GALLERY
+// ===========================================
 function sortGallery(sortBy) {
     document.querySelectorAll('.sort-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.sort === sortBy);
@@ -330,129 +466,181 @@ function sortGallery(sortBy) {
     cards.forEach(card => grid.appendChild(card));
 }
 
-// Open animated modal - loads video only when modal opens
-function openAnimatedModal(postcardId) {
+// ===========================================
+// MODAL FUNCTIONS
+// ===========================================
+async function openAnimatedModal(postcardId) {
     const card = document.querySelector(`[data-id="${postcardId}"]`);
     if (!card) return;
     
     currentPostcardId = postcardId;
     
-    // Parse the animated URLs from the data attribute
-    let urlsData = card.dataset.animatedUrls;
-    try {
-        if (urlsData.startsWith('[')) {
-            currentAnimatedUrls = JSON.parse(urlsData.replace(/'/g, '"'));
-        } else {
-            currentAnimatedUrls = urlsData.split(',').map(u => u.trim()).filter(u => u);
-        }
-    } catch(e) {
-        currentAnimatedUrls = [];
-    }
-    
-    currentVideoIndex = 0;
-    
-    // Set modal info
-    document.getElementById('modalNumber').textContent = 'N° ' + card.dataset.number;
-    document.getElementById('modalTitle').textContent = card.dataset.title;
-    document.getElementById('modalLikeCount').textContent = card.dataset.likes;
-    
-    // Check if liked
-    const likeBtn = card.querySelector('.like-btn');
-    document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn && likeBtn.classList.contains('liked'));
-    
-    // Get the video element
-    const video = document.getElementById('modalVideo');
-    const videoSource = document.getElementById('modalVideoSource');
-    const loadingIndicator = document.getElementById('modalVideoLoading');
-    
-    // Show loading indicator
-    loadingIndicator.style.display = 'flex';
-    video.style.display = 'none';
-    
-    // Set up video selector for multiple videos
-    const selector = document.getElementById('videoSelector');
-    const tabs = document.getElementById('videoTabs');
-    
-    if (currentAnimatedUrls.length > 1) {
-        selector.style.display = 'flex';
-        tabs.innerHTML = currentAnimatedUrls.map((url, i) => `
-            <button class="video-tab ${i === 0 ? 'active' : ''}" onclick="switchVideo(${i})">
-                Vidéo ${i + 1}
-            </button>
-        `).join('');
-    } else {
-        selector.style.display = 'none';
-    }
-    
-    // Load the first video
-    if (currentAnimatedUrls.length > 0) {
-        const videoUrl = currentAnimatedUrls[0];
-        
-        videoSource.src = videoUrl;
-        video.load();
-        
-        // Show video when ready
-        video.oncanplay = function() {
-            loadingIndicator.style.display = 'none';
-            video.style.display = 'block';
-            video.play().catch(e => {
-                console.log('Autoplay prevented:', e);
-            });
-        };
-        
-        video.onerror = function() {
-            loadingIndicator.innerHTML = '<p>Erreur de chargement de la vidéo</p>';
-        };
+    // Stop any playing card video
+    const cardVideo = card.querySelector('.card-video');
+    if (cardVideo) {
+        cardVideo.pause();
     }
     
     // Show modal
     document.getElementById('animatedModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    
+    // Show loading state
+    const modalLoading = document.getElementById('modalVideoLoading');
+    const modalVideo = document.getElementById('modalVideo');
+    const modalVideoSource = document.getElementById('modalVideoSource');
+    
+    modalLoading.style.display = 'flex';
+    modalVideo.style.display = 'none';
+    
+    // Set modal info
+    document.getElementById('modalNumber').textContent = 'N° ' + card.dataset.number;
+    document.getElementById('modalTitle').textContent = card.dataset.title;
+    
+    // Check if liked
+    const likeBtn = card.querySelector('.like-btn');
+    const likeCount = likeBtn ? likeBtn.querySelector('.like-count').textContent : '0';
+    document.getElementById('modalLikeCount').textContent = likeCount;
+    document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn && likeBtn.classList.contains('liked'));
+    
+    // Fetch full postcard data to get all video URLs
+    try {
+        const response = await fetch(`/api/postcard/${postcardId}/`);
+        const data = await response.json();
+        
+        currentAnimatedUrls = data.animated_urls || [];
+        currentVideoIndex = 0;
+        
+        // If no animated URLs from API, use the card's data
+        if (currentAnimatedUrls.length === 0 && card.dataset.videoUrl) {
+            currentAnimatedUrls = [card.dataset.videoUrl];
+        }
+        
+        // Set up video selector for multiple videos
+        const selector = document.getElementById('videoSelector');
+        const tabs = document.getElementById('videoTabs');
+        
+        if (currentAnimatedUrls.length > 1) {
+            selector.style.display = 'flex';
+            tabs.innerHTML = currentAnimatedUrls.map((url, i) => `
+                <button class="video-tab ${i === 0 ? 'active' : ''}" onclick="switchVideo(${i})">
+                    Vidéo ${i + 1}
+                </button>
+            `).join('');
+        } else {
+            selector.style.display = 'none';
+        }
+        
+        // Load and play the first video
+        if (currentAnimatedUrls.length > 0) {
+            loadModalVideo(currentAnimatedUrls[0]);
+        } else {
+            // No video available
+            modalLoading.innerHTML = '<p>Aucune vidéo disponible</p>';
+        }
+        
+    } catch (error) {
+        console.error('Error fetching postcard data:', error);
+        
+        // Fallback to card's video URL
+        const videoUrl = card.dataset.videoUrl;
+        if (videoUrl) {
+            currentAnimatedUrls = [videoUrl];
+            loadModalVideo(videoUrl);
+        } else {
+            modalLoading.innerHTML = '<p>Erreur lors du chargement</p>';
+        }
+    }
+}
+
+function loadModalVideo(videoUrl) {
+    const modalLoading = document.getElementById('modalVideoLoading');
+    const modalVideo = document.getElementById('modalVideo');
+    const modalVideoSource = document.getElementById('modalVideoSource');
+    
+    // Reset video
+    modalVideo.pause();
+    modalVideoSource.src = '';
+    
+    // Set new source
+    modalVideoSource.src = videoUrl;
+    modalVideo.load();
+    
+    // Handle video ready
+    modalVideo.oncanplay = function() {
+        modalLoading.style.display = 'none';
+        modalVideo.style.display = 'block';
+        modalVideo.play().catch(e => {
+            console.log('Modal autoplay prevented:', e);
+        });
+    };
+    
+    modalVideo.onloadeddata = function() {
+        modalLoading.style.display = 'none';
+        modalVideo.style.display = 'block';
+    };
+    
+    // Handle errors
+    modalVideo.onerror = function(e) {
+        console.error('Modal video error:', videoUrl, e);
+        modalLoading.innerHTML = `
+            <p>Impossible de charger la vidéo</p>
+            <a href="${videoUrl}" target="_blank" class="video-fallback-link">Ouvrir dans un nouvel onglet</a>
+        `;
+    };
+    
+    // Timeout fallback - if video doesn't load in 10 seconds
+    setTimeout(() => {
+        if (modalLoading.style.display !== 'none') {
+            modalLoading.innerHTML = `
+                <p>Chargement lent...</p>
+                <a href="${videoUrl}" target="_blank" class="video-fallback-link">Ouvrir dans un nouvel onglet</a>
+            `;
+        }
+    }, 10000);
+}
+
+function switchVideo(index) {
+    if (index >= 0 && index < currentAnimatedUrls.length) {
+        currentVideoIndex = index;
+        
+        // Update tab active state
+        document.querySelectorAll('.video-tab').forEach((tab, i) => {
+            tab.classList.toggle('active', i === index);
+        });
+        
+        // Show loading and load new video
+        const modalLoading = document.getElementById('modalVideoLoading');
+        const modalVideo = document.getElementById('modalVideo');
+        
+        modalLoading.style.display = 'flex';
+        modalLoading.innerHTML = '<div class="modal-spinner"></div><p>Chargement de la vidéo...</p>';
+        modalVideo.style.display = 'none';
+        
+        loadModalVideo(currentAnimatedUrls[index]);
+    }
 }
 
 function closeAnimatedModal() {
-    const video = document.getElementById('modalVideo');
-    video.pause();
-    video.removeAttribute('src');
-    video.load();
+    const modalVideo = document.getElementById('modalVideo');
+    modalVideo.pause();
+    modalVideo.currentTime = 0;
     
     document.getElementById('animatedModal').classList.remove('active');
     document.body.style.overflow = '';
     hideSuggestForm();
+    
+    // Reset loading state
+    const modalLoading = document.getElementById('modalVideoLoading');
+    modalLoading.innerHTML = '<div class="modal-spinner"></div><p>Chargement de la vidéo...</p>';
 }
 
-// Switch between multiple videos
-function switchVideo(index) {
-    currentVideoIndex = index;
-    const video = document.getElementById('modalVideo');
-    const videoSource = document.getElementById('modalVideoSource');
-    const loadingIndicator = document.getElementById('modalVideoLoading');
+// ===========================================
+// LIKE FUNCTIONALITY
+// ===========================================
+async function toggleLike(event, postcardId, isAnimated = true) {
+    event.stopPropagation();
     
-    if (currentAnimatedUrls[index]) {
-        // Show loading
-        loadingIndicator.style.display = 'flex';
-        video.style.display = 'none';
-        
-        videoSource.src = currentAnimatedUrls[index];
-        video.load();
-        
-        video.oncanplay = function() {
-            loadingIndicator.style.display = 'none';
-            video.style.display = 'block';
-            video.play().catch(e => {
-                console.log('Autoplay prevented:', e);
-            });
-        };
-    }
-    
-    // Update tab active state
-    document.querySelectorAll('.video-tab').forEach((tab, i) => {
-        tab.classList.toggle('active', i === index);
-    });
-}
-
-// Like functionality
-async function toggleLike(postcardId, isAnimated = true) {
     try {
         const formData = new FormData();
         formData.append('is_animated', isAnimated);
@@ -466,6 +654,7 @@ async function toggleLike(postcardId, isAnimated = true) {
         const data = await response.json();
         
         if (data.success) {
+            // Update card
             const card = document.querySelector(`[data-id="${postcardId}"]`);
             if (card) {
                 const likeBtn = card.querySelector('.like-btn');
@@ -479,6 +668,7 @@ async function toggleLike(postcardId, isAnimated = true) {
                 svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
             }
             
+            // Update modal if open
             if (currentPostcardId === postcardId) {
                 const modalBtn = document.getElementById('modalLikeBtn');
                 modalBtn.classList.toggle('liked', data.liked);
@@ -492,11 +682,13 @@ async function toggleLike(postcardId, isAnimated = true) {
 
 function toggleModalLike() {
     if (currentPostcardId) {
-        toggleLike(currentPostcardId, true);
+        toggleLike({ stopPropagation: () => {} }, currentPostcardId, true);
     }
 }
 
-// Suggestion functionality
+// ===========================================
+// SUGGESTION FUNCTIONALITY
+// ===========================================
 function showSuggestForm() {
     document.getElementById('suggestFormContainer').style.display = 'block';
     document.getElementById('suggestionText').focus();
@@ -554,7 +746,9 @@ function closeSuccessModal() {
     document.getElementById('successModal').classList.remove('active');
 }
 
-// Keyboard navigation
+// ===========================================
+// KEYBOARD NAVIGATION
+// ===========================================
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeAnimatedModal();
@@ -562,7 +756,9 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Check for highlight parameter (from browse page)
+// ===========================================
+// CHECK FOR HIGHLIGHT PARAMETER
+// ===========================================
 function checkHighlight() {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
@@ -574,10 +770,40 @@ function checkHighlight() {
     }
 }
 
-// Initialize
+// ===========================================
+// INITIALIZE
+// ===========================================
 document.addEventListener('DOMContentLoaded', () => {
-    initImageLoading();
+    // Initialize video hover manager
+    window.videoHoverManager = new VideoHoverManager();
+    
+    // Check for highlight
     checkHighlight();
+    
+    // Count loaded images for progress
+    const images = document.querySelectorAll('.card-poster');
+    let loadedCount = 0;
+    
+    images.forEach(img => {
+        if (img.complete) {
+            loadedCount++;
+            loadingManager.updateCount(loadedCount, totalCount);
+        } else {
+            img.onload = () => {
+                loadedCount++;
+                loadingManager.updateCount(loadedCount, totalCount);
+            };
+            img.onerror = () => {
+                loadedCount++;
+                loadingManager.updateCount(loadedCount, totalCount);
+            };
+        }
+    });
+    
+    // Hide loading after a reasonable time
+    setTimeout(() => {
+        loadingManager.hide();
+    }, 1500);
 });
 
 window.addEventListener('load', () => {
@@ -785,39 +1011,70 @@ window.addEventListener('load', () => {
     background: #000;
 }
 
+/* Poster image - always visible by default */
 .card-poster {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.animated-card:hover .card-poster {
-    transform: scale(1.05);
-}
-
-.card-video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
     position: absolute;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s ease;
+    z-index: 2;
+}
+
+/* Video - hidden by default */
+.card-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 3;
+}
+
+/* Video loading indicator */
+.video-loading-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.video-loading-indicator.visible {
+    opacity: 1;
+}
+
+.mini-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #b5600b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
 }
 
 .video-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    transition: background 0.3s;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 5;
 }
 
-.video-overlay:hover {
-    background: rgba(0, 0, 0, 0.5);
+.animated-card:hover .video-overlay {
+    opacity: 1;
 }
 
 .play-btn {
@@ -830,17 +1087,11 @@ window.addEventListener('load', () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.3s, box-shadow 0.3s;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s;
 }
 
 .play-btn:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 30px rgba(181, 96, 11, 0.6);
-}
-
-.play-btn svg {
-    margin-left: 4px;
 }
 
 .multi-video-badge {
@@ -856,7 +1107,7 @@ window.addEventListener('load', () => {
     border-radius: 15px;
     font-size: 0.8rem;
     font-weight: 600;
-    z-index: 5;
+    z-index: 6;
 }
 
 .card-info {
@@ -998,29 +1249,54 @@ window.addEventListener('load', () => {
     background: #000;
     flex-shrink: 0;
     position: relative;
-    min-height: 200px;
+    min-height: 300px;
 }
 
+/* Modal video loading */
 .modal-video-loading {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: #000;
     color: white;
-    z-index: 5;
+    z-index: 10;
 }
 
 .modal-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(181, 96, 11, 0.3);
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
     border-top-color: #b5600b;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
     margin-bottom: 15px;
+}
+
+.modal-video-loading p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95rem;
+}
+
+.video-fallback-link {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+    text-decoration: none;
+    border-radius: 20px;
+    transition: transform 0.3s;
+}
+
+.video-fallback-link:hover {
+    transform: scale(1.05);
 }
 
 .modal-video-section video {
@@ -1305,16 +1581,6 @@ window.addEventListener('load', () => {
     
     .modal-video-section video {
         max-height: 40vh;
-    }
-    
-    .play-btn {
-        width: 60px;
-        height: 60px;
-    }
-    
-    .play-btn svg {
-        width: 36px;
-        height: 36px;
     }
 }
 </style>
