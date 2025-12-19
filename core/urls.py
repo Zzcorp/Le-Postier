@@ -38,7 +38,15 @@ urlpatterns = [
     path('api/admin/suggestion/<int:suggestion_id>/', views.admin_suggestion_detail, name='admin_suggestion_detail'),
     path('api/admin/postcards/next-number/', views.admin_next_postcard_number, name='admin_next_postcard_number'),
 
-    # Media upload endpoints (NEW)
+    # Enhanced Admin Analytics APIs
+    path('api/admin/realtime/', views.admin_realtime_api, name='admin_realtime_api'),
+    path('api/admin/geographic/', views.admin_geographic_api, name='admin_geographic_api'),
+    path('api/admin/ip/<str:ip_address>/', views.admin_ip_lookup, name='admin_ip_lookup'),
+    path('api/admin/postcard-analytics/<int:postcard_id>/', views.admin_postcard_analytics,
+         name='admin_postcard_analytics'),
+    path('api/admin/export/', views.admin_export_data, name='admin_export_data'),
+
+    # Media upload endpoints
     path('api/admin/upload-media/', views.admin_upload_media, name='admin_upload_media'),
     path('api/admin/media-stats/', views.admin_media_stats, name='admin_media_stats'),
 

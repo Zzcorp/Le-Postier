@@ -40,6 +40,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.MediaServeMiddleware',
+    'core.middleware.AnalyticsTrackingMiddleware',  # Add this line
 ]
 
 ROOT_URLCONF = 'le_postier.urls'

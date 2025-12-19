@@ -46,6 +46,9 @@ class CustomUser(AbstractUser):
         verbose_name="Signature"
     )
     bio = models.TextField(blank=True, max_length=500, verbose_name="Biographie")
+    country = models.CharField(max_length=100, blank=True, verbose_name="Pays")
+    city = models.CharField(max_length=100, blank=True, verbose_name="Ville")
+    registration_ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP d'inscription")
 
     def can_view_rare(self):
         return self.category in ['subscribed_verified', 'postman', 'viewer'] or self.is_staff
@@ -84,7 +87,6 @@ class Postcard(models.Model):
 
     # Flag to indicate if images exist on disk
     has_images = models.BooleanField(default=False, verbose_name="Images présentes")
-    # Note: has_animation field will be added via migration
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -231,13 +233,7 @@ class Postcard(models.Model):
     def update_image_flags(self):
         """Update has_images flag based on actual files"""
         self.has_images = self.check_has_vignette()
-        # Only update has_animation if the field exists
-        try:
-            self._meta.get_field('has_animation')
-            self.has_animation = self.check_has_animation()
-            self.save(update_fields=['has_images', 'has_animation'])
-        except Exception:
-            self.save(update_fields=['has_images'])
+        self.save(update_fields=['has_images'])
 
     def debug_image_paths(self):
         """Debug image path resolution"""
@@ -368,11 +364,18 @@ class SearchLog(models.Model):
 
 class PageView(models.Model):
     page_name = models.CharField(max_length=100, verbose_name="Nom de la page")
+    page_url = models.CharField(max_length=500, blank=True, verbose_name="URL de la page")
     timestamp = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
     session_key = models.CharField(max_length=100, blank=True)
+    referrer = models.CharField(max_length=500, blank=True, verbose_name="Référent")
+    country = models.CharField(max_length=100, blank=True, verbose_name="Pays")
+    city = models.CharField(max_length=100, blank=True, verbose_name="Ville")
+    device_type = models.CharField(max_length=50, blank=True, verbose_name="Type d'appareil")
+    browser = models.CharField(max_length=100, blank=True, verbose_name="Navigateur")
+    os = models.CharField(max_length=100, blank=True, verbose_name="Système d'exploitation")
 
     class Meta:
         ordering = ['-timestamp']
@@ -392,12 +395,16 @@ class UserActivity(models.Model):
         ('animation_suggest', 'Suggestion animation'),
         ('search', 'Recherche'),
         ('contact', 'Message de contact'),
+        ('page_view', 'Vue de page'),
     ]
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='activities')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='activities', null=True, blank=True)
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)
     details = models.TextField(blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+    session_key = models.CharField(max_length=100, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    city = models.CharField(max_length=100, blank=True)
 
     class Meta:
         ordering = ['-timestamp']
@@ -475,3 +482,160 @@ class PostcardComment(models.Model):
         ordering = ['created_at']
         verbose_name = "Commentaire"
         verbose_name_plural = "Commentaires"
+
+
+# New models for enhanced analytics
+
+class VisitorSession(models.Model):
+    """Track unique visitor sessions with detailed information"""
+    session_key = models.CharField(max_length=100, unique=True)
+    user = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    country_code = models.CharField(max_length=10, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    region = models.CharField(max_length=100, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    timezone = models.CharField(max_length=100, blank=True)
+    isp = models.CharField(max_length=200, blank=True, verbose_name="Fournisseur d'accès")
+    user_agent = models.TextField(blank=True)
+    device_type = models.CharField(max_length=50, blank=True)  # mobile, tablet, desktop
+    browser = models.CharField(max_length=100, blank=True)
+    browser_version = models.CharField(max_length=50, blank=True)
+    os = models.CharField(max_length=100, blank=True)
+    os_version = models.CharField(max)
+    screen_resolution = models.CharField(max_length=50, blank=True)
+    language = models.CharField(max_length=50, blank=True)
+    referrer = models.CharField(max_length=500, blank=True)
+    referrer_domain = models.CharField(max_length=200, blank=True)
+    landing_page = models.CharField(max_length=500, blank=True)
+    utm_source = models.CharField(max_length=100, blank=True)
+    utm_medium = models.CharField(max_length=100, blank=True)
+    utm_campaign = models.CharField(max_length=100, blank=True)
+    first_visit = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    page_views = models.IntegerField(default=0)
+    total_time_spent = models.IntegerField(default=0, verbose_name="Temps passé (secondes)")
+    is_bot = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-last_activity']
+        verbose_name = "Session visiteur"
+        verbose_name_plural = "Sessions visiteurs"
+
+    def __str__(self):
+        return f"{self.ip_address} - {self.country} ({self.session_key[:8]})"
+
+
+class PostcardInteraction(models.Model):
+    """Track detailed postcard interactions"""
+    INTERACTION_TYPES = [
+        ('view', 'Vue'),
+        ('zoom', 'Zoom'),
+        ('like', 'Like'),
+        ('unlike', 'Unlike'),
+        ('share', 'Partage'),
+        ('download', 'Téléchargement'),
+        ('animation_view', 'Vue animation'),
+        ('flip', 'Retournement'),
+    ]
+
+    postcard = models.ForeignKey(Postcard, on_delete=models.CASCADE, related_name='interactions')
+    user = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
+    session = models.ForeignKey(VisitorSession, null=True, blank=True, on_delete=models.SET_NULL)
+    interaction_type = models.CharField(max_length=20, choices=INTERACTION_TYPES)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    duration = models.IntegerField(null=True, blank=True, verbose_name="Durée (secondes)")
+    country = models.CharField(max_length=100, blank=True)
+    device_type = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = "Interaction carte"
+        verbose_name_plural = "Interactions cartes"
+
+
+class DailyAnalytics(models.Model):
+    """Pre-aggregated daily analytics for faster dashboard loading"""
+    date = models.DateField(unique=True)
+    total_visits = models.IntegerField(default=0)
+    unique_visitors = models.IntegerField(default=0)
+    page_views = models.IntegerField(default=0)
+    new_users = models.IntegerField(default=0)
+    total_searches = models.IntegerField(default=0)
+    total_likes = models.IntegerField(default=0)
+    total_postcards_viewed = models.IntegerField(default=0)
+    total_animations_viewed = models.IntegerField(default=0)
+    total_zooms = models.IntegerField(default=0)
+    total_messages = models.IntegerField(default=0)
+    total_suggestions = models.IntegerField(default=0)
+    bounce_rate = models.FloatField(default=0)
+    avg_session_duration = models.IntegerField(default=0, verbose_name="Durée moyenne session (sec)")
+    mobile_visits = models.IntegerField(default=0)
+    tablet_visits = models.IntegerField(default=0)
+    desktop_visits = models.IntegerField(default=0)
+
+    # Top countries JSON field
+    top_countries = models.JSONField(default=dict, blank=True)
+    # Top referrers JSON field
+    top_referrers = models.JSONField(default=dict, blank=True)
+    # Top pages JSON field
+    top_pages = models.JSONField(default=dict, blank=True)
+    # Top searches JSON field
+    top_searches = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date']
+        verbose_name = "Analytique journalière"
+        verbose_name_plural = "Analytiques journalières"
+
+    def __str__(self):
+        return f"Analytics for {self.date}"
+
+
+class RealTimeVisitor(models.Model):
+    """Track real-time active visitors"""
+    session_key = models.CharField(max_length=100, unique=True)
+    user = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    current_page = models.CharField(max_length=500, blank=True)
+    page_title = models.CharField(max_length=200, blank=True)
+    device_type = models.CharField(max_length=50, blank=True)
+    browser = models.CharField(max_length=100, blank=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-last_activity']
+        verbose_name = "Visiteur en temps réel"
+        verbose_name_plural = "Visiteurs en temps réel"
+
+
+class IPLocation(models.Model):
+    """Cache IP geolocation data to avoid repeated API calls"""
+    ip_address = models.GenericIPAddressField(unique=True)
+    country = models.CharField(max_length=100, blank=True)
+    country_code = models.CharField(max_length=10, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    region = models.CharField(max_length=100, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    timezone = models.CharField(max_length=100, blank=True)
+    isp = models.CharField(max_length=200, blank=True)
+    is_vpn = models.BooleanField(default=False)
+    is_proxy = models.BooleanField(default=False)
+    cached_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Localisation IP"
+        verbose_name_plural = "Localisations IP"
+
+    def __str__(self):
+        return f"{self.ip_address} - {self.country}, {self.city}"

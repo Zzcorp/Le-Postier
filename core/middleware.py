@@ -1,99 +1,94 @@
 # core/middleware.py
-"""
-Middleware to serve media files from persistent disk in production.
-"""
-
-from django.http import FileResponse, Http404
 from django.conf import settings
+from django.http import FileResponse
 from pathlib import Path
 import mimetypes
-import logging
-import os
-
-logger = logging.getLogger(__name__)
-
-
-def get_media_root():
-    """Get the correct media root path - always use persistent disk on Render"""
-    if os.environ.get('RENDER', 'false').lower() == 'true' or Path('/var/data').exists():
-        return Path('/var/data/media')
-    return Path(settings.MEDIA_ROOT)
+from .utils import track_visitor_session, cleanup_old_realtime_visitors
+from django.utils import timezone
+import random
 
 
 class MediaServeMiddleware:
     """
-    Middleware to serve media files from the persistent disk.
-    This is needed because WhiteNoise only serves static files, not media.
+    Middleware to serve media files from MEDIA_ROOT.
+    This handles media files when they're stored on a persistent disk.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
-        self.media_url = settings.MEDIA_URL.rstrip('/')
-
-        # CRITICAL: Use the correct media root
-        self.media_root = get_media_root()
-
-        # Log media configuration on startup
-        logger.info(f"MediaServeMiddleware initialized:")
-        logger.info(f"  MEDIA_URL: {self.media_url}")
-        logger.info(f"  MEDIA_ROOT: {self.media_root}")
-        logger.info(f"  MEDIA_ROOT exists: {self.media_root.exists()}")
 
     def __call__(self, request):
         # Check if this is a media file request
-        if request.path.startswith(self.media_url + '/'):
-            return self.serve_media(request)
+        if request.path.startswith(settings.MEDIA_URL):
+            # Get the file path relative to MEDIA_URL
+            relative_path = request.path[len(settings.MEDIA_URL):]
+            file_path = Path(settings.MEDIA_ROOT) / relative_path
+
+            if file_path.exists() and file_path.is_file():
+                # Determine content type
+                content_type, _ = mimetypes.guess_type(str(file_path))
+                if content_type is None:
+                    content_type = 'application/octet-stream'
+
+                # Serve the file
+                response = FileResponse(
+                    open(file_path, 'rb'),
+                    content_type=content_type
+                )
+
+                # Set cache headers for better performance
+                response['Cache-Control'] = 'public, max-age=86400'  # 24 hours
+
+                return response
 
         return self.get_response(request)
 
-    def serve_media(self, request):
-        # Get the relative path from the URL
-        relative_path = request.path[len(self.media_url) + 1:]
 
-        # Security: prevent directory traversal
-        if '..' in relative_path or relative_path.startswith('/'):
-            logger.warning(f"Invalid path attempted: {relative_path}")
-            raise Http404("Invalid path")
+class AnalyticsTrackingMiddleware:
+    """
+    Middleware to track visitor sessions and page views.
+    """
 
-        # Build the full file path
-        file_path = self.media_root / relative_path
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.excluded_paths = [
+            '/static/',
+            '/media/',
+            '/admin/jsi18n/',
+            '/favicon.ico',
+            '/robots.txt',
+            '/api/',  # Don't track API calls for page views
+        ]
+        self.excluded_extensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2',
+                                    '.ttf']
 
-        # Log the request for debugging
-        logger.debug(f"Media request: {request.path} -> {file_path}")
+    def __call__(self, request):
+        # Check if we should track this request
+        should_track = True
+        path = request.path.lower()
 
-        # Check if file exists
-        if not file_path.exists() or not file_path.is_file():
-            logger.debug(f"Media file not found: {file_path}")
-            raise Http404(f"Media file not found: {relative_path}")
+        for excluded in self.excluded_paths:
+            if path.startswith(excluded.lower()):
+                should_track = False
+                break
 
-        # Security: ensure the file is within MEDIA_ROOT
-        try:
-            file_path.resolve().relative_to(self.media_root.resolve())
-        except ValueError:
-            logger.warning(f"Path traversal attempt: {file_path}")
-            raise Http404("Invalid path")
+        for ext in self.excluded_extensions:
+            if path.endswith(ext):
+                should_track = False
+                break
 
-        # Determine content type
-        content_type, _ = mimetypes.guess_type(str(file_path))
-        if not content_type:
-            content_type = 'application/octet-stream'
+        if should_track and request.method == 'GET':
+            try:
+                # Track visitor session
+                track_visitor_session(request)
 
-        # Serve the file
-        try:
-            response = FileResponse(
-                open(file_path, 'rb'),
-                content_type=content_type
-            )
+                # Occasionally cleanup old real-time visitors (1% of requests)
+                if random.random() < 0.01:
+                    cleanup_old_realtime_visitors()
+            except Exception as e:
+                # Don't let tracking errors break the site
+                import logging
+                logging.error(f"Analytics tracking error: {e}")
 
-            # Set cache headers for better performance
-            response['Cache-Control'] = 'public, max-age=86400'  # 1 day
-
-            # For videos, support range requests
-            if content_type and content_type.startswith('video/'):
-                response['Accept-Ranges'] = 'bytes'
-
-            return response
-
-        except IOError as e:
-            logger.error(f"Error serving media file {file_path}: {e}")
-            raise Http404("Error serving file")
+        response = self.get_response(request)
+        return response
