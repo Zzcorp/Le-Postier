@@ -446,6 +446,12 @@ class SentPostcard(models.Model):
         ('private', 'Privé - Destinataire uniquement'),
         ('public', 'Public - Visible par tous'),
     ]
+
+    STAMP_CHOICES = [
+        ('5c', '5 centimes - 44 caractères'),
+        ('10c', '10 centimes - 55 caractères'),
+    ]
+
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_postcards')
     recipient = models.ForeignKey(
         CustomUser,
@@ -454,11 +460,13 @@ class SentPostcard(models.Model):
         null=True,
         blank=True
     )
-    postcard = models.ForeignKey(Postcard, on_delete=models.SET_NULL, null=True, blank=True)
+    postcard = models.ForeignKey('Postcard', on_delete=models.SET_NULL, null=True, blank=True)
     custom_image_url = models.URLField(max_length=500, blank=True)
-    message = models.TextField(max_length=1000, verbose_name="Message")
+    message = models.TextField(max_length=55, verbose_name="Message")  # Max for 10c stamp
+    stamp_type = models.CharField(max_length=10, choices=STAMP_CHOICES, default='10c', verbose_name="Type de timbre")
     visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='private')
     is_read = models.BooleanField(default=False)
+    is_animated = models.BooleanField(default=False, verbose_name="Carte animée")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -468,8 +476,33 @@ class SentPostcard(models.Model):
 
     def get_image_url(self):
         if self.postcard:
+            if self.is_animated:
+                urls = self.postcard.get_animated_urls()
+                return urls[0] if urls else self.postcard.get_grande_url()
             return self.postcard.get_grande_url()
         return self.custom_image_url or ''
+
+    def get_vignette_url(self):
+        if self.postcard:
+            return self.postcard.get_vignette_url()
+        return self.custom_image_url or ''
+
+    def get_video_url(self):
+        """Get video URL if animated"""
+        if self.is_animated and self.postcard:
+            urls = self.postcard.get_animated_urls()
+            return urls[0] if urls else None
+        return None
+
+    def get_max_characters(self):
+        """Return max characters based on stamp type"""
+        return 44 if self.stamp_type == '5c' else 55
+
+    def get_sender_signature_url(self):
+        """Get sender's signature image URL"""
+        if self.sender.signature_image:
+            return self.sender.signature_image.url
+        return None
 
 
 class PostcardComment(models.Model):

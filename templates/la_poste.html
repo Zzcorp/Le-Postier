@@ -9,25 +9,24 @@
     <!-- Elegant Background -->
     <div class="poste-background">
         <div class="bg-gradient"></div>
+        <div class="floating-elements" id="floating-elements"></div>
         <div class="dust-particles" id="dust-particles"></div>
-        <div class="floating-icons" id="floating-icons"></div>
     </div>
 
     <div class="poste-container">
         <!-- Header -->
         <header class="poste-header animate-fade-in-down">
             <div class="header-icon">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
-                    <line x1="16" y1="8" x2="2" y2="22"/>
-                    <line x1="17.5" y1="15" x2="9" y2="15"/>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
                 </svg>
             </div>
             <h1>La Poste</h1>
-            <p class="header-subtitle">L'art de la correspondance à la Belle Époque</p>
+            <p>Envoyez des cartes postales et partagez vos découvertes</p>
             
             {% if unread_count > 0 %}
-            <div class="unread-badge animate-pulse">
+            <div class="unread-badge">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                     <polyline points="22,6 12,13 2,6"/>
@@ -37,18 +36,45 @@
             {% endif %}
         </header>
 
-        <!-- Main Action Button -->
-        <div class="poste-actions animate-fade-in-up delay-1">
-            <button class="action-btn primary" onclick="openComposeModal()">
+        <!-- Signature Warning -->
+        {% if not user_has_signature %}
+        <div class="signature-warning animate-fade-in">
+            <div class="warning-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
-                    <line x1="16" y1="8" x2="2" y2="22"/>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
-                <span>Écrire une carte postale</span>
+            </div>
+            <div class="warning-content">
+                <h3>Signature requise</h3>
+                <p>Pour envoyer des cartes postales, vous devez d'abord créer votre signature personnelle.</p>
+                <a href="{% url 'profile' %}" class="btn-create-signature">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                    </svg>
+                    Créer ma signature
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Main Actions -->
+        <div class="poste-actions animate-fade-in-up delay-1">
+            <button class="action-btn primary {% if not user_has_signature %}disabled{% endif %}" 
+                    onclick="{% if user_has_signature %}openComposeModal(){% else %}showSignatureRequired(){% endif %}">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                    <path d="M2 2l7.586 7.586"/>
+                    <circle cx="11" cy="11" r="2"/>
+                </svg>
+                <span>Écrire une carte</span>
             </button>
         </div>
 
-        <!-- Navigation Tabs -->
+        <!-- Tabs -->
         <div class="poste-tabs animate-fade-in delay-2">
             <button class="tab-btn active" data-tab="received" onclick="switchTab('received')">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -69,9 +95,7 @@
             </button>
             <button class="tab-btn" data-tab="wall" onclick="switchTab('wall')">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <line x1="3" y1="9" x2="21" y2="9"/>
-                    <line x1="9" y1="21" x2="9" y2="9"/>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
                 Mur Public
             </button>
@@ -83,44 +107,35 @@
             <div class="tab-content active" id="received-tab">
                 <div class="postcards-grid" id="received-grid">
                     {% for postcard in received_postcards %}
-                    <div class="postcard-envelope {% if not postcard.is_read %}unread{% endif %}" 
+                    <div class="postcard-item {% if not postcard.is_read %}unread{% endif %}" 
                          data-id="{{ postcard.id }}"
-                         data-sender="{{ postcard.sender.username }}"
-                         data-message="{{ postcard.message|escapejs }}"
-                         data-date="{{ postcard.created_at|date:'d/m/Y H:i' }}"
-                         data-signature="{{ postcard.sender.signature_image.url|default:'' }}"
-                         data-image="{{ postcard.get_image_url|default:'' }}">
-                        
-                        <div class="envelope-front">
-                            {% if postcard.get_image_url %}
-                            <img src="{{ postcard.get_image_url }}" alt="Carte postale" class="envelope-image">
-                            {% else %}
-                            <div class="envelope-placeholder">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                                    <polyline points="21 15 16 10 5 21"/>
+                         data-is-animated="{{ postcard.is_animated|yesno:'true,false' }}">
+                        <div class="postcard-image" onclick="viewPostcardImage({{ postcard.id }}, 'received')">
+                            {% if postcard.is_animated and postcard.get_video_url %}
+                            <video class="postcard-video" muted loop playsinline preload="none"
+                                   data-src="{{ postcard.get_video_url }}">
+                            </video>
+                            <div class="video-play-indicator">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
                                 </svg>
                             </div>
                             {% endif %}
-                            
+                            <img src="{{ postcard.get_vignette_url }}" alt="Carte postale" 
+                                 class="{% if postcard.is_animated %}has-video{% endif %}">
                             {% if not postcard.is_read %}
-                            <div class="new-seal">
-                                <span>Nouveau</span>
+                            <div class="new-badge">Nouveau</div>
+                            {% endif %}
+                            {% if postcard.is_animated %}
+                            <div class="animated-badge">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
                             </div>
                             {% endif %}
-                            
-                            <!-- View Message Button -->
-                            <button class="view-message-btn" onclick="openPostcardView(this.parentElement.parentElement)" title="Lire le message">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                    <polyline points="22,6 12,13 2,6"/>
-                                </svg>
-                            </button>
                         </div>
-                        
-                        <div class="envelope-info">
-                            <div class="sender-badge">
+                        <div class="postcard-info">
+                            <div class="postcard-sender">
                                 <div class="sender-avatar">
                                     {% if postcard.sender.signature_image %}
                                     <img src="{{ postcard.sender.signature_image.url }}" alt="">
@@ -130,18 +145,25 @@
                                 </div>
                                 <span>{{ postcard.sender.username }}</span>
                             </div>
-                            <span class="envelope-date">{{ postcard.created_at|date:"d/m/Y" }}</span>
+                            <div class="postcard-actions-row">
+                                <button class="view-message-btn" onclick="viewPostcardMessage({{ postcard.id }})" title="Voir le message">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                        <polyline points="22,6 12,13 2,6"/>
+                                    </svg>
+                                    <span>Lire</span>
+                                </button>
+                                <span class="postcard-date">{{ postcard.created_at|date:"d/m/Y" }}</span>
+                            </div>
                         </div>
                     </div>
                     {% empty %}
                     <div class="empty-state">
-                        <div class="empty-icon">
-                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
-                                <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
-                            </svg>
-                        </div>
-                        <h3>Votre boîte aux lettres est vide</h3>
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+                            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                        </svg>
+                        <h3>Pas de cartes reçues</h3>
                         <p>Invitez vos amis à vous envoyer des cartes postales!</p>
                     </div>
                     {% endfor %}
@@ -152,87 +174,88 @@
             <div class="tab-content" id="sent-tab">
                 <div class="postcards-grid" id="sent-grid">
                     {% for postcard in sent_postcards %}
-                    <div class="postcard-envelope sent-card" 
+                    <div class="postcard-item" 
                          data-id="{{ postcard.id }}"
-                         data-recipient="{{ postcard.recipient.username|default:'Public' }}"
-                         data-message="{{ postcard.message|escapejs }}"
-                         data-date="{{ postcard.created_at|date:'d/m/Y H:i' }}"
-                         data-signature="{{ user.signature_image.url|default:'' }}"
-                         data-image="{{ postcard.get_image_url|default:'' }}"
-                         data-visibility="{{ postcard.visibility }}">
-                        
-                        <div class="envelope-front">
-                            {% if postcard.get_image_url %}
-                            <img src="{{ postcard.get_image_url }}" alt="Carte postale" class="envelope-image">
-                            {% else %}
-                            <div class="envelope-placeholder">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                                    <polyline points="21 15 16 10 5 21"/>
+                         data-is-animated="{{ postcard.is_animated|yesno:'true,false' }}">
+                        <div class="postcard-image" onclick="viewPostcardImage({{ postcard.id }}, 'sent')">
+                            {% if postcard.is_animated and postcard.get_video_url %}
+                            <video class="postcard-video" muted loop playsinline preload="none"
+                                   data-src="{{ postcard.get_video_url }}">
+                            </video>
+                            <div class="video-play-indicator">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
                                 </svg>
                             </div>
                             {% endif %}
-                            
+                            <img src="{{ postcard.get_vignette_url }}" alt="Carte postale"
+                                 class="{% if postcard.is_animated %}has-video{% endif %}">
                             {% if postcard.visibility == 'public' %}
-                            <div class="public-seal">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <div class="public-badge">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"/>
                                     <line x1="2" y1="12" x2="22" y2="12"/>
                                     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                                 </svg>
                             </div>
                             {% endif %}
-                            
-                            <button class="view-message-btn" onclick="openPostcardView(this.parentElement.parentElement)" title="Voir le message">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                    <circle cx="12" cy="12" r="3"/>
+                            {% if postcard.is_animated %}
+                            <div class="animated-badge">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
                                 </svg>
-                            </button>
-                        </div>
-                        
-                        <div class="envelope-info">
-                            <div class="recipient-badge">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="22" y1="2" x2="11" y2="13"/>
-                                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                                </svg>
-                                <span>{% if postcard.recipient %}À {{ postcard.recipient.username }}{% else %}Publication publique{% endif %}</span>
                             </div>
-                            <span class="envelope-date">{{ postcard.created_at|date:"d/m/Y" }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="postcard-info">
+                            <div class="postcard-recipient">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 2L11 13"/>
+                                    <path d="M22 2L15 22 11 13 2 9 22 2z"/>
+                                </svg>
+                                {% if postcard.recipient %}
+                                <span>À {{ postcard.recipient.username }}</span>
+                                {% else %}
+                                <span>Publication publique</span>
+                                {% endif %}
+                            </div>
+                            <div class="postcard-actions-row">
+                                <button class="view-message-btn" onclick="viewPostcardMessage({{ postcard.id }})" title="Voir le message">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                        <polyline points="22,6 12,13 2,6"/>
+                                    </svg>
+                                    <span>Voir</span>
+                                </button>
+                                <span class="postcard-date">{{ postcard.created_at|date:"d/m/Y" }}</span>
+                            </div>
                         </div>
                     </div>
                     {% empty %}
                     <div class="empty-state">
-                        <div class="empty-icon">
-                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                <line x1="22" y1="2" x2="11" y2="13"/>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                            </svg>
-                        </div>
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
                         <h3>Aucune carte envoyée</h3>
-                        <p>Partagez vos découvertes avec vos amis!</p>
-                        <button class="btn-primary-small" onclick="openComposeModal()">Écrire ma première carte</button>
+                        <p>Envoyez votre première carte postale!</p>
+                        {% if user_has_signature %}
+                        <button class="btn-primary" onclick="openComposeModal()">Écrire une carte</button>
+                        {% else %}
+                        <a href="{% url 'profile' %}" class="btn-primary">Créer ma signature d'abord</a>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
             </div>
 
-            <!-- Public Wall Tab -->
+            <!-- Wall Tab -->
             <div class="tab-content" id="wall-tab">
                 <div class="wall-feed" id="wall-feed">
                     {% for postcard in public_postcards %}
-                    <div class="wall-card" 
-                         data-id="{{ postcard.id }}"
-                         data-sender="{{ postcard.sender.username }}"
-                         data-message="{{ postcard.message|escapejs }}"
-                         data-date="{{ postcard.created_at|date:'d/m/Y H:i' }}"
-                         data-signature="{{ postcard.sender.signature_image.url|default:'' }}"
-                         data-image="{{ postcard.get_image_url|default:'' }}">
-                        
-                        <div class="wall-card-header">
-                            <div class="wall-author">
+                    <div class="wall-post" data-id="{{ postcard.id }}">
+                        <div class="post-header">
+                            <div class="post-author">
                                 <div class="author-avatar">
                                     {% if postcard.sender.signature_image %}
                                     <img src="{{ postcard.sender.signature_image.url }}" alt="">
@@ -242,26 +265,37 @@
                                 </div>
                                 <div class="author-info">
                                     <span class="author-name">{{ postcard.sender.username }}</span>
-                                    <span class="post-time">{{ postcard.created_at|date:"d/m/Y à H:i" }}</span>
+                                    <span class="post-date">{{ postcard.created_at|date:"d/m/Y H:i" }}</span>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="wall-card-image" onclick="openPostcardView(this.parentElement)">
-                            {% if postcard.get_image_url %}
+                        <div class="post-image" onclick="viewPostcardImage({{ postcard.id }}, 'wall')">
+                            {% if postcard.is_animated and postcard.get_video_url %}
+                            <video class="wall-video" muted loop playsinline preload="none"
+                                   data-src="{{ postcard.get_video_url }}"
+                                   onmouseenter="this.play()" onmouseleave="this.pause()">
+                            </video>
+                            <img src="{{ postcard.get_vignette_url }}" alt="Carte postale" class="has-video">
+                            <div class="video-play-indicator">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                            </div>
+                            {% else %}
                             <img src="{{ postcard.get_image_url }}" alt="Carte postale">
                             {% endif %}
-                            <div class="image-overlay">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        </div>
+                        
+                        <div class="post-actions">
+                            <button class="post-action-btn" onclick="viewPostcardMessage({{ postcard.id }})">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                     <polyline points="22,6 12,13 2,6"/>
                                 </svg>
                                 <span>Lire le message</span>
-                            </div>
-                        </div>
-                        
-                        <div class="wall-card-actions">
-                            <button class="wall-action-btn" onclick="toggleComments({{ postcard.id }})">
+                            </button>
+                            <button class="post-action-btn" onclick="toggleComments({{ postcard.id }})">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                                 </svg>
@@ -269,16 +303,14 @@
                             </button>
                         </div>
                         
-                        <div class="wall-comments" id="comments-{{ postcard.id }}" style="display: none;">
+                        <div class="post-comments" id="comments-{{ postcard.id }}" style="display: none;">
                             <div class="comments-list">
                                 {% for comment in postcard.comments.all %}
-                                <div class="comment-item">
+                                <div class="comment">
                                     <span class="comment-author">{{ comment.user.username }}</span>
-                                    <p class="comment-text">{{ comment.message }}</p>
+                                    <p>{{ comment.message }}</p>
                                     <span class="comment-date">{{ comment.created_at|date:"d/m/Y H:i" }}</span>
                                 </div>
-                                {% empty %}
-                                <p class="no-comments">Aucun commentaire pour le moment.</p>
                                 {% endfor %}
                             </div>
                             <form class="comment-form" onsubmit="addComment(event, {{ postcard.id }})">
@@ -294,16 +326,16 @@
                     </div>
                     {% empty %}
                     <div class="empty-state">
-                        <div class="empty-icon">
-                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="3" y1="9" x2="21" y2="9"/>
-                                <line x1="9" y1="21" x2="9" y2="9"/>
-                            </svg>
-                        </div>
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
                         <h3>Le mur est vide</h3>
-                        <p>Soyez le premier à partager une carte!</p>
-                        <button class="btn-primary-small" onclick="openComposeModal()">Publier une carte</button>
+                        <p>Soyez le premier à publier une carte!</p>
+                        {% if user_has_signature %}
+                        <button class="btn-primary" onclick="openComposeModal()">Publier une carte</button>
+                        {% else %}
+                        <a href="{% url 'profile' %}" class="btn-primary">Créer ma signature d'abord</a>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -312,309 +344,377 @@
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- POSTCARD VIEW MODAL (Like Contact Page)     -->
-<!-- ============================================ -->
-<div class="postcard-view-modal" id="postcardViewModal">
-    <div class="modal-backdrop" onclick="closePostcardView()"></div>
-    <div class="postcard-view-container">
-        <button class="modal-close-btn" onclick="closePostcardView()">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
-        
-        <!-- The Postcard -->
-        <div class="vintage-postcard" id="viewPostcard">
-            <img src="{% static 'images/Cpa_Vierge.jpg' %}" alt="Carte Postale" class="postcard-template">
-            
-            <!-- Left Side: Message -->
-            <div class="postcard-message-area">
-                <p class="postcard-message-text" id="viewMessageText"></p>
-            </div>
-            
-            <!-- Right Side: Stamp & Recipient -->
-            <div class="postcard-stamp-area">
-                <img src="" alt="Timbre" class="postcard-stamp" id="viewStamp">
-            </div>
-            
-            <div class="postcard-recipient-area">
-                <img src="" alt="Signature" class="postcard-signature" id="viewSignature">
-                <div class="postcard-sender-info">
-                    <span class="sender-label">De:</span>
-                    <span class="sender-name" id="viewSenderName"></span>
-                </div>
-            </div>
-            
-            <!-- Date -->
-            <div class="postcard-date-area">
-                <span id="viewDate"></span>
-            </div>
-        </div>
-        
-        <!-- Postcard Image Preview (if any) -->
-        <div class="postcard-image-preview" id="postcardImagePreview">
-            <img src="" alt="Image de la carte" id="viewPostcardImage">
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- COMPOSE MODAL                                -->
-<!-- ============================================ -->
+<!-- Compose Modal -->
 <div class="compose-modal" id="composeModal">
     <div class="modal-backdrop" onclick="closeComposeModal()"></div>
-    <div class="compose-container">
-        <button class="modal-close-btn" onclick="closeComposeModal()">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="modal-content compose-content">
+        <button class="modal-close" onclick="closeComposeModal()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
         </button>
         
-        <div class="compose-header">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
-                <line x1="16" y1="8" x2="2" y2="22"/>
+        <h2>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
             </svg>
-            <h2>Écrire une carte postale</h2>
+            Écrire une carte postale
+        </h2>
+        
+        <!-- Step Indicator -->
+        <div class="compose-steps">
+            <div class="step active" data-step="1">
+                <span class="step-number">1</span>
+                <span class="step-label">Carte</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" data-step="2">
+                <span class="step-number">2</span>
+                <span class="step-label">Message</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" data-step="3">
+                <span class="step-number">3</span>
+                <span class="step-label">Envoi</span>
+            </div>
         </div>
         
-        <!-- Step 1: Choose visibility and recipient -->
-        <div class="compose-step" id="composeStep1">
-            <div class="visibility-selector">
-                <button type="button" class="visibility-option active" data-visibility="private" onclick="setVisibility('private')">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    <span>Message Privé</span>
-                    <small>Envoyer à un ami</small>
-                </button>
-                <button type="button" class="visibility-option" data-visibility="public" onclick="setVisibility('public')">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="2" y1="12" x2="22" y2="12"/>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    </svg>
-                    <span>Publication Publique</span>
-                    <small>Visible par tous</small>
-                </button>
-            </div>
-            
-            <div class="recipient-section" id="recipientSection">
-                <label>Destinataire</label>
-                <div class="recipient-input-container">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                    <input type="text" id="recipientInput" placeholder="Nom d'utilisateur..." autocomplete="off">
-                    <div class="recipient-suggestions" id="recipientSuggestions"></div>
-                </div>
-            </div>
-            
-            <button class="step-next-btn" onclick="goToStep(2)">
-                Continuer
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                    <polyline points="12 5 19 12 12 19"/>
-                </svg>
-            </button>
-        </div>
-        
-        <!-- Step 2: Choose postcard image -->
-        <div class="compose-step" id="composeStep2" style="display: none;">
-            <div class="step-header">
-                <button class="step-back-btn" onclick="goToStep(1)">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="19" y1="12" x2="5" y2="12"/>
-                        <polyline points="12 19 5 12 12 5"/>
-                    </svg>
-                    Retour
-                </button>
-                <span>Choisir une carte</span>
-            </div>
-            
-            <div class="card-type-tabs">
-                <button class="card-type-tab active" onclick="switchCardType('static')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                        <circle cx="8.5" cy="8.5" r="1.5"/>
-                        <polyline points="21 15 16 10 5 21"/>
-                    </svg>
-                    Cartes Postales
-                </button>
-                <button class="card-type-tab" onclick="switchCardType('animated')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                    </svg>
-                    CP Animées
-                </button>
-            </div>
-            
-            <div class="card-search">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <input type="text" id="cardSearchInput" placeholder="Rechercher par numéro ou titre..." oninput="filterCards(this.value)">
-            </div>
-            
-            <div class="cards-grid" id="cardsGrid">
-                {% for postcard in available_postcards %}
-                <div class="card-option" 
-                     data-id="{{ postcard.id }}"
-                     data-type="static"
-                     data-title="{{ postcard.title|lower }}"
-                     data-number="{{ postcard.number }}"
-                     onclick="selectCard({{ postcard.id }}, '{{ postcard.get_vignette_url }}', '{{ postcard.title|escapejs }}', false)">
-                    {% if postcard.get_vignette_url %}
-                    <img src="{{ postcard.get_vignette_url }}" alt="{{ postcard.title }}">
-                    {% else %}
-                    <div class="card-placeholder">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <form id="composeForm" onsubmit="sendPostcard(event)">
+            <!-- Step 1: Card Selection -->
+            <div class="compose-step-content" id="step1Content">
+                <!-- Card Type Toggle -->
+                <div class="card-type-toggle">
+                    <button type="button" class="type-btn active" data-type="static" onclick="setCardType('static')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
                         </svg>
-                    </div>
-                    {% endif %}
-                    <span class="card-number">N° {{ postcard.number }}</span>
+                        Carte classique
+                    </button>
+                    <button type="button" class="type-btn" data-type="animated" onclick="setCardType('animated')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        Carte animée
+                    </button>
                 </div>
-                {% endfor %}
-            </div>
-            
-            <div class="selected-card-preview" id="selectedCardPreview" style="display: none;">
-                <img src="" id="selectedCardImage" alt="Carte sélectionnée">
-                <div class="preview-info">
-                    <span id="selectedCardTitle"></span>
-                    <button class="change-card-btn" onclick="clearCardSelection()">Changer</button>
-                </div>
-            </div>
-            
-            <button class="step-next-btn" onclick="goToStep(3)" id="step2NextBtn" disabled>
-                Continuer
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                    <polyline points="12 5 19 12 12 19"/>
-                </svg>
-            </button>
-        </div>
-        
-        <!-- Step 3: Write message (Like Contact Page) -->
-        <div class="compose-step" id="composeStep3" style="display: none;">
-            <div class="step-header">
-                <button class="step-back-btn" onclick="goToStep(2)">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="19" y1="12" x2="5" y2="12"/>
-                        <polyline points="12 19 5 12 12 5"/>
-                    </svg>
-                    Retour
-                </button>
-                <span>Écrire votre message</span>
-            </div>
-            
-            <!-- Vintage Postcard Style Message Area -->
-            <div class="compose-postcard-wrapper">
-                <div class="compose-postcard">
-                    <img src="{% static 'images/Cpa_Vierge.jpg' %}" alt="Carte Postale" class="compose-postcard-bg">
-                    
-                    <!-- Message Area (Left) -->
-                    <textarea 
-                        id="composeMessageInput"
-                        class="compose-message-input"
-                        placeholder="Écrivez votre message ici..."
-                        maxlength="55"
-                        oninput="updateCharCount()"></textarea>
-                    
-                    <!-- Stamp Area (Top Right) -->
-                    <div class="compose-stamp-area">
-                        <div class="stamp-placeholder" id="composeStampPlaceholder">
-                            <span>Timbre</span>
-                        </div>
-                        <img src="" alt="Timbre" class="compose-stamp" id="composeStampImage">
-                    </div>
-                    
-                    <!-- Signature Area (Right) -->
-                    <div class="compose-signature-area">
-                        <img src="" alt="Signature" class="compose-signature" id="composeSignatureImage">
-                        <div class="signature-placeholder" id="composeSignaturePlaceholder">
-                            <span>Signez ici</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Character count -->
-            <div class="compose-char-info">
-                <span id="charCountDisplay">0</span> / <span id="charLimitDisplay">55</span> caractères
-            </div>
-            
-            <!-- Instructions -->
-            <p class="compose-instructions">
-                Affranchissez au tarif en vigueur et signez votre carte
-            </p>
-            
-            <!-- Stamps and Signature Selection -->
-            <div class="compose-elements">
-                <div class="stamps-selection">
-                    <span class="selection-label">Timbres:</span>
-                    <div class="stamps-row">
-                        <div class="stamp-choice" data-value="5c" data-limit="44" onclick="selectStamp(this, '{% static 'images/Timbre_5c.png' %}', 44)">
-                            <img src="{% static 'images/Timbre_5c.png' %}" alt="5 centimes">
-                            <span>5c (44 car.)</span>
-                        </div>
-                        <div class="stamp-choice" data-value="10c" data-limit="55" onclick="selectStamp(this, '{% static 'images/Timbre_10c.png' %}', 55)">
-                            <img src="{% static 'images/Timbre_10c.png' %}" alt="10 centimes">
-                            <span>10c (55 car.)</span>
+                
+                <!-- Postcard Selection -->
+                <div class="form-group">
+                    <label>Choisir une carte</label>
+                    <div class="postcard-selector" id="postcardSelector">
+                        <div class="selector-preview" onclick="openPostcardPicker()">
+                            <div class="preview-placeholder" id="previewPlaceholder">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                <span>Cliquez pour choisir une carte</span>
+                            </div>
+                            <img id="selectedPostcardPreview" style="display: none;">
+                            <video id="selectedPostcardVideo" style="display: none;" muted loop playsinline></video>
                         </div>
                     </div>
                 </div>
                 
-                <div class="signature-selection">
-                    <span class="selection-label">Signature:</span>
-                    {% if user.signature_image %}
-                    <div class="user-signature-preview" onclick="applyUserSignature('{{ user.signature_image.url }}')">
-                        <img src="{{ user.signature_image.url }}" alt="Ma signature">
-                        <span>Ma signature</span>
+                <button type="button" class="btn-next" onclick="goToStep(2)" id="btnToStep2" disabled>
+                    Suivant
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Step 2: Message (Postcard Style) -->
+            <div class="compose-step-content" id="step2Content" style="display: none;">
+                <div class="postcard-compose-wrapper">
+                    <div class="postcard-compose">
+                        <!-- Postcard Background -->
+                        <img src="{% static 'images/Cpa_Vierge.jpg' %}" alt="Carte Postale" class="postcard-bg-compose">
+                        
+                        <!-- Message Area (left side) -->
+                        <textarea 
+                            name="message" 
+                            id="composeMessageInput"
+                            class="compose-message-input"
+                            placeholder="Écrivez votre message..."
+                            maxlength="55"
+                            required
+                        ></textarea>
+                        
+                        <!-- Stamp Area (top right) -->
+                        <div class="compose-stamp-area">
+                            <div class="stamp-placeholder-compose" id="stampPlaceholderCompose">
+                                <span>Timbre</span>
+                            </div>
+                            <img src="" alt="Timbre" class="applied-stamp-compose" id="appliedStampCompose">
+                        </div>
+                        
+                        <!-- Signature Area (right side) -->
+                        <div class="compose-signature-area">
+                            {% if user.signature_image %}
+                            <img src="{{ user.signature_image.url }}" alt="Signature" class="compose-signature-img">
+                            {% endif %}
+                        </div>
                     </div>
-                    {% else %}
-                    <div class="no-signature-msg">
-                        <a href="{% url 'profile' %}">Ajouter une signature</a>
+                </div>
+                
+                <!-- Stamp Selection -->
+                <div class="stamp-selection">
+                    <p class="stamp-instruction">Choisissez votre affranchissement :</p>
+                    <div class="stamps-row">
+                        <div class="stamp-option" data-stamp="5c" onclick="selectStamp('5c')">
+                            <img src="{% static 'images/Timbre_5c.png' %}" alt="5 centimes">
+                            <span class="stamp-info">5c - 44 caractères</span>
+                        </div>
+                        <div class="stamp-option selected" data-stamp="10c" onclick="selectStamp('10c')">
+                            <img src="{% static 'images/Timbre_10c.png' %}" alt="10 centimes">
+                            <span class="stamp-info">10c - 55 caractères</span>
+                        </div>
                     </div>
-                    {% endif %}
-                    
-                    <!-- Default signature option -->
-                    <div class="default-signature-option" onclick="applyUserSignature('{% static 'images/Samathey.png' %}')">
-                        <img src="{% static 'images/Samathey_blanc.png' %}" alt="Signature par défaut">
-                        <span>Signature classique</span>
-                    </div>
+                </div>
+                
+                <div class="char-counter">
+                    <span id="composeCharCount">0</span>/<span id="maxChars">55</span> caractères
+                </div>
+                
+                <div class="step-buttons">
+                    <button type="button" class="btn-back" onclick="goToStep(1)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                        Retour
+                    </button>
+                    <button type="button" class="btn-next" onclick="goToStep(3)" id="btnToStep3" disabled>
+                        Suivant
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
-            <!-- Send Button -->
-            <button class="send-postcard-btn" id="sendPostcardBtn" onclick="sendPostcard()" disabled>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="22" y1="2" x2="11" y2="13"/>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                </svg>
-                Poster la carte
-            </button>
+            <!-- Step 3: Send Options -->
+            <div class="compose-step-content" id="step3Content" style="display: none;">
+                <!-- Visibility Toggle -->
+                <div class="visibility-toggle">
+                    <button type="button" class="visibility-btn active" data-visibility="private" onclick="setVisibility('private')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        Privé
+                    </button>
+                    <button type="button" class="visibility-btn" data-visibility="public" onclick="setVisibility('public')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        </svg>
+                        Public
+                    </button>
+                </div>
+                
+                <!-- Recipient (for private) -->
+                <div class="form-group" id="recipientGroup">
+                    <label>Destinataire</label>
+                    <div class="recipient-input-wrapper">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <input type="text" id="recipientInput" placeholder="Nom d'utilisateur..." autocomplete="off">
+                        <div class="user-suggestions" id="userSuggestions"></div>
+                    </div>
+                </div>
+                
+                <!-- Summary -->
+                <div class="compose-summary">
+                    <h4>Résumé de votre envoi</h4>
+                    <div class="summary-item">
+                        <span class="summary-label">Carte :</span>
+                        <span class="summary-value" id="summaryCard">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Type :</span>
+                        <span class="summary-value" id="summaryType">Classique</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Timbre :</span>
+                        <span class="summary-value" id="summaryStamp">10 centimes</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Message :</span>
+                        <span class="summary-value" id="summaryMessage">-</span>
+                    </div>
+                </div>
+                
+                <div class="step-buttons">
+                    <button type="button" class="btn-back" onclick="goToStep(2)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                        Retour
+                    </button>
+                    <button type="submit" class="btn-send">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                        Envoyer
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Postcard Picker Modal -->
+<div class="picker-modal" id="pickerModal">
+    <div class="modal-backdrop" onclick="closePostcardPicker()"></div>
+    <div class="modal-content picker-content">
+        <button class="modal-close" onclick="closePostcardPicker()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        
+        <h2 id="pickerTitle">Choisir une carte postale</h2>
+        
+        <div class="picker-search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="pickerSearch" placeholder="Rechercher..." oninput="filterPostcards(this.value)">
+        </div>
+        
+        <!-- Static Postcards Grid -->
+        <div class="picker-grid" id="staticPickerGrid">
+            {% for postcard in available_postcards %}
+            <div class="picker-item" 
+                 data-id="{{ postcard.id }}"
+                 data-title="{{ postcard.title|lower }}"
+                 data-number="{{ postcard.number }}"
+                 onclick="selectPostcard({{ postcard.id }}, '{{ postcard.get_vignette_url }}', '{{ postcard.title|escapejs }}', '{{ postcard.number }}', false)">
+                <img src="{{ postcard.get_vignette_url }}" alt="{{ postcard.title }}" loading="lazy">
+                <span>N° {{ postcard.number }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Animated Postcards Grid -->
+        <div class="picker-grid" id="animatedPickerGrid" style="display: none;">
+            {% for postcard in animated_postcards %}
+            <div class="picker-item animated-picker-item" 
+                 data-id="{{ postcard.id }}"
+                 data-title="{{ postcard.title|lower }}"
+                 data-number="{{ postcard.number }}"
+                 data-video="{{ postcard.get_first_video_url }}"
+                 onclick="selectPostcard({{ postcard.id }}, '{{ postcard.get_vignette_url }}', '{{ postcard.title|escapejs }}', '{{ postcard.number }}', true, '{{ postcard.get_first_video_url }}')">
+                <img src="{{ postcard.get_vignette_url }}" alt="{{ postcard.title }}" loading="lazy">
+                <div class="animated-indicator">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                </div>
+                <span>N° {{ postcard.number }}</span>
+            </div>
+            {% empty %}
+            <div class="no-animated">
+                <p>Aucune carte animée disponible</p>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>
 
-<!-- Success Notification -->
-<div class="success-notification" id="successNotification">
-    <div class="success-content">
-        <div class="success-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
+<!-- View Image Modal -->
+<div class="view-image-modal" id="viewImageModal">
+    <div class="modal-backdrop" onclick="closeViewImageModal()"></div>
+    <div class="modal-content view-image-content">
+        <button class="modal-close" onclick="closeViewImageModal()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        
+        <div class="view-image-container">
+            <img id="viewImageImg" src="" alt="Carte postale">
+            <video id="viewImageVideo" style="display: none;" controls autoplay loop playsinline></video>
+        </div>
+    </div>
+</div>
+
+<!-- View Message Modal (Postcard Style) -->
+<div class="view-message-modal" id="viewMessageModal">
+    <div class="modal-backdrop" onclick="closeViewMessageModal()"></div>
+    <div class="modal-content view-message-content">
+        <button class="modal-close" onclick="closeViewMessageModal()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        
+        <div class="message-postcard-wrapper">
+            <div class="message-postcard">
+                <img src="{% static 'images/Cpa_Vierge.jpg' %}" alt="Carte Postale" class="message-postcard-bg">
+                
+                <!-- Message Area -->
+                <div class="message-text-area" id="messageTextArea">
+                    <p id="viewMessageText"></p>
+                </div>
+                
+                <!-- Stamp Area -->
+                <div class="message-stamp-area">
+                    <img id="viewMessageStamp" src="" alt="Timbre">
+                </div>
+                
+                <!-- Signature Area -->
+                <div class="message-signature-area">
+                    <img id="viewMessageSignature" src="" alt="Signature">
+                    <p class="signature-name" id="viewMessageSender"></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="message-meta">
+            <span id="viewMessageDate"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Signature Required Modal -->
+<div class="signature-required-modal" id="signatureRequiredModal">
+    <div class="modal-backdrop" onclick="closeSignatureRequiredModal()"></div>
+    <div class="modal-content signature-required-content">
+        <div class="signature-required-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                <path d="M2 2l7.586 7.586"/>
+                <circle cx="11" cy="11" r="2"/>
             </svg>
         </div>
-        <h3>Carte envoyée!</h3>
-        <p id="successMessage">Votre carte postale a été envoyée avec succès.</p>
+        <h3>Signature requise</h3>
+        <p>Pour envoyer des cartes postales, vous devez d'abord créer votre signature personnelle dans votre profil.</p>
+        <div class="signature-required-actions">
+            <button class="btn-cancel" onclick="closeSignatureRequiredModal()">Plus tard</button>
+            <a href="{% url 'profile' %}" class="btn-create">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                </svg>
+                Créer ma signature
+            </a>
+        </div>
     </div>
 </div>
 
@@ -622,70 +722,60 @@
 const csrfToken = '{{ csrf_token }}';
 let currentVisibility = 'private';
 let selectedPostcardId = null;
-let selectedPostcardUrl = '';
-let selectedStampUrl = '';
-let selectedSignatureUrl = '';
-let currentCharLimit = 55;
-let stampApplied = false;
-let signatureApplied = false;
+let selectedPostcardNumber = '';
+let selectedPostcardTitle = '';
+let selectedVideoUrl = null;
+let isAnimatedCard = false;
+let currentStamp = '10c';
+let currentStep = 1;
+const userHasSignature = {{ user_has_signature|yesno:"true,false" }};
 
 // ============================================
 // BACKGROUND ANIMATIONS
 // ============================================
+function createFloatingElements() {
+    const container = document.getElementById('floating-elements');
+    if (!container) return;
+    
+    // Elegant, somber icons (postal/writing themed)
+    const icons = [
+        '✉️', '📜', '🖋️', '📮', '🏛️', '⚜️', '🕊️', '📝', '🎭', '🏺',
+        '📯', '🗝️', '⌛', '🕰️', '📖', '🎪', '🏰', '⛪', '🌙', '✨'
+    ];
+    
+    for (let i = 0; i < 25; i++) {
+        const element = document.createElement('div');
+        element.className = 'floating-element';
+        element.textContent = icons[Math.floor(Math.random() * icons.length)];
+        element.style.left = Math.random() * 100 + '%';
+        element.style.animationDuration = (20 + Math.random() * 20) + 's';
+        element.style.animationDelay = (Math.random() * 20) + 's';
+        element.style.fontSize = (16 + Math.random() * 16) + 'px';
+        element.style.opacity = 0.03 + Math.random() * 0.05;
+        container.appendChild(element);
+    }
+}
 
 function createDustParticles() {
     const container = document.getElementById('dust-particles');
     if (!container) return;
     
     for (let i = 0; i < 60; i++) {
-        const dust = document.createElement('div');
-        dust.className = 'dust-particle';
-        dust.style.left = Math.random() * 100 + '%';
-        dust.style.top = Math.random() * 100 + '%';
-        dust.style.animationDelay = Math.random() * 15 + 's';
-        dust.style.animationDuration = (15 + Math.random() * 20) + 's';
-        dust.style.opacity = 0.2 + Math.random() * 0.4;
-        dust.style.width = (2 + Math.random() * 3) + 'px';
-        dust.style.height = dust.style.width;
-        container.appendChild(dust);
-    }
-}
-
-function createFloatingIcons() {
-    const container = document.getElementById('floating-icons');
-    if (!container) return;
-    
-    const icons = [
-        // Quill/Feather
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>',
-        // Envelope
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
-        // Stamp
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="6" y="6" width="12" height="12" rx="1"/></svg>',
-        // Ink bottle
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M8 2h8v4H8zM6 6h12v4l-2 2v8a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-8l-2-2V6z"/></svg>',
-        // Postcard
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="14" y1="8" x2="20" y2="8"/><line x1="14" y1="12" x2="20" y2="12"/></svg>',
-        // Seal/Wax
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="8"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg>',
-    ];
-    
-    for (let i = 0; i < 12; i++) {
-        const iconWrapper = document.createElement('div');
-        iconWrapper.className = 'floating-icon';
-        iconWrapper.innerHTML = icons[Math.floor(Math.random() * icons.length)];
-        iconWrapper.style.left = Math.random() * 100 + '%';
-        iconWrapper.style.top = Math.random() * 100 + '%';
-        iconWrapper.style.animationDelay = Math.random() * 20 + 's';
-        iconWrapper.style.animationDuration = (20 + Math.random() * 15) + 's';
-        container.appendChild(iconWrapper);
+        const particle = document.createElement('div');
+        particle.className = 'dust-particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.top = Math.random() * 100 + '%';
+        particle.style.width = (2 + Math.random() * 3) + 'px';
+        particle.style.height = particle.style.width;
+        particle.style.animationDuration = (10 + Math.random() * 20) + 's';
+        particle.style.animationDelay = (Math.random() * 10) + 's';
+        container.appendChild(particle);
     }
 }
 
 // ============================================
-// TAB NAVIGATION
+// TAB SWITCHING
 // ============================================
-
 function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tab);
@@ -698,76 +788,13 @@ function switchTab(tab) {
 }
 
 // ============================================
-// POSTCARD VIEW MODAL
-// ============================================
-
-function openPostcardView(element) {
-    const data = element.dataset;
-    
-    // Mark as read if received
-    if (element.classList.contains('unread')) {
-        markAsRead(data.id);
-        element.classList.remove('unread');
-    }
-    
-    const modal = document.getElementById('postcardViewModal');
-    
-    // Set message
-    document.getElementById('viewMessageText').textContent = data.message || '';
-    
-    // Set sender info
-    document.getElementById('viewSenderName').textContent = data.sender || data.recipient || '';
-    
-    // Set date
-    document.getElementById('viewDate').textContent = data.date || '';
-    
-    // Set signature if available
-    const signatureImg = document.getElementById('viewSignature');
-    if (data.signature) {
-        signatureImg.src = data.signature;
-        signatureImg.style.display = 'block';
-    } else {
-        signatureImg.style.display = 'none';
-    }
-    
-    // Set stamp (default to 10c)
-    document.getElementById('viewStamp').src = '{% static "images/Timbre_10c.png" %}';
-    
-    // Set postcard image if available
-    const imagePreview = document.getElementById('postcardImagePreview');
-    const postcardImage = document.getElementById('viewPostcardImage');
-    if (data.image) {
-        postcardImage.src = data.image;
-        imagePreview.style.display = 'block';
-    } else {
-        imagePreview.style.display = 'none';
-    }
-    
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closePostcardView() {
-    document.getElementById('postcardViewModal').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-async function markAsRead(postcardId) {
-    try {
-        await fetch(`/api/la-poste/${postcardId}/read/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken }
-        });
-    } catch (error) {
-        console.error('Error marking as read:', error);
-    }
-}
-
-// ============================================
 // COMPOSE MODAL
 // ============================================
-
 function openComposeModal() {
+    if (!userHasSignature) {
+        showSignatureRequired();
+        return;
+    }
     document.getElementById('composeModal').classList.add('active');
     document.body.style.overflow = 'hidden';
     resetComposeForm();
@@ -779,64 +806,215 @@ function closeComposeModal() {
 }
 
 function resetComposeForm() {
-    // Reset to step 1
-    goToStep(1);
+    document.getElementById('composeForm').reset();
+    selectedPostcardId = null;
+    selectedPostcardNumber = '';
+    selectedPostcardTitle = '';
+    selectedVideoUrl = null;
+    isAnimatedCard = false;
+    currentStamp = '10c';
+    currentStep = 1;
+    
+    // Reset UI
+    document.getElementById('selectedPostcardPreview').style.display = 'none';
+    document.getElementById('selectedPostcardVideo').style.display = 'none';
+    document.getElementById('previewPlaceholder').style.display = 'flex';
+    document.getElementById('btnToStep2').disabled = true;
+    document.getElementById('btnToStep3').disabled = true;
+    document.getElementById('composeCharCount').textContent = '0';
+    document.getElementById('maxChars').textContent = '55';
+    document.getElementById('composeMessageInput').maxLength = 55;
+    
+    // Reset stamps
+    document.querySelectorAll('.stamp-option').forEach(s => s.classList.remove('selected'));
+    document.querySelector('.stamp-option[data-stamp="10c"]').classList.add('selected');
+    document.getElementById('appliedStampCompose').src = '';
+    document.getElementById('appliedStampCompose').style.display = 'none';
+    document.getElementById('stampPlaceholderCompose').style.display = 'flex';
+    
+    // Reset card type
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.type-btn[data-type="static"]').classList.add('active');
+    document.getElementById('staticPickerGrid').style.display = 'grid';
+    document.getElementById('animatedPickerGrid').style.display = 'none';
     
     // Reset visibility
     setVisibility('private');
     
-    // Reset recipient
-    document.getElementById('recipientInput').value = '';
-    document.getElementById('recipientSuggestions').innerHTML = '';
-    
-    // Reset card selection
-    clearCardSelection();
-    
-    // Reset message
-    document.getElementById('composeMessageInput').value = '';
-    updateCharCount();
-    
-    // Reset stamp and signature
-    stampApplied = false;
-    signatureApplied = false;
-    selectedStampUrl = '';
-    selectedSignatureUrl = '';
-    
-    document.getElementById('composeStampImage').style.display = 'none';
-    document.getElementById('composeStampPlaceholder').style.display = 'flex';
-    document.getElementById('composeSignatureImage').style.display = 'none';
-    document.getElementById('composeSignaturePlaceholder').style.display = 'flex';
-    
-    document.querySelectorAll('.stamp-choice').forEach(s => s.classList.remove('selected'));
-    
-    currentCharLimit = 55;
-    document.getElementById('charLimitDisplay').textContent = '55';
-    document.getElementById('composeMessageInput').maxLength = 55;
-    
-    updateSendButton();
+    // Go to step 1
+    goToStep(1);
 }
 
 function goToStep(step) {
-    document.querySelectorAll('.compose-step').forEach(s => s.style.display = 'none');
-    document.getElementById('composeStep' + step).style.display = 'block';
+    currentStep = step;
+    
+    // Update step indicators
+    document.querySelectorAll('.compose-steps .step').forEach((s, i) => {
+        s.classList.toggle('active', i + 1 <= step);
+        s.classList.toggle('completed', i + 1 < step);
+    });
+    
+    // Show/hide content
+    document.getElementById('step1Content').style.display = step === 1 ? 'block' : 'none';
+    document.getElementById('step2Content').style.display = step === 2 ? 'block' : 'none';
+    document.getElementById('step3Content').style.display = step === 3 ? 'block' : 'none';
+    
+    // Update summary on step 3
+    if (step === 3) {
+        updateSummary();
+    }
 }
 
+function updateSummary() {
+    document.getElementById('summaryCard').textContent = selectedPostcardNumber ? 
+        `N° ${selectedPostcardNumber}` : '-';
+    document.getElementById('summaryType').textContent = isAnimatedCard ? 'Animée' : 'Classique';
+    document.getElementById('summaryStamp').textContent = currentStamp === '5c' ? '5 centimes' : '10 centimes';
+    
+    const message = document.getElementById('composeMessageInput').value;
+    document.getElementById('summaryMessage').textContent = message ? 
+        (message.length > 30 ? message.substring(0, 30) + '...' : message) : '-';
+}
+
+// ============================================
+// CARD TYPE & SELECTION
+// ============================================
+function setCardType(type) {
+    isAnimatedCard = type === 'animated';
+    
+    document.querySelectorAll('.type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === type);
+    });
+    
+    document.getElementById('staticPickerGrid').style.display = type === 'static' ? 'grid' : 'none';
+    document.getElementById('animatedPickerGrid').style.display = type === 'animated' ? 'grid' : 'none';
+    document.getElementById('pickerTitle').textContent = type === 'animated' ? 
+        'Choisir une carte animée' : 'Choisir une carte postale';
+    
+    // Reset selection when changing type
+    selectedPostcardId = null;
+    selectedVideoUrl = null;
+    document.getElementById('selectedPostcardPreview').style.display = 'none';
+    document.getElementById('selectedPostcardVideo').style.display = 'none';
+    document.getElementById('previewPlaceholder').style.display = 'flex';
+    document.getElementById('btnToStep2').disabled = true;
+}
+
+function openPostcardPicker() {
+    document.getElementById('pickerModal').classList.add('active');
+}
+
+function closePostcardPicker() {
+    document.getElementById('pickerModal').classList.remove('active');
+}
+
+function filterPostcards(query) {
+    const gridId = isAnimatedCard ? 'animatedPickerGrid' : 'staticPickerGrid';
+    const items = document.querySelectorAll(`#${gridId} .picker-item`);
+    query = query.toLowerCase();
+    
+    items.forEach(item => {
+        const title = item.dataset.title || '';
+        const number = item.dataset.number || '';
+        item.style.display = (title.includes(query) || number.includes(query)) ? '' : 'none';
+    });
+}
+
+function selectPostcard(id, url, title, number, animated = false, videoUrl = null) {
+    selectedPostcardId = id;
+    selectedPostcardTitle = title;
+    selectedPostcardNumber = number;
+    selectedVideoUrl = videoUrl;
+    isAnimatedCard = animated;
+    
+    const preview = document.getElementById('selectedPostcardPreview');
+    const video = document.getElementById('selectedPostcardVideo');
+    const placeholder = document.getElementById('previewPlaceholder');
+    
+    if (animated && videoUrl) {
+        preview.style.display = 'none';
+        video.src = videoUrl;
+        video.style.display = 'block';
+        video.play();
+    } else {
+        video.style.display = 'none';
+        video.pause();
+        preview.src = url;
+        preview.style.display = 'block';
+    }
+    
+    placeholder.style.display = 'none';
+    document.getElementById('btnToStep2').disabled = false;
+    
+    closePostcardPicker();
+}
+
+// ============================================
+// STAMP SELECTION
+// ============================================
+function selectStamp(stamp) {
+    currentStamp = stamp;
+    const maxChars = stamp === '5c' ? 44 : 55;
+    
+    document.querySelectorAll('.stamp-option').forEach(s => {
+        s.classList.toggle('selected', s.dataset.stamp === stamp);
+    });
+    
+    document.getElementById('maxChars').textContent = maxChars;
+    document.getElementById('composeMessageInput').maxLength = maxChars;
+    
+    // Update applied stamp
+    const stampImg = document.getElementById('appliedStampCompose');
+    const stampPlaceholder = document.getElementById('stampPlaceholderCompose');
+    
+    if (stamp === '5c') {
+        stampImg.src = '{% static "images/Timbre_5c.png" %}';
+    } else {
+        stampImg.src = '{% static "images/Timbre_10c.png" %}';
+    }
+    stampImg.style.display = 'block';
+    stampPlaceholder.style.display = 'none';
+    
+    // Check if message exceeds new limit
+    const message = document.getElementById('composeMessageInput');
+    if (message.value.length > maxChars) {
+        message.value = message.value.substring(0, maxChars);
+        document.getElementById('composeCharCount').textContent = maxChars;
+    }
+    
+    validateStep2();
+}
+
+// Message character counter
+document.getElementById('composeMessageInput').addEventListener('input', function() {
+    document.getElementById('composeCharCount').textContent = this.value.length;
+    validateStep2();
+});
+
+function validateStep2() {
+    const message = document.getElementById('composeMessageInput').value.trim();
+    document.getElementById('btnToStep3').disabled = message.length === 0;
+}
+
+// ============================================
+// VISIBILITY & RECIPIENT
+// ============================================
 function setVisibility(vis) {
     currentVisibility = vis;
-    document.querySelectorAll('.visibility-option').forEach(btn => {
+    document.querySelectorAll('.visibility-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.visibility === vis);
     });
-    document.getElementById('recipientSection').style.display = vis === 'private' ? 'block' : 'none';
+    document.getElementById('recipientGroup').style.display = vis === 'private' ? 'block' : 'none';
 }
 
-// Recipient search
+// User search
 let searchTimeout;
-document.getElementById('recipientInput')?.addEventListener('input', function() {
+document.getElementById('recipientInput').addEventListener('input', function() {
     clearTimeout(searchTimeout);
     const query = this.value.trim();
     
     if (query.length < 2) {
-        document.getElementById('recipientSuggestions').innerHTML = '';
+        document.getElementById('userSuggestions').innerHTML = '';
         return;
     }
     
@@ -845,7 +1023,7 @@ document.getElementById('recipientInput')?.addEventListener('input', function() 
             const response = await fetch(`/api/users/search/?q=${encodeURIComponent(query)}`);
             const data = await response.json();
             
-            const suggestions = document.getElementById('recipientSuggestions');
+            const suggestions = document.getElementById('userSuggestions');
             suggestions.innerHTML = data.users.map(u => `
                 <div class="suggestion-item" onclick="selectRecipient('${u.username}')">
                     <span class="suggestion-name">${u.username}</span>
@@ -860,111 +1038,15 @@ document.getElementById('recipientInput')?.addEventListener('input', function() 
 
 function selectRecipient(username) {
     document.getElementById('recipientInput').value = username;
-    document.getElementById('recipientSuggestions').innerHTML = '';
+    document.getElementById('userSuggestions').innerHTML = '';
 }
 
-// Card type switching
-function switchCardType(type) {
-    document.querySelectorAll('.card-type-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.textContent.toLowerCase().includes(type === 'animated' ? 'animées' : 'postales'));
-    });
+// ============================================
+// SEND POSTCARD
+// ============================================
+async function sendPostcard(event) {
+    event.preventDefault();
     
-    document.querySelectorAll('.card-option').forEach(card => {
-        const cardType = card.dataset.type || 'static';
-        card.style.display = (type === 'all' || cardType === type) ? '' : 'none';
-    });
-}
-
-function filterCards(query) {
-    query = query.toLowerCase();
-    document.querySelectorAll('.card-option').forEach(card => {
-        const title = card.dataset.title || '';
-        const number = card.dataset.number || '';
-        const matches = title.includes(query) || number.includes(query);
-        card.style.display = matches ? '' : 'none';
-    });
-}
-
-function selectCard(id, url, title, isAnimated) {
-    selectedPostcardId = id;
-    selectedPostcardUrl = url;
-    
-    // Hide grid, show preview
-    document.getElementById('cardsGrid').style.display = 'none';
-    document.querySelector('.card-search').style.display = 'none';
-    document.querySelector('.card-type-tabs').style.display = 'none';
-    
-    const preview = document.getElementById('selectedCardPreview');
-    document.getElementById('selectedCardImage').src = url;
-    document.getElementById('selectedCardTitle').textContent = title;
-    preview.style.display = 'flex';
-    
-    document.getElementById('step2NextBtn').disabled = false;
-}
-
-function clearCardSelection() {
-    selectedPostcardId = null;
-    selectedPostcardUrl = '';
-    
-    document.getElementById('cardsGrid').style.display = 'grid';
-    document.querySelector('.card-search').style.display = 'flex';
-    document.querySelector('.card-type-tabs').style.display = 'flex';
-    document.getElementById('selectedCardPreview').style.display = 'none';
-    document.getElementById('step2NextBtn').disabled = true;
-}
-
-// Stamp selection
-function selectStamp(element, stampUrl, charLimit) {
-    document.querySelectorAll('.stamp-choice').forEach(s => s.classList.remove('selected'));
-    element.classList.add('selected');
-    
-    selectedStampUrl = stampUrl;
-    currentCharLimit = charLimit;
-    stampApplied = true;
-    
-    // Update UI
-    document.getElementById('composeStampImage').src = stampUrl;
-    document.getElementById('composeStampImage').style.display = 'block';
-    document.getElementById('composeStampPlaceholder').style.display = 'none';
-    
-    // Update char limit
-    document.getElementById('charLimitDisplay').textContent = charLimit;
-    document.getElementById('composeMessageInput').maxLength = charLimit;
-    
-    // Trim message if needed
-    const input = document.getElementById('composeMessageInput');
-    if (input.value.length > charLimit) {
-        input.value = input.value.substring(0, charLimit);
-    }
-    updateCharCount();
-    updateSendButton();
-}
-
-function applyUserSignature(signatureUrl) {
-    selectedSignatureUrl = signatureUrl;
-    signatureApplied = true;
-    
-    document.getElementById('composeSignatureImage').src = signatureUrl;
-    document.getElementById('composeSignatureImage').style.display = 'block';
-    document.getElementById('composeSignaturePlaceholder').style.display = 'none';
-    
-    updateSendButton();
-}
-
-function updateCharCount() {
-    const input = document.getElementById('composeMessageInput');
-    document.getElementById('charCountDisplay').textContent = input.value.length;
-    updateSendButton();
-}
-
-function updateSendButton() {
-    const message = document.getElementById('composeMessageInput').value.trim();
-    const canSend = stampApplied && signatureApplied && message.length >= 5;
-    document.getElementById('sendPostcardBtn').disabled = !canSend;
-}
-
-// Send postcard
-async function sendPostcard() {
     const message = document.getElementById('composeMessageInput').value.trim();
     const recipient = document.getElementById('recipientInput').value.trim();
     
@@ -973,18 +1055,13 @@ async function sendPostcard() {
         return;
     }
     
-    if (!stampApplied) {
-        showNotification('Veuillez choisir un timbre', 'error');
+    if (!selectedPostcardId) {
+        showNotification('Veuillez sélectionner une carte postale', 'error');
         return;
     }
     
-    if (!signatureApplied) {
-        showNotification('Veuillez signer votre carte', 'error');
-        return;
-    }
-    
-    if (message.length < 5) {
-        showNotification('Le message est trop court', 'error');
+    if (!message) {
+        showNotification('Veuillez écrire un message', 'error');
         return;
     }
     
@@ -999,7 +1076,9 @@ async function sendPostcard() {
                 message,
                 recipient: currentVisibility === 'private' ? recipient : null,
                 visibility: currentVisibility,
-                postcard_id: selectedPostcardId
+                postcard_id: selectedPostcardId,
+                stamp_type: currentStamp,
+                is_animated: isAnimatedCard
             })
         });
         
@@ -1007,19 +1086,129 @@ async function sendPostcard() {
         
         if (response.ok) {
             closeComposeModal();
-            showSuccessNotification(data.message || 'Carte envoyée avec succès!');
-            setTimeout(() => location.reload(), 2000);
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1500);
         } else {
-            showNotification(data.error || 'Erreur lors de l\'envoi', 'error');
+            showNotification(data.error, 'error');
         }
     } catch (error) {
         showNotification('Erreur lors de l\'envoi', 'error');
     }
 }
 
-// Comments
-function toggleComments(postcardId) {
-    const comments = document.getElementById('comments-' + postcardId);
+// ============================================
+// VIEW POSTCARD IMAGE
+// ============================================
+function viewPostcardImage(id, tab) {
+    const item = document.querySelector(`.postcard-item[data-id="${id}"], .wall-post[data-id="${id}"]`);
+    if (!item) return;
+    
+    const img = item.querySelector('.postcard-image img, .post-image img');
+    const video = item.querySelector('.postcard-video, .wall-video');
+    const isAnimated = item.dataset.isAnimated === 'true';
+    
+    const modalImg = document.getElementById('viewImageImg');
+    const modalVideo = document.getElementById('viewImageVideo');
+    
+    if (isAnimated && video && video.dataset.src) {
+        modalImg.style.display = 'none';
+        modalVideo.src = video.dataset.src;
+        modalVideo.style.display = 'block';
+        modalVideo.play();
+    } else if (img) {
+        modalVideo.style.display = 'none';
+        modalVideo.pause();
+        modalImg.src = img.src;
+        modalImg.style.display = 'block';
+    }
+    
+    document.getElementById('viewImageModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeViewImageModal() {
+    const video = document.getElementById('viewImageVideo');
+    video.pause();
+    document.getElementById('viewImageModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// ============================================
+// VIEW MESSAGE
+// ============================================
+async function viewPostcardMessage(id) {
+    try {
+        const response = await fetch(`/api/la-poste/${id}/message/`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            showNotification(data.error, 'error');
+            return;
+        }
+        
+        // Set message text
+        document.getElementById('viewMessageText').textContent = data.message;
+        
+        // Set stamp
+        const stampImg = document.getElementById('viewMessageStamp');
+        if (data.stamp_type === '5c') {
+            stampImg.src = '{% static "images/Timbre_5c.png" %}';
+        } else {
+            stampImg.src = '{% static "images/Timbre_10c.png" %}';
+        }
+        
+        // Set signature
+        const sigImg = document.getElementById('viewMessageSignature');
+        if (data.sender_signature_url) {
+            sigImg.src = data.sender_signature_url;
+            sigImg.style.display = 'block';
+        } else {
+            sigImg.style.display = 'none';
+        }
+        
+        // Set sender name and date
+        document.getElementById('viewMessageSender').textContent = data.sender_username;
+        document.getElementById('viewMessageDate').textContent = data.created_at;
+        
+        // Mark as read in UI
+        const item = document.querySelector(`.postcard-item[data-id="${id}"]`);
+        if (item) {
+            item.classList.remove('unread');
+            const badge = item.querySelector('.new-badge');
+            if (badge) badge.remove();
+        }
+        
+        document.getElementById('viewMessageModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+    } catch (error) {
+        showNotification('Erreur lors du chargement du message', 'error');
+    }
+}
+
+function closeViewMessageModal() {
+    document.getElementById('viewMessageModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// ============================================
+// SIGNATURE REQUIRED
+// ============================================
+function showSignatureRequired() {
+    document.getElementById('signatureRequiredModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSignatureRequiredModal() {
+    document.getElementById('signatureRequiredModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// ============================================
+// COMMENTS
+// ============================================
+function toggleComments(id) {
+    const comments = document.getElementById(`comments-${id}`);
     comments.style.display = comments.style.display === 'none' ? 'block' : 'none';
 }
 
@@ -1044,13 +1233,10 @@ async function addComment(event, postcardId) {
         
         if (response.ok) {
             const list = document.querySelector(`#comments-${postcardId} .comments-list`);
-            const noComments = list.querySelector('.no-comments');
-            if (noComments) noComments.remove();
-            
             list.innerHTML += `
-                <div class="comment-item">
+                <div class="comment">
                     <span class="comment-author">${data.comment.user}</span>
-                    <p class="comment-text">${data.comment.message}</p>
+                    <p>${data.comment.message}</p>
                     <span class="comment-date">${data.comment.created_at}</span>
                 </div>
             `;
@@ -1061,60 +1247,74 @@ async function addComment(event, postcardId) {
     }
 }
 
-// Notifications
-function showNotification(message, type = 'info') {
+// ============================================
+// VIDEO HOVER EFFECTS
+// ============================================
+function initVideoHovers() {
+    document.querySelectorAll('.postcard-item, .wall-post').forEach(item => {
+        const video = item.querySelector('.postcard-video, .wall-video');
+        if (!video) return;
+        
+        item.addEventListener('mouseenter', () => {
+            if (video.dataset.src && !video.src) {
+                video.src = video.dataset.src;
+            }
+            video.play().catch(() => {});
+        });
+        
+        item.addEventListener('mouseleave', () => {
+            video.pause();
+            video.currentTime = 0;
+        });
+    });
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+function showNotification(message, type) {
     const notification = document.createElement('div');
-    notification.className = `toast-notification toast-${type}`;
+    notification.className = `notification notification-${type}`;
     notification.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            ${type === 'error' 
-                ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' 
-                : '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
         </svg>
-        <span>${message}</span>
+        ${message}
     `;
     document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 10);
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    setTimeout(() => notification.remove(), 4000);
 }
 
-function showSuccessNotification(message) {
-    const notification = document.getElementById('successNotification');
-    document.getElementById('successMessage').textContent = message;
-    notification.classList.add('show');
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-    }, 3000);
-}
-
-// Keyboard handlers
+// ============================================
+// KEYBOARD NAVIGATION
+// ============================================
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeComposeModal();
-        closePostcardView();
+        closePostcardPicker();
+        closeViewImageModal();
+        closeViewMessageModal();
+        closeSignatureRequiredModal();
     }
 });
 
-// Initialize
+// ============================================
+// INITIALIZE
+// ============================================
 document.addEventListener('DOMContentLoaded', () => {
+    createFloatingElements();
     createDustParticles();
-    createFloatingIcons();
+    initVideoHovers();
+    
+    // Auto-select stamp on load
+    selectStamp('10c');
 });
 </script>
 
 <style>
-/* ============================================
-   LA POSTE PAGE - ELEGANT REDESIGN
-   ============================================ */
-
+/* ========================================
+   LA POSTE PAGE STYLES
+   ======================================== */
 .la-poste-page {
     min-height: 100vh;
     position: relative;
@@ -1125,7 +1325,7 @@ document.addEventListener('DOMContentLoaded', () => {
 .poste-background {
     position: fixed;
     inset: 0;
-    background: linear-gradient(165deg, #1a1510 0%, #2a201a 40%, #1a1510 100%);
+    background: linear-gradient(180deg, #0d0906 0%, #1a1208 30%, #2d1f0d 60%, #1a1208 100%);
     z-index: 0;
     overflow: hidden;
 }
@@ -1134,76 +1334,60 @@ document.addEventListener('DOMContentLoaded', () => {
     position: absolute;
     inset: 0;
     background: 
-        radial-gradient(ellipse at 20% 20%, rgba(181, 96, 11, 0.06) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 80%, rgba(139, 90, 43, 0.05) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(209, 135, 44, 0.03) 0%, transparent 60%);
+        radial-gradient(circle at 20% 20%, rgba(181, 96, 11, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(181, 96, 11, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(139, 69, 19, 0.03) 0%, transparent 70%);
+}
+
+/* Floating Elements */
+.floating-element {
+    position: absolute;
+    animation: float-element linear infinite;
+    pointer-events: none;
+    filter: grayscale(50%);
+}
+
+@keyframes float-element {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+    5% { opacity: 0.05; }
+    95% { opacity: 0.05; }
+    100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+    }
 }
 
 /* Dust Particles */
 .dust-particle {
     position: absolute;
-    background: radial-gradient(circle, rgba(255, 240, 220, 0.8) 0%, rgba(209, 135, 44, 0.3) 50%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 248, 220, 0.4) 0%, transparent 70%);
     border-radius: 50%;
+    animation: dust-float ease-in-out infinite;
     pointer-events: none;
-    animation: dustFloat linear infinite;
 }
 
-@keyframes dustFloat {
-    0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 0;
-    }
-    10% {
-        opacity: 0.4;
-    }
-    50% {
-        transform: translate(30px, -50px) scale(1.2);
-    }
-    90% {
-        opacity: 0.4;
-    }
-    100% {
-        transform: translate(60px, -100px) scale(0.8);
-        opacity: 0;
-    }
-}
-
-/* Floating Icons */
-.floating-icon {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    opacity: 0.08;
-    pointer-events: none;
-    animation: iconFloat ease-in-out infinite;
-    color: rgba(181, 96, 11, 0.6);
-}
-
-.floating-icon svg {
-    width: 100%;
-    height: 100%;
-}
-
-@keyframes iconFloat {
+@keyframes dust-float {
     0%, 100% {
-        transform: translateY(0) rotate(0deg);
-        opacity: 0.05;
+        transform: translate(0, 0) scale(1);
+        opacity: 0.2;
     }
     25% {
-        transform: translateY(-20px) rotate(5deg);
-        opacity: 0.1;
+        transform: translate(30px, -20px) scale(1.2);
+        opacity: 0.4;
     }
     50% {
-        transform: translateY(-10px) rotate(-3deg);
-        opacity: 0.08;
+        transform: translate(-20px, -40px) scale(0.8);
+        opacity: 0.3;
     }
     75% {
-        transform: translateY(-25px) rotate(3deg);
-        opacity: 0.1;
+        transform: translate(10px, -30px) scale(1.1);
+        opacity: 0.4;
     }
 }
 
-/* Container */
 .poste-container {
     position: relative;
     z-index: 1;
@@ -1214,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* Header */
 .poste-header {
     text-align: center;
-    margin-bottom: 45px;
+    margin-bottom: 40px;
 }
 
 .header-icon {
@@ -1223,13 +1407,11 @@ document.addEventListener('DOMContentLoaded', () => {
     justify-content: center;
     width: 90px;
     height: 90px;
-    background: linear-gradient(145deg, rgba(181, 96, 11, 0.15), rgba(139, 90, 43, 0.1));
-    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.15), rgba(181, 96, 11, 0.05));
+    border-radius: 24px;
     margin-bottom: 25px;
-    border: 2px solid rgba(181, 96, 11, 0.25);
-    box-shadow: 
-        0 10px 40px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(181, 96, 11, 0.25);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
 .header-icon svg {
@@ -1238,17 +1420,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 .poste-header h1 {
     font-size: 2.8rem;
-    color: #fff;
+    color: white;
     margin-bottom: 12px;
+    text-shadow: 2px 2px 20px rgba(0, 0, 0, 0.5);
     letter-spacing: 2px;
-    text-shadow: 2px 2px 15px rgba(0, 0, 0, 0.5);
 }
 
-.header-subtitle {
-    color: rgba(209, 135, 44, 0.8);
-    font-size: 1.1rem;
+.poste-header p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.15rem;
     font-style: italic;
-    letter-spacing: 1px;
 }
 
 .unread-badge {
@@ -1256,22 +1437,69 @@ document.addEventListener('DOMContentLoaded', () => {
     align-items: center;
     gap: 10px;
     margin-top: 25px;
-    padding: 12px 25px;
-    background: linear-gradient(135deg, rgba(74, 222, 128, 0.15), rgba(34, 197, 94, 0.1));
+    padding: 12px 24px;
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.15), rgba(74, 222, 128, 0.05));
     border: 1px solid rgba(74, 222, 128, 0.35);
     border-radius: 30px;
     color: #4ade80;
     font-size: 0.95rem;
-    font-weight: 500;
 }
 
-.animate-pulse {
-    animation: badgePulse 2s ease-in-out infinite;
+/* Signature Warning */
+.signature-warning {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 25px 30px;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.05));
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 16px;
+    margin-bottom: 30px;
 }
 
-@keyframes badgePulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.3); }
-    50% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+.warning-icon {
+    flex-shrink: 0;
+    width: 50px;
+    height: 50px;
+    background: rgba(251, 191, 36, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.warning-icon svg {
+    stroke: #fbbf24;
+}
+
+.warning-content h3 {
+    color: #fbbf24;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+
+.warning-content p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+}
+
+.btn-create-signature {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+    text-decoration: none;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+}
+
+.btn-create-signature:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
 }
 
 /* Actions */
@@ -1285,31 +1513,28 @@ document.addEventListener('DOMContentLoaded', () => {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 18px 40px;
+    padding: 18px 38px;
     border: none;
-    border-radius: 50px;
+    border-radius: 35px;
     cursor: pointer;
     font-size: 1.15rem;
-    font-weight: 600;
-    transition: all 0.4s ease;
-    font-family: inherit;
+    transition: all 0.3s;
 }
 
 .action-btn.primary {
-    background: linear-gradient(135deg, #b5600b 0%, #d1872c 50%, #b5600b 100%);
-    background-size: 200% 100%;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
     color: white;
-    box-shadow: 
-        0 8px 30px rgba(181, 96, 11, 0.4),
-        0 2px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 35px rgba(181, 96, 11, 0.4);
 }
 
-.action-btn.primary:hover {
-    background-position: 100% 0;
+.action-btn.primary:hover:not(.disabled) {
     transform: translateY(-4px);
-    box-shadow: 
-        0 15px 45px rgba(181, 96, 11, 0.5),
-        0 5px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 15px 45px rgba(181, 96, 11, 0.5);
+}
+
+.action-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Tabs */
@@ -1331,35 +1556,28 @@ document.addEventListener('DOMContentLoaded', () => {
     border-radius: 30px;
     color: rgba(255, 255, 255, 0.65);
     cursor: pointer;
-    transition: all 0.3s ease;
-    font-family: inherit;
-    font-size: 0.95rem;
+    transition: all 0.3s;
     position: relative;
+    font-size: 0.95rem;
 }
 
 .tab-btn svg {
-    stroke: rgba(255, 255, 255, 0.4);
-    transition: stroke 0.3s;
+    stroke: rgba(255, 255, 255, 0.45);
 }
 
 .tab-btn:hover {
     background: rgba(181, 96, 11, 0.15);
     border-color: rgba(181, 96, 11, 0.3);
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.tab-btn:hover svg {
-    stroke: rgba(209, 135, 44, 0.8);
 }
 
 .tab-btn.active {
-    background: linear-gradient(135deg, rgba(181, 96, 11, 0.25), rgba(139, 90, 43, 0.2));
-    border-color: rgba(181, 96, 11, 0.5);
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-color: #b5600b;
     color: white;
 }
 
 .tab-btn.active svg {
-    stroke: #ffc168;
+    stroke: white;
 }
 
 .tab-badge {
@@ -1374,12 +1592,11 @@ document.addEventListener('DOMContentLoaded', () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #1a1510;
+    color: #0d0906;
     font-weight: 700;
-    box-shadow: 0 2px 8px rgba(74, 222, 128, 0.4);
 }
 
-/* Content */
+/* Tab Content */
 .tab-content {
     display: none;
 }
@@ -1401,151 +1618,151 @@ document.addEventListener('DOMContentLoaded', () => {
     gap: 25px;
 }
 
-/* Envelope Card Style */
-.postcard-envelope {
-    position: relative;
-    background: linear-gradient(155deg, rgba(50, 40, 35, 0.95), rgba(35, 28, 24, 0.98));
-    border-radius: 16px;
+.postcard-item {
+    background: linear-gradient(165deg, rgba(45, 35, 25, 0.95), rgba(30, 22, 15, 0.98));
+    border-radius: 18px;
     overflow: hidden;
-    border: 1px solid rgba(181, 96, 11, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     transition: all 0.4s ease;
-    cursor: default;
 }
 
-.postcard-envelope:hover {
+.postcard-item:hover {
     transform: translateY(-6px);
-    border-color: rgba(181, 96, 11, 0.4);
-    box-shadow: 
-        0 20px 50px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(181, 96, 11, 0.2);
+    border-color: rgba(181, 96, 11, 0.35);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
 }
 
-.postcard-envelope.unread {
-    border-color: rgba(74, 222, 128, 0.3);
+.postcard-item.unread {
+    border-color: rgba(74, 222, 128, 0.35);
+    box-shadow: 0 0 30px rgba(74, 222, 128, 0.1);
 }
 
-.postcard-envelope.unread::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(74, 222, 128, 0.05), transparent);
-    pointer-events: none;
-    z-index: 1;
-}
-
-.envelope-front {
+.postcard-image {
     position: relative;
     aspect-ratio: 4/3;
     overflow: hidden;
-    background: linear-gradient(135deg, #2a2420, #1a1510);
+    background: #0d0906;
+    cursor: pointer;
 }
 
-.envelope-image {
+.postcard-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     transition: transform 0.5s ease;
 }
 
-.postcard-envelope:hover .envelope-image {
+.postcard-item:hover .postcard-image img {
     transform: scale(1.05);
 }
 
-.envelope-placeholder {
+.postcard-image img.has-video {
+    position: relative;
+    z-index: 1;
+}
+
+.postcard-video, .wall-video {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
+    object-fit: cover;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.postcard-item:hover .postcard-video,
+.wall-post:hover .wall-video {
+    opacity: 1;
+}
+
+.postcard-item:hover .postcard-image img.has-video {
+    opacity: 0;
+}
+
+.video-play-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    background: rgba(181, 96, 11, 0.85);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, rgba(181, 96, 11, 0.08), rgba(139, 90, 43, 0.05));
+    z-index: 3;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
-.envelope-placeholder svg {
-    stroke: rgba(181, 96, 11, 0.25);
+.postcard-item:hover .video-play-indicator,
+.wall-post:hover .video-play-indicator {
+    opacity: 1;
 }
 
-/* New Seal */
-.new-seal {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    padding: 6px 14px;
-    background: linear-gradient(135deg, #4ade80, #22c55e);
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #1a1510;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 3px 12px rgba(74, 222, 128, 0.4);
-    z-index: 5;
-}
-
-.public-seal {
+.new-badge {
     position: absolute;
     top: 12px;
     right: 12px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    background: rgba(181, 96, 11, 0.85);
-    border-radius: 15px;
-    color: white;
-    font-size: 0.7rem;
+    padding: 6px 14px;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: #0d0906;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
     z-index: 5;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-/* View Message Button */
-.view-message-btn {
+.animated-badge {
     position: absolute;
-    bottom: 15px;
-    right: 15px;
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, rgba(181, 96, 11, 0.9), rgba(139, 90, 43, 0.9));
-    border: none;
+    top: 12px;
+    left: 12px;
+    width: 30px;
+    height: 30px;
+    background: rgba(181, 96, 11, 0.9);
     border-radius: 50%;
-    color: white;
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    transform: scale(0.8);
-    transition: all 0.3s ease;
     z-index: 5;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
 }
 
-.postcard-envelope:hover .view-message-btn {
-    opacity: 1;
-    transform: scale(1);
-}
-
-.view-message-btn:hover {
-    background: linear-gradient(135deg, #d1872c, #b5600b);
-    transform: scale(1.1) !important;
-}
-
-/* Envelope Info */
-.envelope-info {
-    padding: 16px 18px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.2);
-}
-
-.sender-badge, .recipient-badge {
+.public-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 6px 12px;
+    background: rgba(181, 96, 11, 0.9);
+    color: white;
+    border-radius: 15px;
+    font-size: 0.75rem;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 5px;
+    z-index: 5;
 }
 
-.sender-avatar, .author-avatar {
-    width: 36px;
-    height: 36px;
+.postcard-info {
+    padding: 18px;
+}
+
+.postcard-sender, .postcard-recipient {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.sender-avatar {
+    width: 38px;
+    height: 38px;
     background: linear-gradient(135deg, #b5600b, #d1872c);
     border-radius: 50%;
     display: flex;
@@ -1555,27 +1772,53 @@ document.addEventListener('DOMContentLoaded', () => {
     font-weight: 600;
     color: white;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(181, 96, 11, 0.3);
+    flex-shrink: 0;
 }
 
-.sender-avatar img, .author-avatar img {
+.sender-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.sender-badge span, .recipient-badge span {
-    color: rgba(255, 255, 255, 0.9);
+.postcard-sender span, .postcard-recipient span {
+    color: white;
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
 }
 
-.recipient-badge svg {
+.postcard-recipient svg {
     stroke: #b5600b;
+    flex-shrink: 0;
 }
 
-.envelope-date {
-    color: rgba(255, 255, 255, 0.45);
+.postcard-actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.view-message-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(181, 96, 11, 0.15);
+    border: 1px solid rgba(181, 96, 11, 0.3);
+    border-radius: 20px;
+    color: #ffc168;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+}
+
+.view-message-btn:hover {
+    background: rgba(181, 96, 11, 0.3);
+    transform: translateY(-2px);
+}
+
+.postcard-date {
+    color: rgba(255, 255, 255, 0.4);
     font-size: 0.8rem;
 }
 
@@ -1585,29 +1828,43 @@ document.addEventListener('DOMContentLoaded', () => {
     margin: 0 auto;
 }
 
-.wall-card {
-    background: linear-gradient(165deg, rgba(50, 40, 35, 0.95), rgba(35, 28, 24, 0.98));
+.wall-post {
+    background: linear-gradient(165deg, rgba(45, 35, 25, 0.95), rgba(30, 22, 15, 0.98));
     border-radius: 18px;
     overflow: hidden;
     margin-bottom: 25px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.3s ease;
 }
 
-.wall-card:hover {
-    border-color: rgba(181, 96, 11, 0.25);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+.post-header {
+    padding: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.wall-card-header {
-    padding: 18px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.wall-author {
+.post-author {
     display: flex;
     align-items: center;
     gap: 14px;
+}
+
+.author-avatar {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+    overflow: hidden;
+}
+
+.author-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .author-info {
@@ -1621,82 +1878,61 @@ document.addEventListener('DOMContentLoaded', () => {
     font-size: 1rem;
 }
 
-.post-time {
+.post-date {
     color: rgba(255, 255, 255, 0.45);
     font-size: 0.8rem;
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
-.wall-card-image {
-    position: relative;
+.post-image {
     aspect-ratio: 4/3;
     overflow: hidden;
     cursor: pointer;
+    position: relative;
 }
 
-.wall-card-image img {
+.post-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     transition: transform 0.5s ease;
 }
 
-.wall-card-image:hover img {
+.wall-post:hover .post-image img:not(.has-video) {
     transform: scale(1.03);
 }
 
-.image-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+.post-actions {
+    padding: 12px 18px;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    opacity: 0;
-    transition: opacity 0.3s;
-    color: white;
+    gap: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.wall-card-image:hover .image-overlay {
-    opacity: 1;
-}
-
-.image-overlay span {
-    font-size: 0.9rem;
-}
-
-.wall-card-actions {
-    padding: 12px 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.wall-action-btn {
-    display: inline-flex;
+.post-action-btn {
+    display: flex;
     align-items: center;
     gap: 8px;
     padding: 10px 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 25px;
     color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
-    transition: all 0.3s;
-    font-family: inherit;
     font-size: 0.9rem;
+    transition: all 0.3s;
 }
 
-.wall-action-btn:hover {
+.post-action-btn:hover {
     background: rgba(181, 96, 11, 0.15);
-    border-color: rgba(181, 96, 11, 0.3);
+    border-color: rgba(181, 96, 11, 0.35);
     color: white;
 }
 
-.wall-comments {
-    padding: 18px 20px;
-    background: rgba(0, 0, 0, 0.15);
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+.post-comments {
+    padding: 18px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .comments-list {
@@ -1705,12 +1941,12 @@ document.addEventListener('DOMContentLoaded', () => {
     overflow-y: auto;
 }
 
-.comment-item {
+.comment {
     padding: 12px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.comment-item:last-child {
+.comment:last-child {
     border-bottom: none;
 }
 
@@ -1720,7 +1956,7 @@ document.addEventListener('DOMContentLoaded', () => {
     font-size: 0.9rem;
 }
 
-.comment-text {
+.comment p {
     color: rgba(255, 255, 255, 0.85);
     margin: 6px 0;
     font-size: 0.9rem;
@@ -1732,13 +1968,6 @@ document.addEventListener('DOMContentLoaded', () => {
     font-size: 0.75rem;
 }
 
-.no-comments {
-    color: rgba(255, 255, 255, 0.4);
-    font-style: italic;
-    text-align: center;
-    padding: 15px 0;
-}
-
 .comment-form {
     display: flex;
     gap: 12px;
@@ -1747,23 +1976,22 @@ document.addEventListener('DOMContentLoaded', () => {
 .comment-form input {
     flex: 1;
     padding: 12px 18px;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 25px;
     color: white;
     font-size: 0.9rem;
-    font-family: inherit;
 }
 
 .comment-form input:focus {
     outline: none;
     border-color: #b5600b;
-    background: rgba(255, 255, 255, 0.08);
 }
 
 .comment-form button {
-    width: 45px;
-    height: 45px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
     background: linear-gradient(135deg, #b5600b, #d1872c);
     border: none;
     border-radius: 50%;
@@ -1772,7 +2000,7 @@ document.addEventListener('DOMContentLoaded', () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s;
+    transition: transform 0.3s;
 }
 
 .comment-form button:hover {
@@ -1786,18 +2014,15 @@ document.addEventListener('DOMContentLoaded', () => {
     padding: 70px 25px;
 }
 
-.empty-icon {
+.empty-state svg {
+    stroke: rgba(255, 255, 255, 0.15);
     margin-bottom: 25px;
-}
-
-.empty-icon svg {
-    stroke: rgba(181, 96, 11, 0.25);
 }
 
 .empty-state h3 {
     color: white;
-    font-size: 1.4rem;
     margin-bottom: 12px;
+    font-size: 1.3rem;
 }
 
 .empty-state p {
@@ -1805,198 +2030,30 @@ document.addEventListener('DOMContentLoaded', () => {
     margin-bottom: 25px;
 }
 
-.btn-primary-small {
+.btn-primary {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 28px;
+    gap: 10px;
+    padding: 14px 28px;
     background: linear-gradient(135deg, #b5600b, #d1872c);
     border: none;
     border-radius: 30px;
     color: white;
     cursor: pointer;
-    font-size: 0.95rem;
-    font-family: inherit;
-    transition: all 0.3s;
-}
-
-.btn-primary-small:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
-}
-
-/* ============================================
-   POSTCARD VIEW MODAL
-   ============================================ */
-
-.postcard-view-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 5000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-.postcard-view-modal.active {
-    display: flex;
-}
-
-.postcard-view-modal .modal-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(10, 8, 6, 0.95);
-    backdrop-filter: blur(10px);
-}
-
-.postcard-view-container {
-    position: relative;
-    max-width: 900px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-    align-items: center;
-}
-
-.modal-close-btn {
-    position: absolute;
-    top: -15px;
-    right: -15px;
-    width: 55px;
-    height: 55px;
-    background: linear-gradient(135deg, #b5600b, #d1872c);
-    border: none;
-    border-radius: 50%;
-    color: white;
-    cursor: pointer;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
-}
-
-.modal-close-btn:hover {
-    transform: rotate(90deg) scale(1.1);
-}
-
-/* Vintage Postcard */
-.vintage-postcard {
-    position: relative;
-    width: 100%;
-    max-width: 600px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 
-        0 25px 60px rgba(0, 0, 0, 0.5),
-        0 0 0 4px rgba(181, 96, 11, 0.2);
-}
-
-.postcard-template {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-
-.postcard-message-area {
-    position: absolute;
-    left: 3%;
-    top: 15%;
-    width: 48%;
-    height: 55%;
-    padding: 15px;
-    overflow: hidden;
-}
-
-.postcard-message-text {
-    font-family: 'Dancing Script', cursive, Georgia, serif;
-    font-size: 1.1rem;
-    color: #4a3728;
-    line-height: 1.6;
-    margin: 0;
-    word-wrap: break-word;
-}
-
-.postcard-stamp-area {
-    position: absolute;
-    top: 3%;
-    right: 5%;
-    width: 80px;
-    height: 100px;
-}
-
-.postcard-stamp {
-    width: 100%;
-    height: auto;
-    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
-}
-
-.postcard-recipient-area {
-    position: absolute;
-    right: 5%;
-    top: 35%;
-    width: 40%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-}
-
-.postcard-signature {
-    max-width: 150px;
-    max-height: 60px;
-    object-fit: contain;
-}
-
-.postcard-sender-info {
-    text-align: center;
-}
-
-.sender-label {
-    color: #8a7a6a;
-    font-size: 0.8rem;
-}
-
-.sender-name {
-    color: #4a3728;
-    font-weight: 600;
     font-size: 1rem;
+    text-decoration: none;
+    transition: all 0.3s;
 }
 
-.postcard-date-area {
-    position: absolute;
-    bottom: 8%;
-    right: 5%;
-    color: #8a7a6a;
-    font-size: 0.85rem;
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(181, 96, 11, 0.4);
 }
 
-/* Postcard Image Preview */
-.postcard-image-preview {
-    max-width: 400px;
-    width: 100%;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-    display: none;
-}
-
-.postcard-image-preview img {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-
-/* ============================================
-   COMPOSE MODAL
-   ============================================ */
-
-.compose-modal {
+/* ========================================
+   MODALS
+   ======================================== */
+.compose-modal, .picker-modal, .view-image-modal, .view-message-modal, .signature-required-modal {
     position: fixed;
     inset: 0;
     z-index: 5000;
@@ -2006,187 +2063,501 @@ document.addEventListener('DOMContentLoaded', () => {
     padding: 20px;
 }
 
-.compose-modal.active {
+.compose-modal.active, .picker-modal.active, .view-image-modal.active, 
+.view-message-modal.active, .signature-required-modal.active {
     display: flex;
 }
 
-.compose-modal .modal-backdrop {
+.modal-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(10, 8, 6, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.92);
+    backdrop-filter: blur(8px);
 }
 
-.compose-container {
+.modal-content {
     position: relative;
-    background: linear-gradient(165deg, #2a2520, #1a1510);
+    background: linear-gradient(165deg, #1f1a15 0%, #0d0906 100%);
     border-radius: 24px;
-    padding: 40px;
-    max-width: 700px;
+    max-width: 550px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
     border: 1px solid rgba(181, 96, 11, 0.25);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.6);
 }
 
-.compose-header {
+.modal-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 18px;
-    margin-bottom: 35px;
+    justify-content: center;
+    z-index: 10;
+    transition: all 0.3s;
 }
 
-.compose-header svg {
+.modal-close:hover {
+    background: #b5600b;
+    border-color: #b5600b;
+    transform: rotate(90deg);
+}
+
+/* Compose Modal Specifics */
+.compose-content {
+    padding: 35px;
+    max-width: 600px;
+}
+
+.compose-content h2 {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: white;
+    margin-bottom: 30px;
+    font-size: 1.4rem;
+}
+
+.compose-content h2 svg {
     stroke: #d1872c;
 }
 
-.compose-header h2 {
-    color: white;
-    font-size: 1.6rem;
-    margin: 0;
-}
-
-/* Steps */
-.compose-step {
-    animation: fadeIn 0.3s ease;
-}
-
-.step-header {
+/* Steps Indicator */
+.compose-steps {
     display: flex;
     align-items: center;
-    gap: 15px;
-    margin-bottom: 25px;
+    justify-content: center;
+    margin-bottom: 35px;
+    padding: 0 20px;
 }
 
-.step-back-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    color: rgba(255, 255, 255, 0.7);
-    cursor: pointer;
-    transition: all 0.3s;
-    font-family: inherit;
-    font-size: 0.9rem;
-}
-
-.step-back-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-}
-
-.step-header span {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.95rem;
-}
-
-/* Visibility Selector */
-.visibility-selector {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-bottom: 30px;
-}
-
-.visibility-option {
-    padding: 25px 20px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 2px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    cursor: pointer;
-    transition: all 0.3s;
+.step {
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
-    gap: 12px;
+    gap: 8px;
 }
 
-.visibility-option svg {
-    stroke: rgba(255, 255, 255, 0.4);
-}
-
-.visibility-option span {
-    color: white;
+.step-number {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
     font-weight: 600;
-    font-size: 1rem;
-}
-
-.visibility-option small {
     color: rgba(255, 255, 255, 0.5);
-    font-size: 0.8rem;
+    transition: all 0.3s;
 }
 
-.visibility-option:hover {
+.step.active .step-number,
+.step.completed .step-number {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-color: #b5600b;
+    color: white;
+}
+
+.step-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.step.active .step-label {
+    color: #ffc168;
+}
+
+.step-line {
+    flex: 1;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0 15px;
+    margin-bottom: 25px;
+}
+
+/* Card Type Toggle */
+.card-type-toggle {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.type-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.95rem;
+}
+
+.type-btn.active {
+    background: rgba(181, 96, 11, 0.25);
+    border-color: #b5600b;
+    color: white;
+}
+
+.type-btn.active svg {
+    stroke: #ffc168;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+}
+
+/* Postcard Selector */
+.postcard-selector {
+    margin-bottom: 15px;
+}
+
+.selector-preview {
+    width: 100%;
+    aspect-ratio: 4/3;
+    max-height: 220px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 2px dashed rgba(181, 96, 11, 0.35);
+    border-radius: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    overflow: hidden;
+}
+
+.selector-preview:hover {
+    border-color: #b5600b;
+    background: rgba(181, 96, 11, 0.1);
+}
+
+.preview-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.preview-placeholder svg {
+    stroke: rgba(255, 255, 255, 0.25);
+}
+
+#selectedPostcardPreview, #selectedPostcardVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Postcard Compose Style */
+.postcard-compose-wrapper {
+    perspective: 1200px;
+    margin-bottom: 25px;
+}
+
+.postcard-compose {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+}
+
+.postcard-bg-compose {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.compose-message-input {
+    position: absolute;
+    left: 4%;
+    top: 42%;
+    width: 48%;
+    height: 45%;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    resize: none;
+    font-family: 'Dancing Script', cursive, Georgia, serif;
+    font-size: 14px;
+    color: #4a3728;
+    line-height: 1.5;
+}
+
+.compose-message-input:focus {
+    outline: none;
+}
+
+.compose-message-input::placeholder {
+    color: rgba(74, 55, 40, 0.45);
+    font-style: italic;
+}
+
+.compose-stamp-area {
+    position: absolute;
+    right: 10%;
+    top: 5%;
+    width: 60px;
+    height: 75px;
+}
+
+.stamp-placeholder-compose {
+    width: 100%;
+    height: 100%;
+    border: 2px dashed rgba(74, 55, 40, 0.25);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stamp-placeholder-compose span {
+    font-size: 10px;
+    color: rgba(74, 55, 40, 0.4);
+}
+
+.applied-stamp-compose {
+    width: 100%;
+    height: auto;
+    display: none;
+    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.25));
+}
+
+.compose-signature-area {
+    position: absolute;
+    right: 8%;
+    top: 55%;
+    width: 35%;
+    display: flex;
+    justify-content: center;
+}
+
+.compose-signature-img {
+    max-width: 100%;
+    max-height: 60px;
+}
+
+/* Stamp Selection */
+.stamp-selection {
+    margin-bottom: 20px;
+}
+
+.stamp-instruction {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.stamps-row {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+}
+
+.stamp-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.stamp-option:hover {
     background: rgba(181, 96, 11, 0.1);
     border-color: rgba(181, 96, 11, 0.3);
 }
 
-.visibility-option.active {
-    background: rgba(181, 96, 11, 0.15);
+.stamp-option.selected {
+    background: rgba(181, 96, 11, 0.2);
     border-color: #b5600b;
 }
 
-.visibility-option.active svg {
+.stamp-option img {
+    height: 70px;
+    width: auto;
+    filter: drop-shadow(2px 2px 5px rgba(0, 0, 0, 0.3));
+    transition: transform 0.3s;
+}
+
+.stamp-option:hover img {
+    transform: scale(1.05);
+}
+
+.stamp-info {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.stamp-option.selected .stamp-info {
+    color: #ffc168;
+}
+
+.char-counter {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+}
+
+/* Step Buttons */
+.step-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
+}
+
+.btn-back, .btn-next, .btn-send {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-back {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.btn-back:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.btn-next {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    color: white;
+    margin-left: auto;
+}
+
+.btn-next:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-next:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
+}
+
+.btn-send {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border: none;
+    color: white;
+}
+
+.btn-send:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+}
+
+/* Visibility Toggle */
+.visibility-toggle {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.visibility-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.visibility-btn.active {
+    background: rgba(181, 96, 11, 0.25);
+    border-color: #b5600b;
+    color: white;
+}
+
+.visibility-btn.active svg {
     stroke: #ffc168;
 }
 
-/* Recipient Section */
-.recipient-section {
-    margin-bottom: 30px;
-}
-
-.recipient-section label {
-    display: block;
-    color: rgba(255, 255, 255, 0.8);
-    margin-bottom: 12px;
-    font-size: 0.95rem;
-}
-
-.recipient-input-container {
+/* Recipient Input */
+.recipient-input-wrapper {
     position: relative;
     display: flex;
     align-items: center;
 }
 
-.recipient-input-container svg {
+.recipient-input-wrapper svg {
     position: absolute;
-    left: 16px;
+    left: 14px;
     stroke: rgba(255, 255, 255, 0.4);
-    pointer-events: none;
 }
 
-.recipient-input-container input {
+.recipient-input-wrapper input {
     width: 100%;
-    padding: 14px 14px 14px 48px;
-    background: rgba(0, 0, 0, 0.25);
+    padding: 14px 14px 14px 45px;
+    background: rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     color: white;
     font-size: 1rem;
-    font-family: inherit;
 }
 
-.recipient-input-container input:focus {
+.recipient-input-wrapper input:focus {
     outline: none;
     border-color: #b5600b;
-    background: rgba(0, 0, 0, 0.35);
 }
 
-.recipient-suggestions {
+.user-suggestions {
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    background: #2a2520;
+    background: #1f1a15;
     border: 1px solid rgba(181, 96, 11, 0.3);
     border-radius: 12px;
-    margin-top: 8px;
-    max-height: 200px;
+    margin-top: 6px;
+    max-height: 220px;
     overflow-y: auto;
     z-index: 10;
 }
@@ -2197,628 +2568,377 @@ document.addEventListener('DOMContentLoaded', () => {
     padding: 14px 18px;
     cursor: pointer;
     transition: background 0.2s;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.suggestion-item:last-child {
-    border-bottom: none;
 }
 
 .suggestion-item:hover {
-    background: rgba(181, 96, 11, 0.15);
+    background: rgba(181, 96, 11, 0.2);
 }
 
 .suggestion-name {
     color: white;
-    font-weight: 500;
 }
 
 .suggestion-category {
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.45);
     font-size: 0.8rem;
 }
 
-.step-next-btn {
+/* Summary */
+.compose-summary {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.compose-summary h4 {
+    color: #ffc168;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.summary-item {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-    padding: 16px;
-    background: linear-gradient(135deg, #b5600b, #d1872c);
-    border: none;
-    border-radius: 14px;
-    color: white;
-    font-size: 1.05rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    font-family: inherit;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.step-next-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
+.summary-item:last-child {
+    border-bottom: none;
 }
 
-.step-next-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* Card Type Tabs */
-.card-type-tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 18px;
-}
-
-.card-type-tab {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 25px;
+.summary-label {
     color: rgba(255, 255, 255, 0.6);
-    cursor: pointer;
-    transition: all 0.3s;
-    font-family: inherit;
     font-size: 0.9rem;
 }
 
-.card-type-tab.active {
-    background: rgba(181, 96, 11, 0.2);
-    border-color: #b5600b;
+.summary-value {
     color: white;
+    font-size: 0.9rem;
 }
 
-.card-type-tab.active svg {
-    stroke: #ffc168;
+/* Picker Modal */
+.picker-content {
+    max-width: 750px;
+    padding: 35px;
 }
 
-/* Card Search */
-.card-search {
+.picker-content h2 {
+    color: white;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.picker-search {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 18px;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 14px 18px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    margin-bottom: 18px;
+    margin-bottom: 25px;
 }
 
-.card-search svg {
+.picker-search svg {
     stroke: rgba(255, 255, 255, 0.4);
     flex-shrink: 0;
 }
 
-.card-search input {
+.picker-search input {
     flex: 1;
     background: transparent;
     border: none;
     color: white;
-    font-size: 0.95rem;
-    font-family: inherit;
+    font-size: 1rem;
 }
 
-.card-search input:focus {
+.picker-search input:focus {
     outline: none;
 }
 
-/* Cards Grid */
-.cards-grid {
+.picker-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: 12px;
-    max-height: 300px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 18px;
+    max-height: 450px;
     overflow-y: auto;
-    margin-bottom: 20px;
-    padding: 5px;
 }
 
-.card-option {
+.picker-item {
     position: relative;
     aspect-ratio: 4/3;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
     border: 2px solid transparent;
     transition: all 0.3s;
-    background: rgba(0, 0, 0, 0.3);
 }
 
-.card-option:hover {
-    border-color: rgba(181, 96, 11, 0.5);
-    transform: scale(1.05);
+.picker-item:hover {
+    border-color: #b5600b;
+    transform: scale(1.03);
 }
 
-.card-option img {
+.picker-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.card-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(181, 96, 11, 0.1);
-}
-
-.card-placeholder svg {
-    stroke: rgba(255, 255, 255, 0.2);
-}
-
-.card-number {
+.picker-item span {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 5px;
-    background: rgba(0, 0, 0, 0.75);
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.85);
     color: white;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     text-align: center;
 }
 
-/* Selected Card Preview */
-.selected-card-preview {
+.animated-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    background: rgba(181, 96, 11, 0.9);
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 18px;
-    padding: 18px;
-    background: rgba(181, 96, 11, 0.1);
-    border: 1px solid rgba(181, 96, 11, 0.3);
-    border-radius: 14px;
-    margin-bottom: 20px;
+    justify-content: center;
 }
 
-.selected-card-preview img {
-    width: 100px;
-    height: 75px;
-    object-fit: cover;
-    border-radius: 8px;
+.no-animated {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 50px;
+    color: rgba(255, 255, 255, 0.5);
 }
 
-.preview-info {
-    flex: 1;
+/* View Image Modal */
+.view-image-content {
+    max-width: 90vw;
+    max-height: 90vh;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.view-image-container {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    align-items: center;
+    justify-content: center;
 }
 
-.preview-info span {
-    color: white;
-    font-size: 0.95rem;
+.view-image-container img,
+.view-image-container video {
+    max-width: 100%;
+    max-height: 85vh;
+    border-radius: 12px;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5);
 }
 
-.change-card-btn {
-    align-self: flex-start;
-    padding: 8px 18px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-    color: white;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: all 0.3s;
-    font-family: inherit;
+/* View Message Modal */
+.view-message-content {
+    max-width: 600px;
+    padding: 35px;
 }
 
-.change-card-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-}
-
-/* ============================================
-   STEP 3: MESSAGE COMPOSITION
-   ============================================ */
-
-.compose-postcard-wrapper {
-    perspective: 1000px;
+.message-postcard-wrapper {
+    perspective: 1200px;
     margin-bottom: 20px;
 }
 
-.compose-postcard {
+.message-postcard {
     position: relative;
     width: 100%;
-    max-width: 550px;
-    margin: 0 auto;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 
-        0 20px 50px rgba(0, 0, 0, 0.4),
-        0 0 0 3px rgba(181, 96, 11, 0.2);
-    transition: transform 0.3s;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
 }
 
-.compose-postcard:hover {
-    transform: rotateX(2deg) rotateY(-1deg);
-}
-
-.compose-postcard-bg {
+.message-postcard-bg {
     width: 100%;
     height: auto;
     display: block;
 }
 
-.compose-message-input {
+.message-text-area {
     position: absolute;
-    left: 2%;
-    top: 38%;
+    left: 4%;
+    top: 42%;
     width: 48%;
     height: 45%;
     padding: 12px;
-    background: transparent;
-    border: none;
-    resize: none;
+    overflow: hidden;
+}
+
+.message-text-area p {
     font-family: 'Dancing Script', cursive, Georgia, serif;
-    font-size: 1rem;
+    font-size: 14px;
     color: #4a3728;
     line-height: 1.5;
+    margin: 0;
 }
 
-.compose-message-input:focus {
-    outline: none;
-}
-
-.compose-message-input::placeholder {
-    color: rgba(74, 55, 40, 0.4);
-    font-style: italic;
-}
-
-.compose-stamp-area {
+.message-stamp-area {
     position: absolute;
-    top: 3%;
-    right: 8%;
-    width: 70px;
-    height: 90px;
+    right: 10%;
+    top: 5%;
+    width: 60px;
 }
 
-.stamp-placeholder {
-    width: 100%;
-    height: 100%;
-    border: 2px dashed rgba(74, 55, 40, 0.3);
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.stamp-placeholder span {
-    color: rgba(74, 55, 40, 0.4);
-    font-size: 0.7rem;
-}
-
-.compose-stamp {
+.message-stamp-area img {
     width: 100%;
     height: auto;
-    display: none;
-    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.3));
-    animation: stampApply 0.4s ease;
+    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.25));
 }
 
-@keyframes stampApply {
-    0% { transform: scale(1.5) rotate(15deg); opacity: 0; }
-    50% { transform: scale(1.1) rotate(-5deg); }
-    100% { transform: scale(1) rotate(0); opacity: 1; }
-}
-
-.compose-signature-area {
+.message-signature-area {
     position: absolute;
-    right: 5%;
-    top: 40%;
-    width: 45%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.signature-placeholder {
-    padding: 25px;
-    border-bottom: 2px dashed rgba(74, 55, 40, 0.3);
+    right: 8%;
+    top: 50%;
+    width: 35%;
     text-align: center;
-    width: 80%;
 }
 
-.signature-placeholder span {
-    color: rgba(74, 55, 40, 0.4);
-    font-size: 0.8rem;
+.message-signature-area img {
+    max-width: 100%;
+    max-height: 60px;
+    margin-bottom: 8px;
 }
 
-.compose-signature {
-    max-width: 130px;
-    max-height: 55px;
-    display: none;
-    animation: signatureWrite 0.6s ease;
+.signature-name {
+    font-family: 'Dancing Script', cursive, Georgia, serif;
+    font-size: 14px;
+    color: #4a3728;
+    margin: 0;
 }
 
-@keyframes signatureWrite {
-    0% { opacity: 0; transform: translateX(-20px); clip-path: inset(0 100% 0 0); }
-    100% { opacity: 1; transform: translateX(0); clip-path: inset(0 0 0 0); }
-}
-
-/* Compose Char Info */
-.compose-char-info {
+.message-meta {
     text-align: center;
     color: rgba(255, 255, 255, 0.5);
-    font-size: 0.9rem;
-    margin-bottom: 12px;
-}
-
-.compose-instructions {
-    text-align: center;
-    color: rgba(255, 200, 150, 0.6);
-    font-style: italic;
-    font-size: 0.9rem;
-    margin-bottom: 25px;
-}
-
-/* Compose Elements */
-.compose-elements {
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-    padding: 25px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 16px;
-    margin-bottom: 25px;
-}
-
-.stamps-selection, .signature-selection {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.selection-label {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
-}
-
-.stamps-row {
-    display: flex;
-    gap: 18px;
-    flex-wrap: wrap;
-}
-
-.stamp-choice {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.stamp-choice img {
-    height: 60px;
-    width: auto;
-    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.3));
-    transition: transform 0.3s;
-}
-
-.stamp-choice span {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.8rem;
-}
-
-.stamp-choice:hover {
-    background: rgba(181, 96, 11, 0.15);
-    border-color: rgba(181, 96, 11, 0.4);
-}
-
-.stamp-choice:hover img {
-    transform: translateY(-5px) scale(1.1);
-}
-
-.stamp-choice.selected {
-    background: rgba(181, 96, 11, 0.2);
-    border-color: #b5600b;
-}
-
-.stamp-choice.selected span {
-    color: #ffc168;
-}
-
-.user-signature-preview, .default-signature-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-right: 12px;
-    margin-bottom: 10px;
-}
-
-.user-signature-preview img, .default-signature-option img {
-    height: 35px;
-    width: auto;
-}
-
-.user-signature-preview span, .default-signature-option span {
-    color: rgba(255, 255, 255, 0.7);
     font-size: 0.85rem;
 }
 
-.user-signature-preview:hover, .default-signature-option:hover {
-    background: rgba(181, 96, 11, 0.15);
-    border-color: rgba(181, 96, 11, 0.4);
-}
-
-.no-signature-msg {
-    display: inline-block;
-    margin-right: 15px;
-}
-
-.no-signature-msg a {
-    color: #d1872c;
-    text-decoration: none;
-    font-size: 0.9rem;
-}
-
-.no-signature-msg a:hover {
-    text-decoration: underline;
-}
-
-/* Send Button */
-.send-postcard-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    width: 100%;
-    padding: 18px;
-    background: linear-gradient(135deg, #888, #666);
-    border: none;
-    border-radius: 14px;
-    color: white;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: not-allowed;
-    opacity: 0.5;
-    transition: all 0.4s;
-    font-family: inherit;
-}
-
-.send-postcard-btn:not(:disabled) {
-    background: linear-gradient(135deg, #b5600b, #d1872c);
-    cursor: pointer;
-    opacity: 1;
-    box-shadow: 0 6px 25px rgba(181, 96, 11, 0.4);
-    animation: sendPulse 2s infinite;
-}
-
-@keyframes sendPulse {
-    0%, 100% { box-shadow: 0 6px 25px rgba(181, 96, 11, 0.4); }
-    50% { box-shadow: 0 10px 40px rgba(181, 96, 11, 0.6); }
-}
-
-.send-postcard-btn:not(:disabled):hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 40px rgba(181, 96, 11, 0.5);
-}
-
-/* Success Notification */
-.success-notification {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.9);
-    background: linear-gradient(165deg, #2a2520, #1a1510);
-    padding: 50px 60px;
-    border-radius: 24px;
+/* Signature Required Modal */
+.signature-required-content {
+    max-width: 420px;
+    padding: 45px;
     text-align: center;
-    z-index: 6000;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.4s ease;
-    border: 2px solid rgba(74, 222, 128, 0.4);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
 }
 
-.success-notification.show {
-    opacity: 1;
-    visibility: visible;
-    transform: translate(-50%, -50%) scale(1);
-}
-
-.success-icon {
-    width: 90px;
-    height: 90px;
+.signature-required-icon {
+    width: 100px;
+    height: 100px;
     margin: 0 auto 25px;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.15), rgba(181, 96, 11, 0.05));
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(74, 222, 128, 0.2), rgba(34, 197, 94, 0.1));
-    border-radius: 50%;
+    border: 2px solid rgba(181, 96, 11, 0.3);
 }
 
-.success-icon svg {
-    stroke: #4ade80;
+.signature-required-icon svg {
+    stroke: #d1872c;
 }
 
-.success-notification h3 {
-    color: #4ade80;
-    font-size: 1.6rem;
-    margin-bottom: 12px;
+.signature-required-content h3 {
+    color: white;
+    font-size: 1.4rem;
+    margin-bottom: 15px;
 }
 
-.success-notification p {
+.signature-required-content p {
     color: rgba(255, 255, 255, 0.7);
-    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 30px;
 }
 
-/* Toast Notifications */
-.toast-notification {
+.signature-required-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.btn-cancel {
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-create {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-radius: 25px;
+    color: white;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+}
+
+.btn-create:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
+}
+
+/* Notifications */
+.notification {
     position: fixed;
-    top: 90px;
+    top: 85px;
     right: 25px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 16px 25px;
+    padding: 16px 28px;
     border-radius: 12px;
     color: white;
-    z-index: 7000;
-    transform: translateX(120%);
-    transition: transform 0.3s ease;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 6000;
+    animation: slideIn 0.4s ease;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
-.toast-notification.show {
-    transform: translateX(0);
-}
-
-.toast-notification.toast-error {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-}
-
-.toast-notification.toast-success {
+.notification-success {
     background: linear-gradient(135deg, #22c55e, #16a34a);
 }
 
+.notification-error {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+@keyframes slideIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
 /* Animations */
-.animate-fade-in-down {
-    animation: fadeInDown 0.7s ease forwards;
-    opacity: 0;
-}
+.animate-fade-in-down { animation: fadeInDown 0.7s ease forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.7s ease forwards; }
+.animate-fade-in { animation: fadeIn 0.7s ease forwards; }
+[class*="animate-"] { opacity: 0; }
+.delay-1 { animation-delay: 0.15s; }
+.delay-2 { animation-delay: 0.3s; }
 
-.animate-fade-in-up {
-    animation: fadeInUp 0.7s ease forwards;
-    opacity: 0;
-}
-
-.animate-fade-in {
-    animation: fadeIn 0.7s ease forwards;
-    opacity: 0;
-}
-
-.delay-1 { animation-delay: 0.1s; }
-.delay-2 { animation-delay: 0.2s; }
-
-@keyframes fadeInDown {
-    from { opacity: 0; transform: translateY(-25px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(25px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-25px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(25px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -2831,47 +2951,59 @@ document.addEventListener('DOMContentLoaded', () => {
         align-items: stretch;
     }
     
-    .tab-btn {
-        justify-content: center;
-    }
-    
     .postcards-grid {
         grid-template-columns: 1fr;
     }
     
-    .compose-container {
+    .modal-content {
+        margin: 10px;
         padding: 25px 20px;
     }
     
-    .visibility-selector {
-        grid-template-columns: 1fr;
+    .compose-content {
+        padding: 25px 20px;
     }
     
-    .compose-postcard {
-        max-width: 100%;
+    .picker-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
     
-    .compose-message-input {
-        font-size: 0.9rem;
+    .stamp-selection .stamps-row {
+        flex-direction: column;
+        gap: 15px;
     }
     
-    .stamps-row {
-        justify-content: center;
+    .step-buttons {
+        flex-direction: column;
+    }
+    
+    .btn-next {
+        margin-left: 0;
+    }
+    
+    .signature-warning {
+        flex-direction: column;
+        text-align: center;
     }
 }
 
-@media (max-width: 480px) {
-    .action-btn {
-        padding: 14px 25px;
-        font-size: 1rem;
-    }
-    
-    .modal-close-btn {
-        width: 45px;
-        height: 45px;
-        top: 10px;
-        right: 10px;
-    }
+/* Scrollbar for modals */
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: rgba(181, 96, 11, 0.5);
+    border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(181, 96, 11, 0.7);
 }
 </style>
 {% endblock %}

@@ -934,25 +934,32 @@ def admin_next_postcard_number(request):
 @login_required
 def la_poste(request):
     """La Poste - Social hub for sending postcards"""
+    # Check if user has a signature
+    user_has_signature = bool(request.user.signature_image)
+
     received = SentPostcard.objects.filter(
         recipient=request.user
-    ).select_related('sender', 'postcard')[:20]
+    ).select_related('sender', 'postcard').order_by('-created_at')[:30]
 
     sent = SentPostcard.objects.filter(
         sender=request.user
-    ).select_related('recipient', 'postcard')[:20]
+    ).select_related('recipient', 'postcard').order_by('-created_at')[:30]
 
     public_postcards = SentPostcard.objects.filter(
         visibility='public'
-    ).select_related('sender', 'postcard').prefetch_related('comments')[:30]
+    ).select_related('sender', 'postcard').prefetch_related('comments').order_by('-created_at')[:50]
 
     unread_count = SentPostcard.objects.filter(
         recipient=request.user,
         is_read=False
     ).count()
 
-    # Get postcards with images for selection - simplified
-    available_postcards = Postcard.objects.filter(has_images=True)[:50]
+    # Get postcards with images for selection
+    available_postcards = Postcard.objects.filter(has_images=True).order_by('?')[:100]
+
+    # Get animated postcards
+    all_postcards = list(Postcard.objects.filter(has_images=True).order_by('?')[:200])
+    animated_postcards = [p for p in all_postcards if p.has_animation()][:50]
 
     context = {
         'received_postcards': received,
@@ -960,6 +967,8 @@ def la_poste(request):
         'public_postcards': public_postcards,
         'unread_count': unread_count,
         'available_postcards': available_postcards,
+        'animated_postcards': animated_postcards,
+        'user_has_signature': user_has_signature,
     }
 
     return render(request, 'la_poste.html', context)
@@ -972,13 +981,30 @@ def send_postcard(request):
     try:
         data = json.loads(request.body)
 
+        # Check if user has a signature
+        if not request.user.signature_image:
+            return JsonResponse({
+                'error': 'Vous devez d\'abord créer votre signature dans votre profil pour envoyer des cartes postales.'
+            }, status=400)
+
         message = data.get('message', '').strip()
-        if not message or len(message) < 5:
-            return JsonResponse({'error': 'Message trop court (min 5 caractères)'}, status=400)
+        stamp_type = data.get('stamp_type', '10c')
+
+        # Validate stamp type and message length
+        max_chars = 44 if stamp_type == '5c' else 55
+
+        if not message:
+            return JsonResponse({'error': 'Le message ne peut pas être vide'}, status=400)
+
+        if len(message) > max_chars:
+            return JsonResponse({
+                'error': f'Message trop long. Maximum {max_chars} caractères pour le timbre choisi.'
+            }, status=400)
 
         visibility = data.get('visibility', 'private')
         recipient_username = data.get('recipient')
         postcard_id = data.get('postcard_id')
+        is_animated = data.get('is_animated', False)
 
         recipient = None
         if visibility == 'private':
@@ -999,12 +1025,17 @@ def send_postcard(request):
             except Postcard.DoesNotExist:
                 pass
 
+        if not postcard:
+            return JsonResponse({'error': 'Veuillez sélectionner une carte postale'}, status=400)
+
         sent_postcard = SentPostcard.objects.create(
             sender=request.user,
             recipient=recipient,
             postcard=postcard,
             message=message,
-            visibility=visibility
+            stamp_type=stamp_type,
+            visibility=visibility,
+            is_animated=is_animated
         )
 
         return JsonResponse({
@@ -1015,6 +1046,47 @@ def send_postcard(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def get_postcard_message(request, postcard_id):
+    """Get the message details for a sent postcard"""
+    try:
+        sent_postcard = SentPostcard.objects.select_related('sender', 'postcard').get(id=postcard_id)
+
+        # Check permission
+        if sent_postcard.visibility == 'private':
+            if request.user != sent_postcard.sender and request.user != sent_postcard.recipient:
+                return JsonResponse({'error': 'Accès non autorisé'}, status=403)
+
+        # Mark as read if recipient
+        if request.user == sent_postcard.recipient and not sent_postcard.is_read:
+            sent_postcard.is_read = True
+            sent_postcard.save(update_fields=['is_read'])
+
+        data = {
+            'id': sent_postcard.id,
+            'message': sent_postcard.message,
+            'stamp_type': sent_postcard.stamp_type,
+            'sender_username': sent_postcard.sender.username,
+            'sender_signature_url': sent_postcard.get_sender_signature_url(),
+            'created_at': sent_postcard.created_at.strftime('%d/%m/%Y %H:%M'),
+            'is_animated': sent_postcard.is_animated,
+        }
+
+        return JsonResponse(data)
+
+    except SentPostcard.DoesNotExist:
+        return JsonResponse({'error': 'Carte non trouvée'}, status=404)
+
+
+@login_required
+def check_user_signature(request):
+    """Check if user has a signature"""
+    return JsonResponse({
+        'has_signature': bool(request.user.signature_image),
+        'signature_url': request.user.signature_image.url if request.user.signature_image else None
+    })
 
 
 @login_required

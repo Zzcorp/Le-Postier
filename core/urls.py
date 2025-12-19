@@ -23,9 +23,11 @@ urlpatterns = [
     path('api/la-poste/public/', views.get_public_postcards, name='get_public_postcards'),
     path('api/la-poste/<int:postcard_id>/read/', views.mark_postcard_read, name='mark_postcard_read'),
     path('api/la-poste/<int:postcard_id>/comment/', views.add_comment, name='add_comment'),
+    path('api/la-poste/<int:postcard_id>/message/', views.get_postcard_message, name='get_postcard_message'),
     path('api/users/search/', views.search_users, name='search_users'),
     path('api/profile/update/', views.update_profile, name='update_profile'),
     path('api/profile/signature/', views.upload_signature, name='upload_signature'),
+    path('api/profile/check-signature/', views.check_user_signature, name='check_user_signature'),
 
     # Admin Dashboard
     path('tableau-de-bord/', views.admin_dashboard, name='admin_dashboard'),
