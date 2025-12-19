@@ -6,6 +6,8 @@ from django.conf import settings
 import uuid
 from pathlib import Path
 import os
+import random
+import string
 
 
 def get_media_root():
@@ -17,6 +19,11 @@ def get_media_root():
     if os.environ.get('RENDER', 'false').lower() == 'true' or Path('/var/data').exists():
         return Path('/var/data/media')
     return Path(settings.MEDIA_ROOT)
+
+
+def generate_verification_code():
+    """Generate a 6-digit verification code"""
+    return ''.join(random.choices(string.digits, k=6))
 
 
 class CustomUser(AbstractUser):
@@ -45,10 +52,41 @@ class CustomUser(AbstractUser):
         null=True,
         verbose_name="Signature"
     )
+    cover_image = models.ImageField(
+        upload_to='covers/',
+        blank=True,
+        null=True,
+        verbose_name="Image de couverture"
+    )
     bio = models.TextField(blank=True, max_length=500, verbose_name="Biographie")
     country = models.CharField(max_length=100, blank=True, verbose_name="Pays")
     city = models.CharField(max_length=100, blank=True, verbose_name="Ville")
     registration_ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP d'inscription")
+
+    # Profile customization
+    profile_cover = models.ImageField(upload_to='covers/', blank=True, null=True, verbose_name="Image de couverture")
+    favorite_postcard = models.ForeignKey('Postcard', on_delete=models.SET_NULL, null=True, blank=True,
+                                          related_name='favorited_by', verbose_name="Carte préférée")
+    website = models.URLField(blank=True, verbose_name="Site web")
+
+    # Privacy settings
+    show_activity = models.BooleanField(default=True, verbose_name="Afficher l'activité")
+    show_connections = models.BooleanField(default=True, verbose_name="Afficher les connexions")
+    allow_messages = models.BooleanField(default=True, verbose_name="Autoriser les messages")
+
+    def generate_new_verification_code(self):
+        """Generate and save a new verification code"""
+        self.verification_code = generate_verification_code()
+        self.verification_code_created_at = timezone.now()
+        self.save(update_fields=['verification_code', 'verification_code_created_at'])
+        return self.verification_code
+
+    def is_verification_code_valid(self):
+        """Check if verification code is still valid (30 minutes)"""
+        if not self.verification_code or not self.verification_code_created_at:
+            return False
+        expiry_time = self.verification_code_created_at + timezone.timedelta(minutes=30)
+        return timezone.now() < expiry_time
 
     def can_view_rare(self):
         return self.category in ['subscribed_verified', 'postman', 'viewer'] or self.is_staff
@@ -59,9 +97,74 @@ class CustomUser(AbstractUser):
     def has_seen_intro_today(self):
         return self.last_intro_seen == timezone.now().date()
 
+    def get_connections(self):
+        """Get all users this user has exchanged postcards with"""
+        from django.db.models import Q
+        sent_to = SentPostcard.objects.filter(sender=self).values_list('recipient_id', flat=True)
+        received_from = SentPostcard.objects.filter(recipient=self).values_list('sender_id', flat=True)
+        connection_ids = set(sent_to) | set(received_from)
+        connection_ids.discard(None)
+        return CustomUser.objects.filter(id__in=connection_ids)
+
+    def get_exchange_count_with(self, other_user):
+        """Get number of postcards exchanged with another user"""
+        sent = SentPostcard.objects.filter(sender=self, recipient=other_user).count()
+        received = SentPostcard.objects.filter(sender=other_user, recipient=self).count()
+        return sent + received
+
+    def get_total_likes_given(self):
+        return PostcardLike.objects.filter(user=self).count()
+
+    def get_total_likes_received(self):
+        """Likes on postcards this user sent"""
+        return 0  # Can be expanded if needed
+
+    def get_postcards_sent_count(self):
+        return SentPostcard.objects.filter(sender=self).count()
+
+    def get_postcards_received_count(self):
+        return SentPostcard.objects.filter(recipient=self).count()
+
+    def get_unread_postcards_count(self):
+        return SentPostcard.objects.filter(recipient=self, is_read=False).count()
+
+    def get_favorite_postcards(self):
+        """Get all liked postcards"""
+        liked_ids = PostcardLike.objects.filter(user=self, is_animated_like=False).values_list('postcard_id', flat=True)
+        return Postcard.objects.filter(id__in=liked_ids)
+
+    def get_favorite_animations(self):
+        """Get all liked animations"""
+        liked_ids = PostcardLike.objects.filter(user=self, is_animated_like=True).values_list('postcard_id', flat=True)
+        return Postcard.objects.filter(id__in=liked_ids)
+
+    def get_recent_activity(self, limit=20):
+        """Get recent activity for this user"""
+        return UserActivity.objects.filter(user=self).order_by('-timestamp')[:limit]
+
+    def get_suggestions_count(self):
+        return AnimationSuggestion.objects.filter(user=self).count()
+
     class Meta:
         verbose_name = "Utilisateur"
         verbose_name_plural = "Utilisateurs"
+
+
+class UserConnection(models.Model):
+    """Track epistolary relationships between users"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='connections_from')
+    connected_to = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='connections_to')
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_favorite = models.BooleanField(default=False, verbose_name="Favori")
+    notes = models.TextField(blank=True, max_length=200, verbose_name="Notes personnelles")
+
+    class Meta:
+        unique_together = ['user', 'connected_to']
+        verbose_name = "Connexion"
+        verbose_name_plural = "Connexions"
+
+    def __str__(self):
+        return f"{self.user.username} -> {self.connected_to.username}"
 
 
 class Postcard(models.Model):
@@ -85,7 +188,6 @@ class Postcard(models.Model):
     zoom_count = models.IntegerField(default=0, verbose_name="Nombre de zooms")
     likes_count = models.IntegerField(default=0, verbose_name="Nombre de likes")
 
-    # Flag to indicate if images exist on disk
     has_images = models.BooleanField(default=False, verbose_name="Images présentes")
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -124,7 +226,6 @@ class Postcard(models.Model):
         """
         from django.conf import settings
 
-        # Use the correct media root
         media_root = get_media_root()
         padded = self.get_padded_number()
         base_path = media_root / 'postcards' / folder
@@ -132,7 +233,6 @@ class Postcard(models.Model):
         if not base_path.exists():
             return ''
 
-        # Check for different extensions and case variations
         extensions = ['.jpg', '.jpeg', '.png', '.gif', '.JPG', '.JPEG', '.PNG', '.GIF']
 
         for ext in extensions:
@@ -140,7 +240,6 @@ class Postcard(models.Model):
             if file_path.exists():
                 return f'{settings.MEDIA_URL}postcards/{folder}/{padded}{ext}'
 
-        # Also try with original number (without padding)
         original = str(self.number).strip()
         for ext in extensions:
             file_path = base_path / f'{original}{ext}'
@@ -150,48 +249,37 @@ class Postcard(models.Model):
         return ''
 
     def get_vignette_url(self):
-        """Get thumbnail image URL"""
         return self._find_local_image('Vignette')
 
     def get_grande_url(self):
-        """Get large image URL"""
         url = self._find_local_image('Grande')
         return url if url else self.get_vignette_url()
 
     def get_dos_url(self):
-        """Get back side image URL"""
         return self._find_local_image('Dos')
 
     def get_zoom_url(self):
-        """Get zoom/high-res image URL"""
         url = self._find_local_image('Zoom')
         return url if url else self.get_grande_url()
 
     def get_animated_urls(self):
-        """
-        Find all animated video files for this postcard.
-        Supports: 000001.mp4, 000001_0.mp4, 000001_1.mp4, etc.
-        """
+        """Find all animated video files for this postcard."""
         from django.conf import settings
 
         video_urls = []
         padded = self.get_padded_number()
-
-        # Use the correct media root
         media_root = get_media_root()
         animated_dir = media_root / 'animated_cp'
 
         if not animated_dir.exists():
             return video_urls
 
-        # Check for single video: 000001.mp4
         for ext in ['.mp4', '.webm', '.MP4', '.WEBM']:
             single_file = animated_dir / f'{padded}{ext}'
             if single_file.exists():
                 video_urls.append(f'{settings.MEDIA_URL}animated_cp/{padded}{ext}')
                 break
 
-        # Check for multiple videos: 000001_0.mp4, 000001_1.mp4, etc.
         for i in range(20):
             found = False
             for ext in ['.mp4', '.webm', '.MP4', '.WEBM']:
@@ -206,78 +294,27 @@ class Postcard(models.Model):
         return video_urls
 
     def check_has_vignette(self):
-        """Check if this postcard has a vignette image"""
         return bool(self.get_vignette_url())
 
     def check_has_animation(self):
-        """Check if this postcard has any animations"""
         return len(self.get_animated_urls()) > 0
 
     def has_vignette(self):
-        """Alias for check_has_vignette"""
         return self.check_has_vignette()
 
     def has_animation(self):
-        """Alias for check_has_animation"""
         return self.check_has_animation()
 
     def get_first_video_url(self):
-        """Get the first video URL if any"""
         urls = self.get_animated_urls()
         return urls[0] if urls else None
 
     def video_count(self):
-        """Count number of videos"""
         return len(self.get_animated_urls())
 
     def update_image_flags(self):
-        """Update has_images flag based on actual files"""
         self.has_images = self.check_has_vignette()
         self.save(update_fields=['has_images'])
-
-    def debug_image_paths(self):
-        """Debug image path resolution"""
-        from django.conf import settings
-
-        # Use the correct media root
-        media_root = get_media_root()
-        padded = self.get_padded_number()
-        results = {
-            'media_root': str(media_root),
-            'padded_number': padded,
-        }
-
-        for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
-            base_path = media_root / 'postcards' / folder
-            results[folder] = {
-                'base_path': str(base_path),
-                'exists': base_path.exists(),
-                'files_checked': [],
-                'found': None
-            }
-
-            for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
-                file_path = base_path / f'{padded}{ext}'
-                results[folder]['files_checked'].append(str(file_path))
-                if file_path.exists():
-                    results[folder]['found'] = str(file_path)
-                    break
-
-        # Check animated
-        animated_path = media_root / 'animated_cp'
-        results['animated'] = {
-            'base_path': str(animated_path),
-            'exists': animated_path.exists(),
-            'found': []
-        }
-
-        if animated_path.exists():
-            for ext in ['.mp4', '.webm']:
-                file_path = animated_path / f'{padded}{ext}'
-                if file_path.exists():
-                    results['animated']['found'].append(str(file_path))
-
-        return results
 
 
 class PostcardLike(models.Model):
@@ -388,14 +425,20 @@ class UserActivity(models.Model):
         ('login', 'Connexion'),
         ('logout', 'Déconnexion'),
         ('register', 'Inscription'),
+        ('verify_email', 'Vérification email'),
         ('postcard_view', 'Vue carte postale'),
         ('postcard_zoom', 'Zoom carte postale'),
         ('postcard_like', 'Like carte postale'),
+        ('postcard_unlike', 'Unlike carte postale'),
         ('animation_like', 'Like animation'),
         ('animation_suggest', 'Suggestion animation'),
         ('search', 'Recherche'),
         ('contact', 'Message de contact'),
         ('page_view', 'Vue de page'),
+        ('postcard_sent', 'Carte envoyée'),
+        ('postcard_received', 'Carte reçue'),
+        ('profile_update', 'Mise à jour profil'),
+        ('connection_add', 'Ajout connexion'),
     ]
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='activities', null=True, blank=True)
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)
@@ -405,11 +448,35 @@ class UserActivity(models.Model):
     session_key = models.CharField(max_length=100, blank=True)
     country = models.CharField(max_length=100, blank=True)
     city = models.CharField(max_length=100, blank=True)
+    related_postcard = models.ForeignKey(Postcard, null=True, blank=True, on_delete=models.SET_NULL)
+    related_user = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL,
+                                     related_name='related_activities')
 
     class Meta:
         ordering = ['-timestamp']
         verbose_name = "Activité utilisateur"
         verbose_name_plural = "Activités utilisateurs"
+
+    def get_action_icon(self):
+        icons = {
+            'login': 'log-in',
+            'logout': 'log-out',
+            'register': 'user-plus',
+            'verify_email': 'mail-check',
+            'postcard_view': 'eye',
+            'postcard_zoom': 'zoom-in',
+            'postcard_like': 'heart',
+            'postcard_unlike': 'heart-off',
+            'animation_like': 'play-circle',
+            'animation_suggest': 'lightbulb',
+            'search': 'search',
+            'contact': 'mail',
+            'postcard_sent': 'send',
+            'postcard_received': 'inbox',
+            'profile_update': 'user-cog',
+            'connection_add': 'user-plus',
+        }
+        return icons.get(self.action, 'activity')
 
 
 class SystemLog(models.Model):
@@ -517,8 +584,7 @@ class PostcardComment(models.Model):
         verbose_name_plural = "Commentaires"
 
 
-# New models for enhanced analytics
-
+# Analytics models
 class VisitorSession(models.Model):
     """Track unique visitor sessions with detailed information"""
     session_key = models.CharField(max_length=100, unique=True)
@@ -533,11 +599,11 @@ class VisitorSession(models.Model):
     timezone = models.CharField(max_length=100, blank=True)
     isp = models.CharField(max_length=200, blank=True, verbose_name="Fournisseur d'accès")
     user_agent = models.TextField(blank=True)
-    device_type = models.CharField(max_length=50, blank=True)  # mobile, tablet, desktop
+    device_type = models.CharField(max_length=50, blank=True)
     browser = models.CharField(max_length=100, blank=True)
     browser_version = models.CharField(max_length=50, blank=True)
     os = models.CharField(max_length=100, blank=True)
-    os_version = models.CharField(max)
+    os_version = models.CharField(max_length=50, blank=True)
     screen_resolution = models.CharField(max_length=50, blank=True)
     language = models.CharField(max_length=50, blank=True)
     referrer = models.CharField(max_length=500, blank=True)
@@ -556,9 +622,6 @@ class VisitorSession(models.Model):
         ordering = ['-last_activity']
         verbose_name = "Session visiteur"
         verbose_name_plural = "Sessions visiteurs"
-
-    def __str__(self):
-        return f"{self.ip_address} - {self.country} ({self.session_key[:8]})"
 
 
 class PostcardInteraction(models.Model):
@@ -609,16 +672,10 @@ class DailyAnalytics(models.Model):
     mobile_visits = models.IntegerField(default=0)
     tablet_visits = models.IntegerField(default=0)
     desktop_visits = models.IntegerField(default=0)
-
-    # Top countries JSON field
     top_countries = models.JSONField(default=dict, blank=True)
-    # Top referrers JSON field
     top_referrers = models.JSONField(default=dict, blank=True)
-    # Top pages JSON field
     top_pages = models.JSONField(default=dict, blank=True)
-    # Top searches JSON field
     top_searches = models.JSONField(default=dict, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -626,9 +683,6 @@ class DailyAnalytics(models.Model):
         ordering = ['-date']
         verbose_name = "Analytique journalière"
         verbose_name_plural = "Analytiques journalières"
-
-    def __str__(self):
-        return f"Analytics for {self.date}"
 
 
 class RealTimeVisitor(models.Model):
@@ -669,6 +723,3 @@ class IPLocation(models.Model):
     class Meta:
         verbose_name = "Localisation IP"
         verbose_name_plural = "Localisations IP"
-
-    def __str__(self):
-        return f"{self.ip_address} - {self.country}, {self.city}"

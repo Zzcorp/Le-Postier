@@ -1,23 +1,84 @@
-# core/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
 from datetime import timedelta
 import traceback
 import json
 from django.db.models import Sum, Avg, F, Q, Count
-from django.db.models.functions import TruncDate, TruncHour
+from django.db.models.functions import TruncDate, TruncHour, TruncMonth
 from collections import defaultdict
+
+from django.template import loader
 
 from .models import (
     CustomUser, Postcard, PostcardLike, AnimationSuggestion, Theme,
     ContactMessage, SearchLog, PageView, UserActivity, SystemLog, IntroSeen,
-    SentPostcard, PostcardComment
+    SentPostcard, PostcardComment, UserConnection
 )
-from .forms import ContactForm, SimpleRegistrationForm
+from .forms import (
+    ContactForm, SimpleRegistrationForm, VerificationCodeForm,
+    SetPasswordForm, ProfileUpdateForm
+)
+
+
+def robots_txt(request):
+    """Serve robots.txt"""
+    return render(request, 'robots.txt', content_type='text/plain')
+
+
+def sitemap_xml(request):
+    """Generate sitemap.xml dynamically"""
+    from django.urls import reverse
+
+    base_url = 'https://collections.samathey.fr'
+
+    # Static pages
+    static_pages = [
+        {'loc': '/', 'changefreq': 'weekly', 'priority': '1.0'},
+        {'loc': '/presentation/', 'changefreq': 'monthly', 'priority': '0.8'},
+        {'loc': '/decouvrir/', 'changefreq': 'monthly', 'priority': '0.7'},
+        {'loc': '/contact/', 'changefreq': 'monthly', 'priority': '0.6'},
+        {'loc': '/parcourir/', 'changefreq': 'daily', 'priority': '0.9'},
+        {'loc': '/cp-animes/', 'changefreq': 'weekly', 'priority': '0.8'},
+        {'loc': '/connexion/', 'changefreq': 'yearly', 'priority': '0.3'},
+        {'loc': '/inscription/', 'changefreq': 'yearly', 'priority': '0.3'},
+    ]
+
+    xml_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Sitemap for Le Postier - Collection Samathey
+    https://collections.samathey.fr
+
+    COPYRIGHT NOTICE:
+    All content referenced in this sitemap is protected by copyright.
+    The postcards and images belong to Collection Samathey.
+    Unauthorized use, reproduction, or distribution is prohibited.
+
+    Contact: sam@samathey.com
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+'''
+
+    # Add static pages
+    for page in static_pages:
+        xml_content += f'''
+    <url>
+        <loc>{base_url}{page['loc']}</loc>
+        <changefreq>{page['changefreq']}</changefreq>
+        <priority>{page['priority']}</priority>
+    </url>'''
+
+    xml_content += '''
+</urlset>'''
+
+    return HttpResponse(xml_content, content_type='application/xml')
 
 
 def get_client_ip(request):
@@ -34,6 +95,523 @@ def is_admin(user):
     """Check if user is admin"""
     return user.is_authenticated and (user.is_staff or user.is_superuser)
 
+
+def log_activity(user, action, details='', request=None, related_postcard=None, related_user=None):
+    """Log user activity"""
+    UserActivity.objects.create(
+        user=user,
+        action=action,
+        details=details,
+        ip_address=get_client_ip(request) if request else None,
+        session_key=request.session.session_key if request and request.session.session_key else '',
+        related_postcard=related_postcard,
+        related_user=related_user,
+    )
+
+
+def send_verification_email(user):
+    """Send verification code email to user"""
+    code = user.generate_new_verification_code()
+
+    subject = 'Vérification de votre compte - Le Postier'
+
+    html_message = render_to_string('emails/verification_code.html', {
+        'user': user,
+        'code': code,
+    })
+
+    plain_message = f"""
+Bonjour {user.username},
+
+Votre code de vérification est : {code}
+
+Ce code expire dans 30 minutes.
+
+Si vous n'avez pas créé de compte sur Le Postier, ignorez cet email.
+
+Cordialement,
+L'équipe Le Postier
+    """
+
+    try:
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Error sending verification email: {e}")
+        return False
+
+
+# ============================================
+# REGISTRATION & VERIFICATION VIEWS
+# ============================================
+
+def register(request):
+    """Registration page - Step 1: Enter username and email"""
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = SimpleRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+
+            # Send verification email
+            if send_verification_email(user):
+                # Store user id in session for verification step
+                request.session['pending_verification_user_id'] = user.id
+                return redirect('verify_email')
+            else:
+                # Email failed, but user was created - they can resend
+                request.session['pending_verification_user_id'] = user.id
+                return redirect('verify_email')
+    else:
+        form = SimpleRegistrationForm()
+
+    return render(request, 'register.html', {'form': form})
+
+
+def verify_email(request):
+    """Verify email with code - Step 2"""
+    user_id = request.session.get('pending_verification_user_id')
+
+    if not user_id:
+        return redirect('register')
+
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        return redirect('register')
+
+    # If already verified, go to password setup
+    if user.email_verified:
+        return redirect('set_password')
+
+    error = None
+
+    if request.method == 'POST':
+        form = VerificationCodeForm(request.POST)
+        if form.is_valid():
+            code = form.cleaned_data['code']
+
+            if user.verification_code == code and user.is_verification_code_valid():
+                # Code is valid
+                user.email_verified = True
+                user.category = 'subscribed_verified'
+                user.verification_code = None
+                user.save()
+
+                log_activity(user, 'verify_email', 'Email vérifié avec succès', request)
+
+                return redirect('set_password')
+            else:
+                if not user.is_verification_code_valid():
+                    error = "Ce code a expiré. Veuillez demander un nouveau code."
+                else:
+                    error = "Code incorrect. Veuillez réessayer."
+    else:
+        form = VerificationCodeForm()
+
+    return render(request, 'verify_email.html', {
+        'form': form,
+        'email': user.email,
+        'error': error,
+    })
+
+
+def resend_verification_code(request):
+    """Resend verification code"""
+    user_id = request.session.get('pending_verification_user_id')
+
+    if not user_id:
+        return JsonResponse({'error': 'Session expirée'}, status=400)
+
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'error': 'Utilisateur non trouvé'}, status=404)
+
+    if user.email_verified:
+        return JsonResponse({'error': 'Email déjà vérifié'}, status=400)
+
+    if send_verification_email(user):
+        return JsonResponse({'success': True, 'message': 'Code envoyé!'})
+    else:
+        return JsonResponse({'error': 'Erreur lors de l\'envoi'}, status=500)
+
+
+def set_password(request):
+    """Set password after email verification - Step 3"""
+    user_id = request.session.get('pending_verification_user_id')
+
+    if not user_id:
+        return redirect('register')
+
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        return redirect('register')
+
+    # Must verify email first
+    if not user.email_verified:
+        return redirect('verify_email')
+
+    # Already has password
+    if user.password_set:
+        del request.session['pending_verification_user_id']
+        return redirect('login')
+
+    if request.method == 'POST':
+        form = SetPasswordForm(request.POST)
+        if form.is_valid():
+            password = form.cleaned_data['password1']
+            user.set_password(password)
+            user.password_set = True
+            user.save()
+
+            # Clean up session
+            del request.session['pending_verification_user_id']
+
+            # Log the user in
+            login(request, user)
+            log_activity(user, 'register', 'Inscription terminée', request)
+
+            return redirect('registration_complete')
+    else:
+        form = SetPasswordForm()
+
+    return render(request, 'set_password.html', {
+        'form': form,
+        'username': user.username,
+    })
+
+
+def registration_complete(request):
+    """Registration complete page"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    return render(request, 'registration_complete.html')
+
+
+def login_view(request):
+    """Login page"""
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    error = None
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        # Try to find user
+        try:
+            user = CustomUser.objects.get(username=username)
+
+            # Check if user hasn't completed registration
+            if not user.password_set:
+                request.session['pending_verification_user_id'] = user.id
+                if not user.email_verified:
+                    return redirect('verify_email')
+                else:
+                    return redirect('set_password')
+        except CustomUser.DoesNotExist:
+            pass
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            log_activity(user, 'login', 'Connexion réussie', request)
+            next_url = request.GET.get('next', '/')
+            return redirect(next_url)
+        else:
+            error = "Nom d'utilisateur ou mot de passe incorrect."
+
+    return render(request, 'login.html', {'error': error})
+
+
+def logout_view(request):
+    """Logout"""
+    if request.user.is_authenticated:
+        log_activity(request.user, 'logout', 'Déconnexion', request)
+    logout(request)
+    return redirect('home')
+
+
+# ============================================
+# PROFILE VIEWS
+# ============================================
+
+@login_required
+def profile(request):
+    """User profile dashboard"""
+    user = request.user
+
+    # Get statistics
+    stats = {
+        'postcards_sent': user.get_postcards_sent_count(),
+        'postcards_received': user.get_postcards_received_count(),
+        'unread_postcards': user.get_unread_postcards_count(),
+        'likes_given': user.get_total_likes_given(),
+        'suggestions': user.get_suggestions_count(),
+        'connections_count': user.get_connections().count(),
+    }
+
+    # Get favorite postcards (liked)
+    favorite_postcards = user.get_favorite_postcards()[:8]
+    favorite_animations = user.get_favorite_animations()[:4]
+
+    # Get connections
+    connections = UserConnection.objects.filter(user=user).select_related('connected_to')[:10]
+
+    # Get recent activity
+    recent_activity = user.get_recent_activity(15)
+
+    # Get recent correspondence
+    recent_received = SentPostcard.objects.filter(recipient=user).select_related('sender', 'postcard')[:5]
+    recent_sent = SentPostcard.objects.filter(sender=user).select_related('recipient', 'postcard')[:5]
+
+    # Monthly activity chart data
+    six_months_ago = timezone.now() - timedelta(days=180)
+    monthly_likes = (
+        PostcardLike.objects.filter(user=user, created_at__gte=six_months_ago)
+        .annotate(month=TruncMonth('created_at'))
+        .values('month')
+        .annotate(count=Count('id'))
+        .order_by('month')
+    )
+
+    monthly_sent = (
+        SentPostcard.objects.filter(sender=user, created_at__gte=six_months_ago)
+        .annotate(month=TruncMonth('created_at'))
+        .values('month')
+        .annotate(count=Count('id'))
+        .order_by('month')
+    )
+
+    context = {
+        'user': user,
+        'stats': stats,
+        'favorite_postcards': favorite_postcards,
+        'favorite_animations': favorite_animations,
+        'connections': connections,
+        'recent_activity': recent_activity,
+        'recent_received': recent_received,
+        'recent_sent': recent_sent,
+        'monthly_likes': json.dumps(list(monthly_likes), default=str),
+        'monthly_sent': json.dumps(list(monthly_sent), default=str),
+    }
+
+    return render(request, 'profile.html', context)
+
+
+@login_required
+def profile_settings(request):
+    """Profile settings page"""
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            log_activity(request.user, 'profile_update', 'Profil mis à jour', request)
+            return JsonResponse({'success': True})
+        return JsonResponse({'errors': form.errors}, status=400)
+
+    return render(request, 'profile_settings.html', {
+        'form': ProfileUpdateForm(instance=request.user)
+    })
+
+
+@login_required
+def profile_connections(request):
+    """View all connections/epistolary relations"""
+    connections = UserConnection.objects.filter(user=request.user).select_related('connected_to')
+
+    # Enrich with exchange counts
+    connection_data = []
+    for conn in connections:
+        exchange_count = request.user.get_exchange_count_with(conn.connected_to)
+        last_exchange = SentPostcard.objects.filter(
+            Q(sender=request.user, recipient=conn.connected_to) |
+            Q(sender=conn.connected_to, recipient=request.user)
+        ).order_by('-created_at').first()
+
+        connection_data.append({
+            'connection': conn,
+            'exchange_count': exchange_count,
+            'last_exchange': last_exchange,
+        })
+
+    return render(request, 'profile_connections.html', {
+        'connections': connection_data,
+    })
+
+
+@login_required
+def profile_favorites(request):
+    """View all favorite postcards"""
+    favorite_postcards = request.user.get_favorite_postcards()
+    favorite_animations = request.user.get_favorite_animations()
+
+    return render(request, 'profile_favorites.html', {
+        'postcards': favorite_postcards,
+        'animations': favorite_animations,
+    })
+
+
+@login_required
+def profile_activity(request):
+    """View full activity history"""
+    activities = UserActivity.objects.filter(user=request.user).order_by('-timestamp')[:100]
+
+    return render(request, 'profile_activity.html', {
+        'activities': activities,
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_profile(request):
+    """Update user profile via AJAX"""
+    try:
+        data = json.loads(request.body)
+        user = request.user
+
+        allowed_fields = ['bio', 'country', 'city', 'website', 'show_activity', 'show_connections', 'allow_messages']
+
+        for field in allowed_fields:
+            if field in data:
+                setattr(user, field, data[field])
+
+        user.save()
+        log_activity(user, 'profile_update', f'Champs mis à jour: {", ".join(data.keys())}', request)
+
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def upload_signature(request):
+    """Upload user signature image"""
+    try:
+        if 'signature' not in request.FILES:
+            return JsonResponse({'error': 'No file provided'}, status=400)
+
+        file = request.FILES['signature']
+
+        if file.size > 2 * 1024 * 1024:
+            return JsonResponse({'error': 'File too large (max 2MB)'}, status=400)
+
+        if not file.content_type.startswith('image/'):
+            return JsonResponse({'error': 'Invalid file type'}, status=400)
+
+        request.user.signature_image = file
+        request.user.save(update_fields=['signature_image'])
+
+        log_activity(request.user, 'profile_update', 'Signature mise à jour', request)
+
+        return JsonResponse({
+            'success': True,
+            'url': request.user.signature_image.url
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def upload_cover(request):
+    """Upload profile cover image"""
+    try:
+        if 'cover' not in request.FILES:
+            return JsonResponse({'error': 'No file provided'}, status=400)
+
+        file = request.FILES['cover']
+
+        if file.size > 5 * 1024 * 1024:
+            return JsonResponse({'error': 'File too large (max 5MB)'}, status=400)
+
+        if not file.content_type.startswith('image/'):
+            return JsonResponse({'error': 'Invalid file type'}, status=400)
+
+        request.user.profile_cover = file
+        request.user.save(update_fields=['profile_cover'])
+
+        log_activity(request.user, 'profile_update', 'Image de couverture mise à jour', request)
+
+        return JsonResponse({
+            'success': True,
+            'url': request.user.profile_cover.url
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_connection_favorite(request, connection_id):
+    """Toggle a connection as favorite"""
+    try:
+        connection = UserConnection.objects.get(id=connection_id, user=request.user)
+        connection.is_favorite = not connection.is_favorite
+        connection.save()
+        return JsonResponse({'success': True, 'is_favorite': connection.is_favorite})
+    except UserConnection.DoesNotExist:
+        return JsonResponse({'error': 'Connection not found'}, status=404)
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_connection_notes(request, connection_id):
+    """Update notes for a connection"""
+    try:
+        data = json.loads(request.body)
+        connection = UserConnection.objects.get(id=connection_id, user=request.user)
+        connection.notes = data.get('notes', '')[:200]
+        connection.save()
+        return JsonResponse({'success': True})
+    except UserConnection.DoesNotExist:
+        return JsonResponse({'error': 'Connection not found'}, status=404)
+
+
+@login_required
+def view_user_profile(request, username):
+    """View another user's public profile"""
+    viewed_user = get_object_or_404(CustomUser, username=username)
+
+    if viewed_user == request.user:
+        return redirect('profile')
+
+    # Check if we're connected
+    is_connected = UserConnection.objects.filter(
+        user=request.user,
+        connected_to=viewed_user
+    ).exists()
+
+    # Get exchange stats if connected
+    exchange_count = 0
+    if is_connected:
+        exchange_count = request.user.get_exchange_count_with(viewed_user)
+
+    context = {
+        'viewed_user': viewed_user,
+        'is_connected': is_connected,
+        'exchange_count': exchange_count,
+        'can_message': viewed_user.allow_messages,
+    }
+
+    return render(request, 'view_profile.html', context)
+
+
+# Keep all existing views (home, browse, etc.) and add them here...
+# For brevity, I'm showing only the new/modified views
 
 def should_show_intro(request):
     """Check if intro should be shown to user"""
@@ -82,25 +660,21 @@ def intro(request):
 
 
 def home(request):
-    """Home page view - OPTIMIZED: Only pass video URLs, don't preload"""
+    """Home page view"""
     try:
         if should_show_intro(request):
             return redirect(f'/intro/?next=/')
 
-        # Get only a small batch of video URLs for the carousel
-        # Don't load all videos - just get URLs and let JS handle lazy loading
         video_urls = []
-
-        # Quick query to get postcards with animations (limit to 20)
         postcards_with_videos = Postcard.objects.filter(
             has_images=True
-        ).order_by('?')[:30]  # Random 30 for variety
+        ).order_by('?')[:30]
 
         for postcard in postcards_with_videos:
             urls = postcard.get_animated_urls()
             if urls:
-                video_urls.append(urls[0])  # Only first video per postcard
-                if len(video_urls) >= 15:  # Limit to 15 videos max
+                video_urls.append(urls[0])
+                if len(video_urls) >= 15:
                     break
 
         return render(request, 'home.html', {
@@ -428,48 +1002,226 @@ Ce message a été envoyé depuis le formulaire de contact du site Le Postier.
     return render(request, 'contact.html', {'form': form})
 
 
-def register(request):
-    """Registration page"""
-    if request.method == 'POST':
-        form = SimpleRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('home')
-    else:
-        form = SimpleRegistrationForm()
+@login_required
+def profile(request):
+    """Enhanced user profile page with full dashboard"""
+    from django.db.models import Count, Q
+    from collections import defaultdict
 
-    return render(request, 'register.html', {'form': form})
+    user = request.user
 
+    # Get user's likes
+    liked_postcards = PostcardLike.objects.filter(
+        user=user
+    ).select_related('postcard').order_by('-created_at')[:50]
 
-def login_view(request):
-    """Login page"""
-    error = None
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
+    # Get sent postcards
+    sent_postcards = SentPostcard.objects.filter(
+        sender=user
+    ).select_related('recipient', 'postcard').order_by('-created_at')[:20]
 
-        if user is not None:
-            login(request, user)
-            next_url = request.GET.get('next', '/')
-            return redirect(next_url)
-        else:
-            error = "Nom d'utilisateur ou mot de passe incorrect."
+    # Get received postcards
+    received_postcards = SentPostcard.objects.filter(
+        recipient=user
+    ).select_related('sender', 'postcard').order_by('-created_at')[:20]
 
-    return render(request, 'login.html', {'error': error})
+    # Count unread
+    unread_count = SentPostcard.objects.filter(
+        recipient=user,
+        is_read=False
+    ).count()
 
+    # Get epistolary connections (people user has exchanged postcards with)
+    # Sent to
+    sent_to_users = SentPostcard.objects.filter(
+        sender=user,
+        recipient__isnull=False
+    ).values('recipient').annotate(
+        sent_count=Count('id')
+    ).values_list('recipient', 'sent_count')
 
-def logout_view(request):
-    """Logout"""
-    logout(request)
-    return redirect('home')
+    # Received from
+    received_from_users = SentPostcard.objects.filter(
+        recipient=user
+    ).values('sender').annotate(
+        received_count=Count('id')
+    ).values_list('sender', 'received_count')
+
+    # Combine connections
+    connection_data = defaultdict(lambda: {'sent_count': 0, 'received_count': 0, 'last_exchange': None})
+
+    for user_id, count in sent_to_users:
+        connection_data[user_id]['sent_count'] = count
+        last = SentPostcard.objects.filter(sender=user, recipient_id=user_id).order_by('-created_at').first()
+        if last:
+            connection_data[user_id]['last_exchange'] = last.created_at
+
+    for user_id, count in received_from_users:
+        connection_data[user_id]['received_count'] = count
+        last = SentPostcard.objects.filter(sender_id=user_id, recipient=user).order_by('-created_at').first()
+        if last and (not connection_data[user_id]['last_exchange'] or last.created_at > connection_data[user_id][
+            'last_exchange']):
+            connection_data[user_id]['last_exchange'] = last.created_at
+
+    # Build connections list
+    epistolary_connections = []
+    for user_id, data in connection_data.items():
+        try:
+            conn_user = CustomUser.objects.get(id=user_id)
+            epistolary_connections.append({
+                'user': conn_user,
+                'sent_count': data['sent_count'],
+                'received_count': data['received_count'],
+                'last_exchange': data['last_exchange']
+            })
+        except CustomUser.DoesNotExist:
+            pass
+
+    # Sort by last exchange
+    epistolary_connections.sort(key=lambda x: x['last_exchange'] or timezone.now(), reverse=True)
+
+    # Get recent activities
+    recent_activities = UserActivity.objects.filter(
+        user=user
+    ).order_by('-timestamp')[:20]
+
+    # Get animation suggestions by this user
+    suggestions_count = AnimationSuggestion.objects.filter(user=user).count()
+
+    # Stats
+    total_likes = PostcardLike.objects.filter(user=user).count()
+    sent_postcards_count = SentPostcard.objects.filter(sender=user).count()
+    received_postcards_count = SentPostcard.objects.filter(recipient=user).count()
+    connections_count = len(epistolary_connections)
+
+    # Total views (approximate based on activity)
+    total_views = UserActivity.objects.filter(
+        user=user,
+        action='postcard_view'
+    ).count()
+
+    context = {
+        'user': user,
+        'liked_postcards': liked_postcards,
+        'sent_postcards': sent_postcards,
+        'received_postcards': received_postcards,
+        'unread_count': unread_count,
+        'epistolary_connections': epistolary_connections[:20],
+        'recent_activities': recent_activities,
+        'total_likes': total_likes,
+        'sent_postcards_count': sent_postcards_count,
+        'received_postcards_count': received_postcards_count,
+        'connections_count': connections_count,
+        'total_views': total_views,
+        'suggestions_count': suggestions_count,
+    }
+
+    return render(request, 'profile.html', context)
 
 
 @login_required
-def profile(request):
-    """User profile page"""
-    return render(request, 'profile.html', {'user': request.user})
+@require_http_methods(["POST"])
+def change_password(request):
+    """API endpoint to change user password"""
+    import json
+    from django.contrib.auth import update_session_auth_hash
+
+    try:
+        data = json.loads(request.body)
+        current_password = data.get('current_password', '')
+        new_password = data.get('new_password', '')
+
+        if not current_password or not new_password:
+            return JsonResponse({'error': 'Tous les champs sont requis'}, status=400)
+
+        if len(new_password) < 8:
+            return JsonResponse({'error': 'Le mot de passe doit contenir au moins 8 caractères'}, status=400)
+
+        # Check current password
+        if not request.user.check_password(current_password):
+            return JsonResponse({'error': 'Mot de passe actuel incorrect'}, status=400)
+
+        # Set new password
+        request.user.set_password(new_password)
+        request.user.save()
+
+        # Keep user logged in
+        update_session_auth_hash(request, request.user)
+
+        return JsonResponse({'success': True, 'message': 'Mot de passe changé avec succès'})
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_cover_image(request):
+    """API endpoint to update user cover image"""
+    from django.core.files.base import ContentFile
+    import requests
+    import uuid
+
+    try:
+        # Check if it's a file upload
+        if 'cover_image' in request.FILES:
+            file = request.FILES['cover_image']
+
+            if file.size > 5 * 1024 * 1024:  # 5MB
+                return JsonResponse({'error': 'L\'image ne doit pas dépasser 5MB'}, status=400)
+
+            if not file.content_type.startswith('image/'):
+                return JsonResponse({'error': 'Type de fichier non valide'}, status=400)
+
+            request.user.cover_image = file
+            request.user.save(update_fields=['cover_image'])
+
+            return JsonResponse({
+                'success': True,
+                'url': request.user.cover_image.url
+            })
+
+        # Check if it's a URL (from postcard)
+        elif 'cover_url' in request.POST:
+            cover_url = request.POST.get('cover_url')
+
+            # Download the image
+            response = requests.get(cover_url, timeout=10)
+            if response.status_code == 200:
+                # Determine extension
+                content_type = response.headers.get('content-type', 'image/jpeg')
+                ext = 'jpg' if 'jpeg' in content_type else content_type.split('/')[-1]
+
+                filename = f"cover_{request.user.id}_{uuid.uuid4().hex[:8]}.{ext}"
+                request.user.cover_image.save(filename, ContentFile(response.content))
+
+                return JsonResponse({
+                    'success': True,
+                    'url': request.user.cover_image.url
+                })
+            else:
+                return JsonResponse({'error': 'Impossible de télécharger l\'image'}, status=400)
+
+        return JsonResponse({'error': 'Aucune image fournie'}, status=400)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def get_postcards_for_cover(request):
+    """API endpoint to get postcards for cover selection"""
+    postcards = Postcard.objects.filter(has_images=True).order_by('?')[:50]
+
+    data = [{
+        'id': p.id,
+        'number': p.number,
+        'title': p.title,
+        'vignette_url': p.get_vignette_url(),
+        'grande_url': p.get_grande_url(),
+    } for p in postcards if p.get_vignette_url()]
+
+    return JsonResponse({'postcards': data})
 
 
 def zoom_postcard(request, postcard_id):

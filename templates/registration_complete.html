@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Inscription réussie{% endblock %}
+
+{% block content %}
+<div class="complete-page">
+    <div class="complete-container">
+        <div class="complete-card">
+            <div class="success-animation">
+                <div class="checkmark-circle">
+                    <svg class="checkmark" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="confetti">
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+            
+            <h1>Bienvenue {{ user.username }} ! 🎉</h1>
+            <p class="subtitle">Votre compte a été créé avec succès</p>
+            
+            <div class="welcome-message">
+                <p>
+                    Vous faites maintenant partie de la communauté Le Postier. 
+                    Explorez notre collection de cartes postales anciennes et 
+                    partagez vos découvertes !
+                </p>
+            </div>
+            
+            <div class="action-cards">
+                <a href="{% url 'browse' %}" class="action-card">
+                    <div class="action-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                    </div>
+                    <span>Explorer la collection</span>
+                </a>
+                
+                <a href="{% url 'profile' %}" class="action-card">
+                    <div class="action-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                    <span>Compléter mon profil</span>
+                </a>
+                
+                <a href="{% url 'animated_gallery' %}" class="action-card">
+                    <div class="action-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                    </div>
+                    <span>Voir les animations</span>
+                </a>
+            </div>
+            
+            <a href="{% url 'home' %}" class="btn-home">
+                Aller à l'accueil
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.complete-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #1a1208 0%, #2d1f0d 50%, #1a1208 100%);
+}
+
+.complete-container {
+    width: 100%;
+    max-width: 550px;
+}
+
+.complete-card {
+    background: linear-gradient(165deg, rgba(40, 30, 20, 0.95), rgba(30, 20, 15, 0.98));
+    border-radius: 24px;
+    padding: 50px 40px;
+    text-align: center;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(181, 96, 11, 0.2);
+}
+
+/* Success Animation */
+.success-animation {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.checkmark-circle {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    animation: scaleIn 0.5s ease;
+    box-shadow: 0 10px 40px rgba(34, 197, 94, 0.4);
+}
+
+.checkmark {
+    stroke: white;
+    stroke-dasharray: 50;
+    stroke-dashoffset: 50;
+    animation: drawCheck 0.5s ease 0.3s forwards;
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+}
+
+@keyframes drawCheck {
+    to { stroke-dashoffset: 0; }
+}
+
+/* Confetti */
+.confetti {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 100px;
+    pointer-events: none;
+}
+
+.confetti span {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    animation: confetti 1s ease forwards;
+    opacity: 0;
+}
+
+.confetti span:nth-child(1) { background: #ffc168; left: 30%; animation-delay: 0.2s; }
+.confetti span:nth-child(2) { background: #b5600b; left: 50%; animation-delay: 0.3s; }
+.confetti span:nth-child(3) { background: #22c55e; left: 70%; animation-delay: 0.4s; }
+.confetti span:nth-child(4) { background: #ffc168; left: 20%; animation-delay: 0.5s; }
+.confetti span:nth-child(5) { background: #d1872c; left: 60%; animation-delay: 0.6s; }
+.confetti span:nth-child(6) { background: #16a34a; left: 80%; animation-delay: 0.7s; }
+
+@keyframes confetti {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(-100px) rotate(720deg); }
+}
+
+/* Content */
+.complete-card h1 {
+    color: white;
+    font-size: 2rem;
+    margin: 0 0 10px;
+}
+
+.subtitle {
+    color: #22c55e;
+    font-size: 1.1rem;
+    margin: 0 0 25px;
+}
+
+.welcome-message {
+    background: rgba(181, 96, 11, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.welcome-message p {
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* Action Cards */
+.action-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.action-card:hover {
+    background: rgba(181, 96, 11, 0.2);
+    border-color: #b5600b;
+    transform: translateY(-5px);
+}
+
+.action-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.3), rgba(181, 96, 11, 0.1));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-icon svg {
+    stroke: #ffc168;
+}
+
+.action-card span {
+    color: white;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+/* Home Button */
+.btn-home {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 30px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-radius: 25px;
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s;
+    box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
+}
+
+.btn-home:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(181, 96, 11, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+    .complete-card {
+        padding: 40px 25px;
+    }
+    
+    .action-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-card {
+        flex-direction: row;
+        padding: 15px 20px;
+    }
+    
+    .action-icon {
+        width: 40px;
+        height: 40px;
+    }
+}
+</style>
+{% endblock %}
