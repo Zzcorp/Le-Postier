@@ -2,13 +2,13 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block page_title %}Découvrir{% endblock %}
+{% block page_title %}La Galerie{% endblock %}
 
 {% block content %}
 <div class="decouvrir-page">
     <!-- Header -->
     <header class="page-header animate-fade-in-down">
-        <h1>Découvrir la Collection</h1>
+        <h1>La Galerie</h1>
         <p>Découvrez quelques tableaux animés</p>
     </header>
 
@@ -173,11 +173,9 @@ document.addEventListener('keydown', (e) => {
 .painting-frame {
     position: relative;
     overflow: hidden;
-    /* No border or box-shadow */
 }
 
 .painting-item:hover .painting-frame {
-    /* Subtle glow on hover */
     filter: drop-shadow(0 10px 30px rgba(181, 96, 11, 0.4));
 }
 
@@ -209,7 +207,6 @@ document.addEventListener('keydown', (e) => {
     opacity: 1;
 }
 
-/* Info overlay - OVER the painting */
 .painting-info {
     position: absolute;
     bottom: 20px;

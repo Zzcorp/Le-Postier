@@ -282,8 +282,8 @@
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <path d="m21 15-5-5L5 21"/>
                 </svg>
-                <h3>Aucune carte postale trouvée</h3>
-                <p>La base de données semble vide. Exécutez la commande de population.</p>
+                <h3>Désolé, aucune carte postale trouvée</h3>
+                <p>Modifiez vos critères de recherche ou parcourez les mots-clés ci-dessus.</p>
             </div>
             {% endfor %}
         </div>
@@ -293,9 +293,9 @@
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
             </svg>
-            <h3>Aucun résultat</h3>
-            <p>Essayez d'autres mots-clés</p>
-            <button class="reset-btn" onclick="clearSearch()">Réinitialiser</button>
+            <h3>Désolé, aucune carte postale trouvée</h3>
+            <p>Essayez d'autres mots-clés ou modifiez votre recherche</p>
+            <button class="reset-btn" onclick="clearSearch()">Réinitialiser la recherche</button>
         </div>
     </div>
    
@@ -359,14 +359,42 @@
     </div>
 </div>
  
-<!-- Zoom Popup -->
+<!-- Zoom Popup with Enhanced Controls -->
 <div class="popup-modal popup-zoom-modal" id="popup-zoom">
     <button class="popup-close" onclick="closeAllPopups()" title="Fermer">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
     </button>
-    <img id="popup-zoom-image" src="" alt="">
+    
+    <div class="zoom-container" id="zoom-container">
+        <img id="popup-zoom-image" src="" alt="Zoom">
+    </div>
+    
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomOut()" title="Zoom arrière">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+        </button>
+        <span class="zoom-level" id="zoom-level-display">100%</span>
+        <button class="zoom-btn" onclick="zoomIn()" title="Zoom avant">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="11" y1="8" x2="11" y2="14"/>
+                <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+        </button>
+        <button class="zoom-btn" onclick="resetZoom()" title="Réinitialiser">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+            </svg>
+        </button>
+    </div>
 </div>
  
 <script>
@@ -393,14 +421,28 @@ const allPostcardsData = [
     {% endfor %}
 ];
  
-// Expanded floating keywords with more variety
+// Expanded floating keywords with specific historical terms
 const riverKeywords = [
     // Primary navigation terms
     { word: 'Seine', size: 'large', importance: 1 },
     { word: 'Marne', size: 'large', importance: 1 },
     { word: 'Bateau', size: 'large', importance: 1 },
     { word: 'Paris', size: 'large', importance: 1 },
-    { word: 'Navigation', size: 'large', importance: 1 },
+    
+    // REQUESTED SPECIFIC KEYWORDS - Large/Medium
+    { word: 'Système Gabet', size: 'large', importance: 1 },
+    { word: 'Machine de Marly', size: 'large', importance: 1 },
+    { word: 'Bateau Touriste', size: 'large', importance: 1 },
+    { word: 'Yacht Le Druide', size: 'medium', importance: 2 },
+    
+    // REQUESTED SPECIFIC KEYWORDS - Medium
+    { word: 'Traversée de Paris à la nage', size: 'medium', importance: 2 },
+    { word: 'Restaurant du Vieux Garçon', size: 'medium', importance: 2 },
+    { word: 'Accident pont archevêché', size: 'medium', importance: 2 },
+    { word: 'Championnat monde natation', size: 'medium', importance: 2 },
+    { word: 'Casino Tanton', size: 'medium', importance: 2 },
+    { word: 'Spa français', size: 'medium', importance: 2 },
+    { word: 'Cafuts', size: 'medium', importance: 2 },
     
     // Secondary terms
     { word: 'Péniche', size: 'medium', importance: 2 },
@@ -410,48 +452,26 @@ const riverKeywords = [
     { word: 'Fleuve', size: 'medium', importance: 2 },
     { word: 'Vapeur', size: 'medium', importance: 2 },
     { word: 'Quai', size: 'medium', importance: 2 },
-    { word: 'Rivière', size: 'medium', importance: 2 },
-    { word: 'Canal', size: 'medium', importance: 2 },
+    { word: 'Navigation', size: 'medium', importance: 2 },
     
-    // Tertiary terms - more variety
+    // Tertiary terms
     { word: 'Berge', size: 'small', importance: 3 },
     { word: 'Croisière', size: 'small', importance: 3 },
     { word: 'Marinier', size: 'small', importance: 3 },
     { word: 'Barque', size: 'small', importance: 3 },
     { word: 'Remorqueur', size: 'small', importance: 3 },
-    { word: 'Passeur', size: 'small', importance: 3 },
     { word: 'Lavoir', size: 'small', importance: 3 },
     { word: 'Pêcheur', size: 'small', importance: 3 },
-    { word: 'Île', size: 'small', importance: 3 },
-    { word: 'Crue', size: 'small', importance: 3 },
     { word: 'Inondation', size: 'small', importance: 3 },
     { word: 'Halage', size: 'small', importance: 3 },
     { word: 'Chaland', size: 'small', importance: 3 },
     { word: 'Bac', size: 'small', importance: 3 },
-    { word: 'Débarcadère', size: 'small', importance: 3 },
-    { word: 'Embarcation', size: 'small', importance: 3 },
-    { word: 'Aviron', size: 'small', importance: 3 },
-    { word: 'Voile', size: 'small', importance: 3 },
-    { word: 'Moulin', size: 'small', importance: 3 },
-    { word: 'Usine', size: 'small', importance: 3 },
     
     // Location terms
     { word: 'Rouen', size: 'medium', importance: 2 },
-    { word: 'Lyon', size: 'medium', importance: 2 },
-    { word: 'Nantes', size: 'medium', importance: 2 },
-    { word: 'Bordeaux', size: 'small', importance: 3 },
     { word: 'Conflans', size: 'small', importance: 3 },
     { word: 'Charenton', size: 'small', importance: 3 },
     { word: 'Argenteuil', size: 'small', importance: 3 },
-    { word: 'Nogent', size: 'small', importance: 3 },
-    { word: 'Joinville', size: 'small', importance: 3 },
-    
-    // Activity terms
-    { word: 'Promenade', size: 'small', importance: 3 },
-    { word: 'Baignade', size: 'small', importance: 3 },
-    { word: 'Canotage', size: 'small', importance: 3 },
-    { word: 'Régates', size: 'small', importance: 3 },
-    { word: 'Fête', size: 'small', importance: 3 },
     
     // Additional themes from database
     {% for theme in themes %}
@@ -1066,6 +1086,188 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('load', () => loadingManager.hide());
     setTimeout(() => loadingManager.hide(), 1000);
 });
+// =============================================
+// ENHANCED ZOOM FUNCTIONALITY
+// =============================================
+let zoomLevel = 1;
+let isDragging = false;
+let startX, startY, scrollLeft, scrollTop;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+const ZOOM_STEP = 0.5;
+
+function showZoom(id) {
+    const postcard = allPostcardsData.find(p => p.id === id);
+    if (!postcard) return;
+    
+    // Reset zoom
+    zoomLevel = 1;
+    
+    const container = document.getElementById('zoom-container');
+    const img = document.getElementById('popup-zoom-image');
+    
+    img.src = postcard.zoom_url || postcard.grande_url;
+    img.style.transform = 'scale(1)';
+    container.classList.remove('zoomed');
+    
+    document.getElementById('popup-overlay').classList.add('active');
+    document.getElementById('popup-zoom').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    updateZoomDisplay();
+    initZoomControls();
+}
+
+function initZoomControls() {
+    const container = document.getElementById('zoom-container');
+    const img = document.getElementById('popup-zoom-image');
+    
+    // Double-click to toggle zoom
+    img.ondblclick = function(e) {
+        e.preventDefault();
+        if (zoomLevel === 1) {
+            zoomIn();
+        } else {
+            resetZoom();
+        }
+    };
+    
+    // Mouse wheel zoom
+    container.onwheel = function(e) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+            zoomIn();
+        } else {
+            zoomOut();
+        }
+    };
+    
+    // Drag to pan when zoomed
+    container.onmousedown = function(e) {
+        if (zoomLevel <= 1) return;
+        isDragging = true;
+        container.classList.add('dragging');
+        startX = e.pageX - container.offsetLeft;
+        startY = e.pageY - container.offsetTop;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+    };
+    
+    container.onmousemove = function(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const y = e.pageY - container.offsetTop;
+        const walkX = (x - startX) * 1.5;
+        const walkY = (y - startY) * 1.5;
+        container.scrollLeft = scrollLeft - walkX;
+        container.scrollTop = scrollTop - walkY;
+    };
+    
+    container.onmouseup = function() {
+        isDragging = false;
+        container.classList.remove('dragging');
+    };
+    
+    container.onmouseleave = function() {
+        isDragging = false;
+        container.classList.remove('dragging');
+    };
+    
+    // Touch support
+    let lastTouchDistance = 0;
+    
+    container.ontouchstart = function(e) {
+        if (e.touches.length === 2) {
+            lastTouchDistance = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+        } else if (e.touches.length === 1 && zoomLevel > 1) {
+            isDragging = true;
+            startX = e.touches[0].pageX - container.offsetLeft;
+            startY = e.touches[0].pageY - container.offsetTop;
+            scrollLeft = container.scrollLeft;
+            scrollTop = container.scrollTop;
+        }
+    };
+    
+    container.ontouchmove = function(e) {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            const distance = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            
+            if (lastTouchDistance > 0) {
+                if (distance > lastTouchDistance + 10) {
+                    zoomIn();
+                    lastTouchDistance = distance;
+                } else if (distance < lastTouchDistance - 10) {
+                    zoomOut();
+                    lastTouchDistance = distance;
+                }
+            }
+        } else if (isDragging && e.touches.length === 1) {
+            e.preventDefault();
+            const x = e.touches[0].pageX - container.offsetLeft;
+            const y = e.touches[0].pageY - container.offsetTop;
+            const walkX = (x - startX) * 1.5;
+            const walkY = (y - startY) * 1.5;
+            container.scrollLeft = scrollLeft - walkX;
+            container.scrollTop = scrollTop - walkY;
+        }
+    };
+    
+    container.ontouchend = function() {
+        isDragging = false;
+        lastTouchDistance = 0;
+    };
+}
+
+function zoomIn() {
+    if (zoomLevel < MAX_ZOOM) {
+        zoomLevel = Math.min(zoomLevel + ZOOM_STEP, MAX_ZOOM);
+        applyZoom();
+    }
+}
+
+function zoomOut() {
+    if (zoomLevel > MIN_ZOOM) {
+        zoomLevel = Math.max(zoomLevel - ZOOM_STEP, MIN_ZOOM);
+        applyZoom();
+    }
+}
+
+function resetZoom() {
+    zoomLevel = 1;
+    applyZoom();
+}
+
+function applyZoom() {
+    const container = document.getElementById('zoom-container');
+    const img = document.getElementById('popup-zoom-image');
+    
+    img.style.transform = `scale(${zoomLevel})`;
+    
+    if (zoomLevel > 1) {
+        container.classList.add('zoomed');
+    } else {
+        container.classList.remove('zoomed');
+        container.scrollLeft = 0;
+        container.scrollTop = 0;
+    }
+    
+    updateZoomDisplay();
+}
+
+function updateZoomDisplay() {
+    const display = document.getElementById('zoom-level-display');
+    if (display) {
+        display.textContent = Math.round(zoomLevel * 100) + '%';
+    }
+}
 </script>
  
 <style>
@@ -1717,6 +1919,84 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 12px;
         height: 12px;
     }
+}
+
+/* Enhanced Zoom Modal */
+.popup-zoom-modal {
+    background: transparent;
+}
+
+.zoom-container {
+    position: relative;
+    max-width: 95vw;
+    max-height: 95vh;
+    overflow: hidden;
+    cursor: zoom-in;
+}
+
+.zoom-container.zoomed {
+    cursor: grab;
+    overflow: auto;
+}
+
+.zoom-container.zoomed.dragging {
+    cursor: grabbing;
+}
+
+#popup-zoom-image {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+    transition: transform 0.3s ease;
+    transform-origin: center center;
+}
+
+.zoom-container.zoomed #popup-zoom-image {
+    max-width: none;
+    max-height: none;
+    cursor: grab;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 20px;
+    border-radius: 30px;
+    z-index: 10;
+}
+
+.zoom-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.zoom-btn:hover {
+    background: #b5600b;
+    border-color: #b5600b;
+}
+
+.zoom-level {
+    color: white;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 0.9rem;
 }
 </style>
 {% endblock %}

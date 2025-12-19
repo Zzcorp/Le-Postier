@@ -101,7 +101,17 @@ def home(request):
 
 
 def browse(request):
-    """Browse page - search and display postcards"""
+    """Browse page - search and display postcards with accent-insensitive search"""
+    import unicodedata
+
+    def remove_accents(text):
+        """Remove accents from text for comparison"""
+        if not text:
+            return text
+        # Normalize to NFD form (decomposed), then filter out combining characters
+        normalized = unicodedata.normalize('NFD', text)
+        return ''.join(char for char in normalized if unicodedata.category(char) != 'Mn')
+
     try:
         query = request.GET.get('keywords_input', '').strip()
 
@@ -109,13 +119,20 @@ def browse(request):
         postcards = Postcard.objects.all()
         themes = Theme.objects.all()
 
-        # Apply search filter - proper database query
+        # Apply search filter - accent and case insensitive
         if query:
-            # Split query into terms for better matching
-            search_terms = query.split()
+            # Normalize the query (remove accents and lowercase)
+            normalized_query = remove_accents(query.lower())
+            search_terms = normalized_query.split()
 
-            # Build Q objects for each term
-            q_objects = Q()
+            # For each postcard, we need to check if it matches
+            # Since we can't do this efficiently in SQL with accent removal,
+            # we'll do a two-phase approach:
+            # 1. First, do a broad icontains search
+            # 2. Then filter results in Python for accent-insensitive matching
+
+            # Broad search first
+            broad_q = Q()
             for term in search_terms:
                 term_q = (
                         Q(title__icontains=term) |
@@ -123,9 +140,38 @@ def browse(request):
                         Q(number__icontains=term) |
                         Q(description__icontains=term)
                 )
-                q_objects &= term_q  # AND the terms together
+                broad_q |= term_q
 
-            postcards = postcards.filter(q_objects).distinct()
+            # Also search for the original query with accents
+            for term in query.split():
+                term_q = (
+                        Q(title__icontains=term) |
+                        Q(keywords__icontains=term) |
+                        Q(number__icontains=term) |
+                        Q(description__icontains=term)
+                )
+                broad_q |= term_q
+
+            postcards_broad = postcards.filter(broad_q).distinct()
+
+            # Now do accent-insensitive filtering in Python
+            matching_ids = []
+            for postcard in postcards_broad:
+                # Normalize postcard fields
+                title_normalized = remove_accents(postcard.title.lower()) if postcard.title else ''
+                keywords_normalized = remove_accents(postcard.keywords.lower()) if postcard.keywords else ''
+                description_normalized = remove_accents(postcard.description.lower()) if postcard.description else ''
+                number_normalized = postcard.number.lower() if postcard.number else ''
+
+                combined_text = f"{title_normalized} {keywords_normalized} {description_normalized} {number_normalized}"
+
+                # Check if all search terms are found
+                all_terms_found = all(term in combined_text for term in search_terms)
+
+                if all_terms_found:
+                    matching_ids.append(postcard.id)
+
+            postcards = Postcard.objects.filter(id__in=matching_ids)
 
             # Log search
             SearchLog.objects.create(
@@ -141,13 +187,13 @@ def browse(request):
         # Get postcards and check for images
         postcards_list = list(postcards[:500])
 
-        # Filter those with images - using method that actually checks file existence
+        # Filter those with images
         postcards_with_images = []
         for p in postcards_list:
             vignette_url = p.get_vignette_url()
             if vignette_url:
                 postcards_with_images.append(p)
-            if len(postcards_with_images) >= 100:  # Limit for performance
+            if len(postcards_with_images) >= 100:
                 break
 
         # Get user's likes
@@ -252,7 +298,7 @@ def get_postcard_detail(request, postcard_id):
                 is_animated_like=False
             ).exists()
 
-        # Check view permissions for rare cards
+        # Check view permissions for VERY RARE cards only
         can_view_full = True
         if postcard.rarity == 'very_rare':
             if not request.user.is_authenticated:
@@ -266,7 +312,7 @@ def get_postcard_detail(request, postcard_id):
                 'id': postcard.id,
                 'number': postcard.number,
                 'title': postcard.title,
-                'description': 'Carte réservée aux membres',
+                'description': 'Cette carte très rare est réservée aux membres privilégiés',
                 'keywords': '',
                 'rarity': postcard.rarity,
                 'vignette_url': member_card_url,
@@ -1375,3 +1421,55 @@ def debug_media(request):
     output.append("=" * 60)
 
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")
+
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+
+def contact(request):
+    """Contact page with email sending"""
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            message = form.save(commit=False)
+            if request.user.is_authenticated:
+                message.user = request.user
+            message.ip_address = get_client_ip(request)
+            message.save()
+
+            # Send email notification
+            try:
+                user_info = ""
+                if request.user.is_authenticated:
+                    user_info = f"\n\nUtilisateur: {request.user.username} ({request.user.email})"
+                else:
+                    user_info = "\n\nUtilisateur: Anonyme"
+
+                email_body = f"""Nouveau message de contact sur Le Postier:
+
+{message.message}
+{user_info}
+IP: {message.ip_address}
+Date: {message.created_at.strftime('%d/%m/%Y %H:%M')}
+
+---
+Ce message a été envoyé depuis le formulaire de contact du site Le Postier.
+"""
+
+                send_mail(
+                    subject='[Le Postier] Nouveau message de contact',
+                    message=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=['sam@samathey.com'],
+                    fail_silently=True,  # Don't raise errors if email fails
+                )
+            except Exception as e:
+                # Log the error but don't stop the process
+                print(f"Email sending failed: {e}")
+
+            return render(request, 'contact.html', {'form': ContactForm(), 'success': True})
+    else:
+        form = ContactForm()
+
+    return render(request, 'contact.html', {'form': form})
