@@ -325,53 +325,86 @@ def profile_view(request):
     """User profile dashboard"""
     user = request.user
 
+    # Get actual counts from database
+    postcards_sent = SentPostcard.objects.filter(sender=user).count()
+    postcards_received = SentPostcard.objects.filter(recipient=user).count()
+    unread_postcards = SentPostcard.objects.filter(recipient=user, is_read=False).count()
+    total_likes = PostcardLike.objects.filter(user=user).count()
+    suggestions_count = AnimationSuggestion.objects.filter(user=user).count()
+
+    # Get connections (users with whom postcards were exchanged)
+    sent_to_ids = SentPostcard.objects.filter(sender=user).exclude(recipient__isnull=True).values_list('recipient_id',
+                                                                                                       flat=True)
+    received_from_ids = SentPostcard.objects.filter(recipient=user).values_list('sender_id', flat=True)
+    connection_ids = set(sent_to_ids) | set(received_from_ids)
+    connections_count = len(connection_ids)
+
+    # Get total views (postcards this user has viewed)
+    total_views = UserActivity.objects.filter(user=user, action='postcard_view').count()
+
     stats = {
-        'postcards_sent': user.get_postcards_sent_count(),
-        'postcards_received': user.get_postcards_received_count(),
-        'unread_postcards': user.get_unread_postcards_count(),
-        'likes_given': user.get_total_likes_given(),
-        'suggestions': user.get_suggestions_count(),
-        'connections_count': user.get_connections().count(),
+        'postcards_sent': postcards_sent,
+        'postcards_received': postcards_received,
+        'unread_postcards': unread_postcards,
+        'likes_given': total_likes,
+        'suggestions': suggestions_count,
+        'connections_count': connections_count,
+        'total_views': total_views,
     }
 
-    favorite_postcards = user.get_favorite_postcards()[:8]
-    favorite_animations = user.get_favorite_animations()[:4]
+    # Get liked postcards with postcard details
+    liked_postcards = PostcardLike.objects.filter(
+        user=user
+    ).select_related('postcard').order_by('-created_at')[:20]
 
-    connections = UserConnection.objects.filter(user=user).select_related('connected_to')[:10]
+    # Get sent postcards
+    sent_postcards = SentPostcard.objects.filter(
+        sender=user
+    ).select_related('recipient', 'postcard').order_by('-created_at')[:10]
 
-    recent_activity = user.get_recent_activity(15)
+    # Get received postcards
+    received_postcards = SentPostcard.objects.filter(
+        recipient=user
+    ).select_related('sender', 'postcard').order_by('-created_at')[:10]
 
-    recent_received = SentPostcard.objects.filter(recipient=user).select_related('sender', 'postcard')[:5]
-    recent_sent = SentPostcard.objects.filter(sender=user).select_related('recipient', 'postcard')[:5]
+    # Get epistolary connections with exchange counts
+    epistolary_connections = []
+    for conn_id in list(connection_ids)[:20]:
+        try:
+            conn_user = CustomUser.objects.get(id=conn_id)
+            sent_count = SentPostcard.objects.filter(sender=user, recipient=conn_user).count()
+            received_count = SentPostcard.objects.filter(sender=conn_user, recipient=user).count()
+            last_exchange = SentPostcard.objects.filter(
+                Q(sender=user, recipient=conn_user) | Q(sender=conn_user, recipient=user)
+            ).order_by('-created_at').first()
 
-    six_months_ago = timezone.now() - timedelta(days=180)
-    monthly_likes = (
-        PostcardLike.objects.filter(user=user, created_at__gte=six_months_ago)
-        .annotate(month=TruncMonth('created_at'))
-        .values('month')
-        .annotate(count=Count('id'))
-        .order_by('month')
-    )
+            epistolary_connections.append({
+                'user': conn_user,
+                'sent_count': sent_count,
+                'received_count': received_count,
+                'last_exchange': last_exchange.created_at if last_exchange else None,
+            })
+        except CustomUser.DoesNotExist:
+            continue
 
-    monthly_sent = (
-        SentPostcard.objects.filter(sender=user, created_at__gte=six_months_ago)
-        .annotate(month=TruncMonth('created_at'))
-        .values('month')
-        .annotate(count=Count('id'))
-        .order_by('month')
-    )
+    # Get recent activity
+    recent_activities = UserActivity.objects.filter(user=user).order_by('-timestamp')[:15]
 
     context = {
         'user': user,
         'stats': stats,
-        'favorite_postcards': favorite_postcards,
-        'favorite_animations': favorite_animations,
-        'connections': connections,
-        'recent_activity': recent_activity,
-        'recent_received': recent_received,
-        'recent_sent': recent_sent,
-        'monthly_likes': json.dumps(list(monthly_likes), default=str),
-        'monthly_sent': json.dumps(list(monthly_sent), default=str),
+        'total_likes': total_likes,
+        'sent_postcards_count': postcards_sent,
+        'received_postcards_count': postcards_received,
+        'connections_count': connections_count,
+        'total_views': total_views,
+        'suggestions_count': suggestions_count,
+        'unread_count': unread_postcards,
+        'liked_postcards': liked_postcards,
+        'sent_postcards': sent_postcards,
+        'received_postcards': received_postcards,
+        'epistolary_connections': epistolary_connections,
+        'recent_activities': recent_activities,
     }
 
     return render(request, 'profile.html', context)

@@ -15,13 +15,22 @@
         <!-- Profile Header with Cover Image -->
         <div class="profile-header-card animate-fade-in-down">
             <div class="cover-image-section" id="coverImageSection">
-                {% if user.cover_image %}
-                <img src="{{ user.cover_image.url }}" alt="Cover" class="cover-image">
+                {% if user.profile_cover %}
+                <img src="{{ user.profile_cover.url }}" alt="Cover" class="cover-image" id="coverImage">
+                {% elif user.cover_image %}
+                <img src="{{ user.cover_image.url }}" alt="Cover" class="cover-image" id="coverImage">
                 {% else %}
                 <div class="cover-placeholder">
                     <div class="cover-gradient"></div>
                 </div>
                 {% endif %}
+                
+                <!-- Username overlay on cover -->
+                <div class="cover-username-overlay">
+                    <h1 class="cover-username">{{ user.username }}</h1>
+                    <span class="cover-category">{{ user.get_category_display }}</span>
+                </div>
+                
                 <button class="edit-cover-btn" onclick="openCoverModal()" title="Modifier la couverture">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -49,15 +58,25 @@
                 </div>
                 
                 <div class="profile-identity">
-                    <h1 class="profile-username">{{ user.username }}</h1>
-                    <span class="profile-category-badge">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                            <circle cx="8.5" cy="7" r="4"/>
-                            <polyline points="17 11 19 13 23 9"/>
-                        </svg>
-                        {{ user.get_category_display }}
-                    </span>
+                    <div class="profile-meta-row">
+                        <span class="profile-category-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="8.5" cy="7" r="4"/>
+                                <polyline points="17 11 19 13 23 9"/>
+                            </svg>
+                            {{ user.get_category_display }}
+                        </span>
+                        {% if user.email_verified %}
+                        <span class="verified-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            Vérifié
+                        </span>
+                        {% endif %}
+                    </div>
                     <p class="member-since">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -67,25 +86,28 @@
                         </svg>
                         Membre depuis {{ user.date_joined|date:"F Y" }}
                     </p>
+                    {% if user.bio %}
+                    <p class="profile-bio-preview">{{ user.bio|truncatechars:100 }}</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
         <!-- Quick Stats Dashboard -->
         <div class="stats-dashboard animate-fade-in-up delay-1">
-            <div class="stat-card">
+            <div class="stat-card" data-stat="likes">
                 <div class="stat-icon likes-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="totalLikes">{{ total_likes|default:0 }}</span>
+                    <span class="stat-value" id="totalLikes">{{ total_likes }}</span>
                     <span class="stat-label">Likes donnés</span>
                 </div>
             </div>
             
-            <div class="stat-card">
+            <div class="stat-card" data-stat="sent">
                 <div class="stat-icon sent-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="22" y1="2" x2="11" y2="13"/>
@@ -93,12 +115,12 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="sentCount">{{ sent_postcards_count|default:0 }}</span>
+                    <span class="stat-value" id="sentCount">{{ sent_postcards_count }}</span>
                     <span class="stat-label">Cartes envoyées</span>
                 </div>
             </div>
             
-            <div class="stat-card">
+            <div class="stat-card" data-stat="received">
                 <div class="stat-icon received-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
@@ -106,12 +128,15 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="receivedCount">{{ received_postcards_count|default:0 }}</span>
+                    <span class="stat-value" id="receivedCount">{{ received_postcards_count }}</span>
                     <span class="stat-label">Cartes reçues</span>
+                    {% if unread_count > 0 %}
+                    <span class="stat-badge">{{ unread_count }} non lue{{ unread_count|pluralize }}</span>
+                    {% endif %}
                 </div>
             </div>
             
-            <div class="stat-card">
+            <div class="stat-card" data-stat="connections">
                 <div class="stat-icon connections-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -121,12 +146,12 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="connectionsCount">{{ connections_count|default:0 }}</span>
+                    <span class="stat-value" id="connectionsCount">{{ connections_count }}</span>
                     <span class="stat-label">Relations épistolaires</span>
                 </div>
             </div>
             
-            <div class="stat-card">
+            <div class="stat-card" data-stat="views">
                 <div class="stat-icon views-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -134,12 +159,12 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="viewsCount">{{ total_views|default:0 }}</span>
+                    <span class="stat-value" id="viewsCount">{{ total_views }}</span>
                     <span class="stat-label">Cartes consultées</span>
                 </div>
             </div>
             
-            <div class="stat-card">
+            <div class="stat-card" data-stat="suggestions">
                 <div class="stat-icon suggestions-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 18h6"/>
@@ -148,7 +173,7 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="suggestionsCount">{{ suggestions_count|default:0 }}</span>
+                    <span class="stat-value" id="suggestionsCount">{{ suggestions_count }}</span>
                     <span class="stat-label">Suggestions</span>
                 </div>
             </div>
@@ -161,13 +186,16 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                     </svg>
-                    Activité
+                    <span>Activité</span>
                 </button>
                 <button class="tab-btn" data-tab="likes" onclick="switchProfileTab('likes')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
-                    Mes Likes
+                    <span>Mes Likes</span>
+                    {% if total_likes > 0 %}
+                    <span class="tab-count">{{ total_likes }}</span>
+                    {% endif %}
                 </button>
                 <button class="tab-btn" data-tab="postcards" onclick="switchProfileTab('postcards')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -175,7 +203,7 @@
                         <circle cx="8.5" cy="8.5" r="1.5"/>
                         <polyline points="21 15 16 10 5 21"/>
                     </svg>
-                    Mes Cartes
+                    <span>Mes Cartes</span>
                 </button>
                 <button class="tab-btn" data-tab="connections" onclick="switchProfileTab('connections')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -184,14 +212,17 @@
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                     </svg>
-                    Relations
+                    <span>Relations</span>
+                    {% if connections_count > 0 %}
+                    <span class="tab-count">{{ connections_count }}</span>
+                    {% endif %}
                 </button>
                 <button class="tab-btn" data-tab="settings" onclick="switchProfileTab('settings')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
-                    Paramètres
+                    <span>Paramètres</span>
                 </button>
             </div>
 
@@ -223,6 +254,16 @@
                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                     <circle cx="12" cy="12" r="3"/>
                                 </svg>
+                                {% elif activity.action == 'postcard_sent' %}
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"/>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                </svg>
+                                {% elif activity.action == 'postcard_received' %}
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+                                    <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                                </svg>
                                 {% else %}
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"/>
@@ -231,12 +272,16 @@
                             </div>
                             <div class="activity-content">
                                 <p class="activity-text">{{ activity.details|default:activity.get_action_display }}</p>
-                                <span class="activity-time">{{ activity.timestamp|timesince }} ago</span>
+                                <span class="activity-time">{{ activity.timestamp|timesince }}</span>
                             </div>
                         </div>
                         {% empty %}
                         <div class="empty-state-mini">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
                             <p>Aucune activité récente</p>
+                            <span>Explorez la collection pour commencer!</span>
                         </div>
                         {% endfor %}
                     </div>
@@ -249,13 +294,26 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
-                    Cartes que j'aime
+                    Cartes que j'aime ({{ total_likes }})
                 </h3>
                 <div class="liked-postcards-grid" id="likedPostcardsGrid">
                     {% for like in liked_postcards %}
+                    {% if like.postcard %}
                     <div class="liked-postcard-card" onclick="viewPostcard({{ like.postcard.id }})">
                         <div class="postcard-thumb">
-                            <img src="{{ like.postcard.get_vignette_url }}" alt="{{ like.postcard.title }}" loading="lazy">
+                            {% with vignette_url=like.postcard.get_vignette_url %}
+                            {% if vignette_url %}
+                            <img src="{{ vignette_url }}" alt="{{ like.postcard.title }}" loading="lazy">
+                            {% else %}
+                            <div class="no-image-thumb">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
                             {% if like.is_animated_like %}
                             <span class="animated-badge">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -270,6 +328,7 @@
                             <span class="liked-date">{{ like.created_at|date:"d/m/Y" }}</span>
                         </div>
                     </div>
+                    {% endif %}
                     {% empty %}
                     <div class="empty-state">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
@@ -277,7 +336,7 @@
                         </svg>
                         <h4>Aucun like pour le moment</h4>
                         <p>Explorez la collection et likez vos cartes préférées!</p>
-                        <a href="{% url 'browse' %}" class="btn-explore">Parcourir</a>
+                        <a href="{% url 'browse' %}" class="btn-explore">Parcourir la collection</a>
                     </div>
                     {% endfor %}
                 </div>
@@ -293,14 +352,15 @@
                                 <line x1="22" y1="2" x2="11" y2="13"/>
                                 <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                             </svg>
-                            Cartes envoyées
+                            Cartes envoyées ({{ sent_postcards_count }})
                         </h3>
                         <div class="sent-postcards-list">
                             {% for postcard in sent_postcards %}
                             <div class="sent-postcard-item">
                                 <div class="postcard-preview">
-                                    {% if postcard.get_image_url %}
-                                    <img src="{{ postcard.get_image_url }}" alt="Carte">
+                                    {% with image_url=postcard.get_vignette_url %}
+                                    {% if image_url %}
+                                    <img src="{{ image_url }}" alt="Carte">
                                     {% else %}
                                     <div class="no-image-placeholder">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -310,6 +370,7 @@
                                         </svg>
                                     </div>
                                     {% endif %}
+                                    {% endwith %}
                                 </div>
                                 <div class="postcard-details">
                                     <div class="recipient-info">
@@ -352,17 +413,18 @@
                                 <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
                                 <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
                             </svg>
-                            Cartes reçues
+                            Cartes reçues ({{ received_postcards_count }})
                             {% if unread_count > 0 %}
-                            <span class="unread-badge">{{ unread_count }}</span>
+                            <span class="unread-badge">{{ unread_count }} nouvelle{{ unread_count|pluralize }}</span>
                             {% endif %}
                         </h3>
                         <div class="received-postcards-list">
                             {% for postcard in received_postcards %}
                             <div class="received-postcard-item {% if not postcard.is_read %}unread{% endif %}" onclick="viewReceivedPostcard({{ postcard.id }})">
                                 <div class="postcard-preview">
-                                    {% if postcard.get_image_url %}
-                                    <img src="{{ postcard.get_image_url }}" alt="Carte">
+                                    {% with image_url=postcard.get_vignette_url %}
+                                    {% if image_url %}
+                                    <img src="{{ image_url }}" alt="Carte">
                                     {% else %}
                                     <div class="no-image-placeholder">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -370,6 +432,7 @@
                                         </svg>
                                     </div>
                                     {% endif %}
+                                    {% endwith %}
                                     {% if not postcard.is_read %}
                                     <span class="new-indicator">Nouveau</span>
                                     {% endif %}
@@ -408,7 +471,7 @@
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                     </svg>
-                    Relations épistolaires
+                    Relations épistolaires ({{ connections_count }})
                 </h3>
                 <p class="section-description">Personnes avec qui vous avez échangé des cartes postales</p>
                 
@@ -431,17 +494,19 @@
                                         <line x1="22" y1="2" x2="11" y2="13"/>
                                         <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                                     </svg>
-                                    {{ connection.sent_count }} envoyées
+                                    {{ connection.sent_count }} envoyée{{ connection.sent_count|pluralize }}
                                 </span>
                                 <span class="stat">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
                                         <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
                                     </svg>
-                                    {{ connection.received_count }} reçues
+                                    {{ connection.received_count }} reçue{{ connection.received_count|pluralize }}
                                 </span>
                             </div>
+                            {% if connection.last_exchange %}
                             <span class="last-exchange">Dernier échange: {{ connection.last_exchange|date:"d/m/Y" }}</span>
+                            {% endif %}
                         </div>
                         <div class="connection-actions">
                             <button class="btn-send-card" onclick="sendCardTo('{{ connection.user.username }}')">
@@ -463,7 +528,7 @@
                         </svg>
                         <h4>Aucune relation épistolaire</h4>
                         <p>Envoyez des cartes postales pour créer des liens!</p>
-                        <a href="{% url 'la_poste' %}" class="btn-explore">La Poste</a>
+                        <a href="{% url 'la_poste' %}" class="btn-explore">Aller à La Poste</a>
                     </div>
                     {% endfor %}
                 </div>
@@ -484,7 +549,7 @@
                             Biographie
                         </h3>
                         <div class="bio-edit-section">
-                            <p class="bio-display" id="bioDisplay">{{ user.bio|default:"Aucune biographie renseignée. Cliquez pour en ajouter une." }}</p>
+                            <p class="bio-display" id="bioDisplay" onclick="startBioEdit()">{{ user.bio|default:"Aucune biographie renseignée. Cliquez pour en ajouter une." }}</p>
                             <div class="bio-edit-form" id="bioEditForm" style="display: none;">
                                 <textarea id="bioTextarea" maxlength="500" placeholder="Parlez-nous de vous...">{{ user.bio }}</textarea>
                                 <div class="bio-form-footer">
@@ -620,6 +685,42 @@
                         </form>
                     </div>
 
+                    <!-- Signature Section -->
+                    <div class="settings-section">
+                        <h3 class="section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                                <path d="M2 2l7.586 7.586"/>
+                                <circle cx="11" cy="11" r="2"/>
+                            </svg>
+                            Ma Signature
+                        </h3>
+                        <div class="signature-section">
+                            <div class="signature-preview">
+                                {% if user.signature_image %}
+                                <img src="{{ user.signature_image.url }}" alt="Votre signature" class="current-signature" id="currentSignature">
+                                {% else %}
+                                <div class="no-signature" id="noSignatureMsg">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                        <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                                    </svg>
+                                    <p>Aucune signature</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <button class="btn-edit-signature" onclick="openSignatureModal()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                                {% if user.signature_image %}Modifier{% else %}Ajouter{% endif %} ma signature
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Permissions Section -->
                     <div class="settings-section">
                         <h3 class="section-title">
@@ -675,42 +776,6 @@
                                 <span>Accès administrateur</span>
                             </div>
                             {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Signature Section -->
-                    <div class="settings-section">
-                        <h3 class="section-title">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 19l7-7 3 3-7 7-3-3z"/>
-                                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
-                                <path d="M2 2l7.586 7.586"/>
-                                <circle cx="11" cy="11" r="2"/>
-                            </svg>
-                            Ma Signature
-                        </h3>
-                        <div class="signature-section">
-                            <div class="signature-preview">
-                                {% if user.signature_image %}
-                                <img src="{{ user.signature_image.url }}" alt="Votre signature" class="current-signature">
-                                {% else %}
-                                <div class="no-signature">
-                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                        <path d="M12 19l7-7 3 3-7 7-3-3z"/>
-                                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
-                                    </svg>
-                                    <p>Aucune signature</p>
-                                </div>
-                                {% endif %}
-                            </div>
-                            <button class="btn-edit-signature" onclick="openSignatureModal()">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/>
-                                    <line x1="12" y1="3" x2="12" y2="15"/>
-                                </svg>
-                                {% if user.signature_image %}Modifier{% else %}Ajouter{% endif %} ma signature
-                            </button>
                         </div>
                     </div>
 
@@ -807,7 +872,6 @@
                 <input type="text" id="coverPostcardSearch" placeholder="Rechercher une carte..." oninput="filterCoverPostcards(this.value)">
             </div>
             <div class="postcard-grid-cover" id="coverPostcardGrid">
-                <!-- Postcards will be loaded here -->
                 <p class="loading-text">Chargement des cartes...</p>
             </div>
         </div>
@@ -925,48 +989,48 @@
     </div>
 </div>
 
-<!-- View Received Postcard Modal -->
-<div class="view-postcard-modal" id="viewPostcardModal">
-    <div class="modal-backdrop" onclick="closeViewPostcardModal()"></div>
-    <div class="modal-content view-content">
-        <button class="modal-close" onclick="closeViewPostcardModal()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
-        
-        <div class="postcard-view">
-            <div class="postcard-image-view">
-                <img id="viewPostcardImage" src="" alt="Carte postale">
-            </div>
-            <div class="postcard-message-view">
-                <div class="message-header-view">
-                    <div class="sender-view">
-                        <span class="from-label">De</span>
-                        <div class="sender-info-view">
-                            <div class="sender-avatar-view" id="viewSenderAvatar"></div>
-                            <span class="sender-name-view" id="viewSenderName"></span>
-                        </div>
-                    </div>
-                    <span class="date-view" id="viewPostcardDate"></span>
-                </div>
-                <div class="message-content-view">
-                    <p id="viewPostcardMessage"></p>
-                </div>
-                <div class="signature-view" id="viewSenderSignature"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
 const csrfToken = '{{ csrf_token }}';
 let coverSource = 'upload';
+let selectedCoverFile = null;
 let selectedCoverPostcardUrl = null;
 let drawnSignatureData = null;
 
-// Tab switching
+// ============================================
+// STATS REFRESH
+// ============================================
+async function refreshStats() {
+    try {
+        const response = await fetch('/api/profile/stats/');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.total_likes !== undefined) {
+                document.getElementById('totalLikes').textContent = data.total_likes;
+            }
+            if (data.sent_count !== undefined) {
+                document.getElementById('sentCount').textContent = data.sent_count;
+            }
+            if (data.received_count !== undefined) {
+                document.getElementById('receivedCount').textContent = data.received_count;
+            }
+            if (data.connections_count !== undefined) {
+                document.getElementById('connectionsCount').textContent = data.connections_count;
+            }
+            if (data.views_count !== undefined) {
+                document.getElementById('viewsCount').textContent = data.views_count;
+            }
+            if (data.suggestions_count !== undefined) {
+                document.getElementById('suggestionsCount').textContent = data.suggestions_count;
+            }
+        }
+    } catch (error) {
+        console.log('Could not refresh stats:', error);
+    }
+}
+
+// ============================================
+// TAB SWITCHING
+// ============================================
 function switchProfileTab(tabName) {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabName);
@@ -976,9 +1040,16 @@ function switchProfileTab(tabName) {
         content.classList.remove('active');
     });
     document.getElementById(tabName + '-tab').classList.add('active');
+    
+    // Refresh stats when switching to activity tab
+    if (tabName === 'activity') {
+        refreshStats();
+    }
 }
 
-// Bio editing
+// ============================================
+// BIO EDITING
+// ============================================
 function startBioEdit() {
     document.getElementById('bioDisplay').style.display = 'none';
     document.getElementById('bioEditForm').style.display = 'block';
@@ -1015,14 +1086,17 @@ async function saveBio() {
             cancelBioEdit();
             showNotification('Biographie mise à jour!', 'success');
         } else {
-            showNotification('Erreur lors de la sauvegarde', 'error');
+            const data = await response.json();
+            showNotification(data.error || 'Erreur lors de la sauvegarde', 'error');
         }
     } catch (error) {
         showNotification('Erreur lors de la sauvegarde', 'error');
     }
 }
 
-// Password change
+// ============================================
+// PASSWORD CHANGE
+// ============================================
 function togglePasswordVisibility(inputId) {
     const input = document.getElementById(inputId);
     input.type = input.type === 'password' ? 'text' : 'password';
@@ -1033,8 +1107,6 @@ document.getElementById('newPassword').addEventListener('input', function() {
     const strengthEl = document.getElementById('passwordStrength');
     
     let strength = 0;
-    let feedback = '';
-    
     if (password.length >= 8) strength++;
     if (password.match(/[a-z]/)) strength++;
     if (password.match(/[A-Z]/)) strength++;
@@ -1115,7 +1187,9 @@ async function changePassword(event) {
     }
 }
 
-// Cover image modal
+// ============================================
+// COVER IMAGE MODAL
+// ============================================
 function openCoverModal() {
     document.getElementById('coverModal').classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -1133,6 +1207,7 @@ function resetCoverModal() {
     document.getElementById('coverUploadPreview').style.display = 'none';
     document.getElementById('coverFileInput').value = '';
     document.getElementById('saveCoverBtn').disabled = true;
+    selectedCoverFile = null;
     selectedCoverPostcardUrl = null;
     switchCoverSource('upload');
 }
@@ -1146,10 +1221,18 @@ function switchCoverSource(source) {
     
     document.getElementById('uploadCoverContent').style.display = source === 'upload' ? 'block' : 'none';
     document.getElementById('postcardCoverContent').style.display = source === 'postcard' ? 'block' : 'none';
+    
+    // Reset save button state based on current selection
+    if (source === 'upload') {
+        document.getElementById('saveCoverBtn').disabled = !selectedCoverFile;
+    } else {
+        document.getElementById('saveCoverBtn').disabled = !selectedCoverPostcardUrl;
+    }
 }
 
 async function loadPostcardsForCover() {
     const grid = document.getElementById('coverPostcardGrid');
+    grid.innerHTML = '<p class="loading-text">Chargement des cartes...</p>';
     
     try {
         const response = await fetch('/api/postcards/for-cover/');
@@ -1229,6 +1312,8 @@ function handleCoverFile(file) {
         return;
     }
     
+    selectedCoverFile = file;
+    
     const reader = new FileReader();
     reader.onload = (e) => {
         coverPreview.src = e.target.result;
@@ -1243,8 +1328,8 @@ function handleCoverFile(file) {
 async function saveCover() {
     const formData = new FormData();
     
-    if (coverSource === 'upload' && coverFileInput.files[0]) {
-        formData.append('cover_image', coverFileInput.files[0]);
+    if (coverSource === 'upload' && selectedCoverFile) {
+        formData.append('cover', selectedCoverFile);
     } else if (coverSource === 'postcard' && selectedCoverPostcardUrl) {
         formData.append('cover_url', selectedCoverPostcardUrl);
     } else {
@@ -1259,19 +1344,39 @@ async function saveCover() {
             body: formData
         });
         
-        if (response.ok) {
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
             closeCoverModal();
             showNotification('Image de couverture mise à jour!', 'success');
-            setTimeout(() => location.reload(), 1000);
+            
+            // Update cover image on page without reload
+            const coverSection = document.getElementById('coverImageSection');
+            const existingCover = coverSection.querySelector('.cover-image');
+            const existingPlaceholder = coverSection.querySelector('.cover-placeholder');
+            
+            if (existingCover) {
+                existingCover.src = data.url + '?' + new Date().getTime();
+            } else if (existingPlaceholder) {
+                const newImg = document.createElement('img');
+                newImg.src = data.url;
+                newImg.alt = 'Cover';
+                newImg.className = 'cover-image';
+                newImg.id = 'coverImage';
+                existingPlaceholder.replaceWith(newImg);
+            }
         } else {
-            showNotification('Erreur lors de la sauvegarde', 'error');
+            showNotification(data.error || 'Erreur lors de la sauvegarde', 'error');
         }
     } catch (error) {
+        console.error('Cover save error:', error);
         showNotification('Erreur lors de la sauvegarde', 'error');
     }
 }
 
-// Signature modal functions
+// ============================================
+// SIGNATURE MODAL
+// ============================================
 function openSignatureModal() {
     document.getElementById('signatureModal').classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -1361,19 +1466,52 @@ async function saveSignature() {
             body: formData
         });
         
-        if (response.ok) {
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
             closeSignatureModal();
             showNotification('Signature mise à jour!', 'success');
-            setTimeout(() => location.reload(), 1000);
+            
+            // Update signature on page without reload
+            const avatar = document.getElementById('profileAvatar');
+            const existingImg = avatar.querySelector('.avatar-signature');
+            const existingInitial = avatar.querySelector('.avatar-initial');
+            
+            if (existingImg) {
+                existingImg.src = data.url + '?' + new Date().getTime();
+            } else if (existingInitial) {
+                const newImg = document.createElement('img');
+                newImg.src = data.url;
+                newImg.alt = 'Signature';
+                newImg.className = 'avatar-signature';
+                existingInitial.replaceWith(newImg);
+            }
+            
+            // Update settings section
+            const settingsSignature = document.querySelector('.signature-preview .current-signature');
+            const noSignatureMsg = document.getElementById('noSignatureMsg');
+            if (settingsSignature) {
+                settingsSignature.src = data.url + '?' + new Date().getTime();
+            } else if (noSignatureMsg) {
+                const newImg = document.createElement('img');
+                newImg.src = data.url;
+                newImg.alt = 'Votre signature';
+                newImg.className = 'current-signature';
+                newImg.id = 'currentSignature';
+                noSignatureMsg.replaceWith(newImg);
+            }
         } else {
-            showNotification('Erreur lors de la sauvegarde', 'error');
+            showNotification(data.error || 'Erreur lors de la sauvegarde', 'error');
         }
     } catch (error) {
+        console.error('Signature save error:', error);
         showNotification('Erreur lors de la sauvegarde', 'error');
     }
 }
 
-// Draw signature
+// ============================================
+// DRAW SIGNATURE
+// ============================================
 let canvas, ctx;
 let isDrawing = false;
 let currentColor = '#2d1f0d';
@@ -1381,7 +1519,7 @@ let currentColor = '#2d1f0d';
 function openDrawSignature() {
     closeSignatureModal();
     document.getElementById('drawModal').classList.add('active');
-    initCanvas();
+    setTimeout(initCanvas, 100);
 }
 
 function closeDrawModal() {
@@ -1404,13 +1542,11 @@ function initCanvas() {
     
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
         const touch = e.touches[0];
         startDrawing({ clientX: touch.clientX, clientY: touch.clientY });
     });
     canvas.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
         const touch = e.touches[0];
         draw({ clientX: touch.clientX, clientY: touch.clientY });
     });
@@ -1462,34 +1598,24 @@ function useDrawnSignature() {
     document.getElementById('saveSignatureBtn').disabled = false;
 }
 
-// View postcard functions
+// ============================================
+// NAVIGATION FUNCTIONS
+// ============================================
 function viewPostcard(postcardId) {
     window.location.href = `/parcourir/?highlight=${postcardId}`;
 }
 
-async function viewReceivedPostcard(postcardId) {
-    // Mark as read
-    try {
-        await fetch(`/api/la-poste/${postcardId}/read/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken }
-        });
-    } catch (e) {}
-    
-    // For now, redirect to La Poste
+function viewReceivedPostcard(postcardId) {
     window.location.href = `/la-poste/`;
-}
-
-function closeViewPostcardModal() {
-    document.getElementById('viewPostcardModal').classList.remove('active');
-    document.body.style.overflow = '';
 }
 
 function sendCardTo(username) {
     window.location.href = `/la-poste/?to=${encodeURIComponent(username)}`;
 }
 
-// Notifications
+// ============================================
+// NOTIFICATIONS
+// ============================================
 function showNotification(message, type) {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
@@ -1503,19 +1629,30 @@ function showNotification(message, type) {
     setTimeout(() => notification.remove(), 3000);
 }
 
-// Close modals on escape
+// ============================================
+// KEYBOARD SHORTCUTS
+// ============================================
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeCoverModal();
         closeSignatureModal();
         closeDrawModal();
-        closeViewPostcardModal();
     }
+});
+
+// ============================================
+// INITIALIZE
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Refresh stats on page load
+    refreshStats();
 });
 </script>
 
 <style>
-/* Profile Page Styles */
+/* ========================================
+   PROFILE PAGE STYLES - UPGRADED
+   ======================================== */
 .profile-page {
     min-height: 100vh;
     position: relative;
@@ -1545,7 +1682,9 @@ document.addEventListener('keydown', (e) => {
     padding: 80px 20px 40px;
 }
 
-/* Profile Header Card with Cover */
+/* ========================================
+   PROFILE HEADER WITH COVER - UPGRADED
+   ======================================== */
 .profile-header-card {
     background: linear-gradient(165deg, rgba(40, 30, 20, 0.95), rgba(30, 20, 15, 0.98));
     border-radius: 24px;
@@ -1557,7 +1696,7 @@ document.addEventListener('keydown', (e) => {
 
 .cover-image-section {
     position: relative;
-    height: 180px;
+    height: 220px;
     overflow: hidden;
 }
 
@@ -1579,12 +1718,43 @@ document.addEventListener('keydown', (e) => {
     background: linear-gradient(135deg, rgba(181, 96, 11, 0.3) 0%, rgba(45, 31, 13, 0.8) 100%);
 }
 
+/* Username overlay on cover - PROMINENT */
+.cover-username-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 40px 30px 20px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.5) 60%, transparent 100%);
+    z-index: 5;
+}
+
+.cover-username {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 8px;
+    text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+    letter-spacing: 1px;
+}
+
+.cover-category {
+    display: inline-block;
+    padding: 6px 16px;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.8), rgba(209, 135, 44, 0.8));
+    border-radius: 20px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+}
+
 .edit-cover-btn {
     position: absolute;
     top: 15px;
     right: 15px;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1596,6 +1766,7 @@ document.addEventListener('keydown', (e) => {
     justify-content: center;
     transition: all 0.3s;
     opacity: 0;
+    z-index: 10;
 }
 
 .cover-image-section:hover .edit-cover-btn {
@@ -1605,14 +1776,17 @@ document.addEventListener('keydown', (e) => {
 .edit-cover-btn:hover {
     background: #b5600b;
     border-color: #b5600b;
+    transform: scale(1.1);
 }
 
 .profile-main-info {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 25px;
-    padding: 25px 30px;
+    padding: 20px 30px 25px;
     margin-top: -50px;
+    position: relative;
+    z-index: 6;
 }
 
 .profile-avatar-wrapper {
@@ -1650,8 +1824,8 @@ document.addEventListener('keydown', (e) => {
     position: absolute;
     bottom: 0;
     right: 0;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     background: rgba(0, 0, 0, 0.8);
     border: 2px solid #b5600b;
     border-radius: 50%;
@@ -1670,12 +1844,13 @@ document.addEventListener('keydown', (e) => {
 
 .avatar-edit-btn:hover {
     background: #b5600b;
+    transform: scale(1.1);
 }
 
 .online-status {
     position: absolute;
-    bottom: 5px;
-    right: 5px;
+    bottom: 8px;
+    right: 8px;
     width: 16px;
     height: 16px;
     background: linear-gradient(135deg, #4ade80, #22c55e);
@@ -1686,13 +1861,15 @@ document.addEventListener('keydown', (e) => {
 
 .profile-identity {
     flex: 1;
+    padding-top: 10px;
 }
 
-.profile-username {
-    color: white;
-    font-size: 1.8rem;
-    margin: 0 0 8px;
-    z-index: 0;
+.profile-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
 }
 
 .profile-category-badge {
@@ -1705,7 +1882,18 @@ document.addEventListener('keydown', (e) => {
     border-radius: 20px;
     color: #ffc168;
     font-size: 0.85rem;
-    margin-bottom: 8px;
+}
+
+.verified-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: rgba(74, 222, 128, 0.15);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 15px;
+    color: #4ade80;
+    font-size: 0.8rem;
 }
 
 .member-since {
@@ -1714,16 +1902,27 @@ document.addEventListener('keydown', (e) => {
     gap: 6px;
     color: rgba(255, 255, 255, 0.5);
     font-size: 0.85rem;
+    margin-bottom: 10px;
 }
 
 .member-since svg {
     stroke: rgba(255, 255, 255, 0.4);
 }
 
-/* Stats Dashboard */
+.profile-bio-preview {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0;
+    font-style: italic;
+}
+
+/* ========================================
+   STATS DASHBOARD - UPGRADED
+   ======================================== */
 .stats-dashboard {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 15px;
     margin-bottom: 25px;
 }
@@ -1737,6 +1936,7 @@ document.addEventListener('keydown', (e) => {
     gap: 15px;
     border: 1px solid rgba(255, 255, 255, 0.05);
     transition: all 0.3s;
+    cursor: default;
 }
 
 .stat-card:hover {
@@ -1773,7 +1973,7 @@ document.addEventListener('keydown', (e) => {
 
 .stat-value {
     color: white;
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
     line-height: 1;
 }
@@ -1784,7 +1984,20 @@ document.addEventListener('keydown', (e) => {
     margin-top: 4px;
 }
 
-/* Tabs Section */
+.stat-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: #1a1208;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+/* ========================================
+   TABS SECTION - UPGRADED
+   ======================================== */
 .profile-tabs-section {
     background: linear-gradient(165deg, rgba(40, 30, 20, 0.95), rgba(30, 20, 15, 0.98));
     border-radius: 20px;
@@ -1822,6 +2035,10 @@ document.addEventListener('keydown', (e) => {
     stroke: rgba(255, 255, 255, 0.5);
 }
 
+.tab-btn span {
+    display: inline;
+}
+
 .tab-btn:hover {
     background: rgba(181, 96, 11, 0.15);
     color: white;
@@ -1837,6 +2054,18 @@ document.addEventListener('keydown', (e) => {
     stroke: white;
 }
 
+.tab-count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tab-btn.active .tab-count {
+    background: rgba(255, 255, 255, 0.3);
+}
+
 .tab-content {
     display: none;
     padding: 25px;
@@ -1844,6 +2073,12 @@ document.addEventListener('keydown', (e) => {
 
 .tab-content.active {
     display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .section-title {
@@ -1865,11 +2100,15 @@ document.addEventListener('keydown', (e) => {
     margin-bottom: 25px;
 }
 
-/* Activity Feed */
+/* ========================================
+   ACTIVITY FEED
+   ======================================== */
 .activity-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    max-height: 500px;
+    overflow-y: auto;
 }
 
 .activity-item {
@@ -1897,12 +2136,17 @@ document.addEventListener('keydown', (e) => {
     background: rgba(181, 96, 11, 0.2);
 }
 
+.activity-icon svg {
+    stroke: #ffc168;
+}
+
 .activity-icon.postcard_like {
     background: rgba(239, 68, 68, 0.2);
 }
 
 .activity-icon.postcard_like svg {
     fill: #ef4444;
+    stroke: none;
 }
 
 .activity-icon.search {
@@ -1921,6 +2165,22 @@ document.addEventListener('keydown', (e) => {
     stroke: #f59e0b;
 }
 
+.activity-icon.postcard_sent {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.activity-icon.postcard_sent svg {
+    stroke: #3b82f6;
+}
+
+.activity-icon.postcard_received {
+    background: rgba(34, 197, 94, 0.2);
+}
+
+.activity-icon.postcard_received svg {
+    stroke: #22c55e;
+}
+
 .activity-content {
     flex: 1;
 }
@@ -1936,7 +2196,9 @@ document.addEventListener('keydown', (e) => {
     font-size: 0.8rem;
 }
 
-/* Liked Postcards Grid */
+/* ========================================
+   LIKED POSTCARDS GRID
+   ======================================== */
 .liked-postcards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1962,6 +2224,7 @@ document.addEventListener('keydown', (e) => {
     position: relative;
     aspect-ratio: 4/3;
     overflow: hidden;
+    background: rgba(0, 0, 0, 0.5);
 }
 
 .postcard-thumb img {
@@ -1973,6 +2236,19 @@ document.addEventListener('keydown', (e) => {
 
 .liked-postcard-card:hover .postcard-thumb img {
     transform: scale(1.1);
+}
+
+.no-image-thumb {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.2), rgba(181, 96, 11, 0.1));
+}
+
+.no-image-thumb svg {
+    stroke: rgba(255, 255, 255, 0.3);
 }
 
 .animated-badge {
@@ -2014,7 +2290,9 @@ document.addEventListener('keydown', (e) => {
     font-size: 0.75rem;
 }
 
-/* Postcards Sections */
+/* ========================================
+   POSTCARDS SECTIONS
+   ======================================== */
 .postcards-sections {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2030,11 +2308,11 @@ document.addEventListener('keydown', (e) => {
 .unread-badge {
     background: linear-gradient(135deg, #4ade80, #22c55e);
     color: #1a1208;
-    padding: 2px 8px;
-    border-radius: 10px;
+    padding: 3px 10px;
+    border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
-    margin-left: 8px;
+    margin-left: 10px;
 }
 
 .sent-postcards-list,
@@ -2064,6 +2342,7 @@ document.addEventListener('keydown', (e) => {
 
 .received-postcard-item.unread {
     border-left: 3px solid #4ade80;
+    background: rgba(74, 222, 128, 0.05);
 }
 
 .postcard-preview {
@@ -2073,6 +2352,7 @@ document.addEventListener('keydown', (e) => {
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .postcard-preview img {
@@ -2138,6 +2418,7 @@ document.addEventListener('keydown', (e) => {
     color: white;
     font-weight: 600;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .sender-avatar img {
@@ -2188,7 +2469,9 @@ document.addEventListener('keydown', (e) => {
     color: #fbbf24;
 }
 
-/* Connections Grid */
+/* ========================================
+   CONNECTIONS GRID
+   ======================================== */
 .connections-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -2295,7 +2578,9 @@ document.addEventListener('keydown', (e) => {
     box-shadow: 0 5px 15px rgba(181, 96, 11, 0.4);
 }
 
-/* Settings Sections */
+/* ========================================
+   SETTINGS SECTIONS
+   ======================================== */
 .settings-sections {
     display: flex;
     flex-direction: column;
@@ -2333,6 +2618,7 @@ document.addEventListener('keydown', (e) => {
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
     transition: background 0.3s;
+    min-height: 60px;
 }
 
 .bio-display:hover {
@@ -2525,48 +2811,6 @@ document.addEventListener('keydown', (e) => {
     box-shadow: 0 8px 25px rgba(181, 96, 11, 0.4);
 }
 
-/* Permissions */
-.permissions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.permission-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 10px;
-}
-
-.permission-item.granted {
-    color: #4ade80;
-}
-
-.permission-item.granted svg {
-    stroke: #4ade80;
-}
-
-.permission-item.denied {
-    color: rgba(255, 255, 255, 0.4);
-}
-
-.permission-item.denied svg {
-    stroke: rgba(255, 255, 255, 0.3);
-}
-
-.permission-item.admin {
-    background: rgba(181, 96, 11, 0.15);
-    border: 1px solid rgba(181, 96, 11, 0.3);
-    color: #ffc168;
-}
-
-.permission-item.admin svg {
-    stroke: #ffc168;
-}
-
 /* Signature Section */
 .signature-section {
     display: flex;
@@ -2621,6 +2865,48 @@ document.addEventListener('keydown', (e) => {
     color: white;
 }
 
+/* Permissions */
+.permissions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.permission-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+}
+
+.permission-item.granted {
+    color: #4ade80;
+}
+
+.permission-item.granted svg {
+    stroke: #4ade80;
+}
+
+.permission-item.denied {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.permission-item.denied svg {
+    stroke: rgba(255, 255, 255, 0.3);
+}
+
+.permission-item.admin {
+    background: rgba(181, 96, 11, 0.15);
+    border: 1px solid rgba(181, 96, 11, 0.3);
+    color: #ffc168;
+}
+
+.permission-item.admin svg {
+    stroke: #ffc168;
+}
+
 /* Danger Zone */
 .danger-actions {
     display: flex;
@@ -2644,7 +2930,9 @@ document.addEventListener('keydown', (e) => {
     background: rgba(248, 113, 113, 0.25);
 }
 
-/* Empty States */
+/* ========================================
+   EMPTY STATES
+   ======================================== */
 .empty-state,
 .empty-state-mini {
     text-align: center;
@@ -2652,9 +2940,18 @@ document.addEventListener('keydown', (e) => {
     color: rgba(255, 255, 255, 0.5);
 }
 
+.empty-state {
+    grid-column: 1 / -1;
+}
+
 .empty-state svg {
     stroke: rgba(255, 255, 255, 0.2);
     margin-bottom: 15px;
+}
+
+.empty-state-mini svg {
+    stroke: rgba(255, 255, 255, 0.2);
+    margin-bottom: 12px;
 }
 
 .empty-state h4 {
@@ -2662,8 +2959,16 @@ document.addEventListener('keydown', (e) => {
     margin-bottom: 10px;
 }
 
-.empty-state p {
+.empty-state p,
+.empty-state-mini p {
     margin-bottom: 20px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.empty-state-mini span {
+    display: block;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.4);
 }
 
 .btn-explore,
@@ -2677,6 +2982,8 @@ document.addEventListener('keydown', (e) => {
     text-decoration: none;
     border-radius: 20px;
     font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
     transition: all 0.3s;
 }
 
@@ -2686,11 +2993,12 @@ document.addEventListener('keydown', (e) => {
     box-shadow: 0 5px 15px rgba(181, 96, 11, 0.4);
 }
 
-/* Modals */
+/* ========================================
+   MODALS
+   ======================================== */
 .cover-modal,
 .signature-modal,
-.draw-modal,
-.view-postcard-modal {
+.draw-modal {
     position: fixed;
     inset: 0;
     z-index: 5000;
@@ -2702,8 +3010,7 @@ document.addEventListener('keydown', (e) => {
 
 .cover-modal.active,
 .signature-modal.active,
-.draw-modal.active,
-.view-postcard-modal.active {
+.draw-modal.active {
     display: flex;
 }
 
@@ -2839,7 +3146,7 @@ document.addEventListener('keydown', (e) => {
     border-radius: 12px;
 }
 
-/* Postcard Search in Cover Modal */
+/* Postcard Grid for Cover */
 .postcard-search {
     display: flex;
     align-items: center;
@@ -2911,6 +3218,12 @@ document.addEventListener('keydown', (e) => {
     color: white;
     font-size: 0.7rem;
     text-align: center;
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    padding: 20px;
 }
 
 /* Signature Draw Option */
@@ -3054,106 +3367,9 @@ document.addEventListener('keydown', (e) => {
     cursor: not-allowed;
 }
 
-/* View Postcard Modal */
-.view-content {
-    max-width: 650px;
-    padding: 0;
-    overflow: hidden;
-}
-
-.postcard-view {
-    display: flex;
-    flex-direction: column;
-}
-
-.postcard-image-view {
-    aspect-ratio: 4/3;
-    overflow: hidden;
-    background: #000;
-}
-
-.postcard-image-view img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.postcard-message-view {
-    padding: 25px;
-}
-
-.message-header-view {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-}
-
-.sender-view {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.from-label {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.8rem;
-}
-
-.sender-info-view {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.sender-avatar-view {
-    width: 45px;
-    height: 45px;
-    background: linear-gradient(135deg, #b5600b, #d1872c);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    color: white;
-    font-weight: 600;
-    overflow: hidden;
-}
-
-.sender-avatar-view img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.sender-name-view {
-    color: white;
-    font-weight: 600;
-    font-size: 1.1rem;
-}
-
-.date-view {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 0.85rem;
-}
-
-.message-content-view p {
-    color: rgba(255, 255, 255, 0.9);
-    line-height: 1.7;
-    font-size: 1rem;
-    margin: 0;
-}
-
-.signature-view {
-    margin-top: 20px;
-    text-align: right;
-}
-
-.signature-view img {
-    max-height: 60px;
-}
-
-/* Notifications */
+/* ========================================
+   NOTIFICATIONS
+   ======================================== */
 .notification {
     position: fixed;
     top: 80px;
@@ -3181,7 +3397,9 @@ document.addEventListener('keydown', (e) => {
     to { transform: translateX(0); opacity: 1; }
 }
 
-/* Animations */
+/* ========================================
+   ANIMATIONS
+   ======================================== */
 .animate-fade-in-down { animation: fadeInDown 0.6s ease forwards; }
 .animate-fade-in-up { animation: fadeInUp 0.6s ease forwards; }
 [class*="animate-"] { opacity: 0; }
@@ -3191,16 +3409,23 @@ document.addEventListener('keydown', (e) => {
 @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Responsive */
+/* ========================================
+   RESPONSIVE
+   ======================================== */
 @media (max-width: 900px) {
     .postcards-sections {
         grid-template-columns: 1fr;
+    }
+    
+    .cover-username {
+        font-size: 2rem;
     }
 }
 
 @media (max-width: 600px) {
     .profile-main-info {
         flex-direction: column;
+        align-items: center;
         text-align: center;
         margin-top: -40px;
         padding: 20px;
@@ -3211,8 +3436,16 @@ document.addEventListener('keydown', (e) => {
         height: 80px;
     }
     
-    .profile-username {
-        font-size: 1.5rem;
+    .cover-image-section {
+        height: 180px;
+    }
+    
+    .cover-username {
+        font-size: 1.6rem;
+    }
+    
+    .cover-username-overlay {
+        padding: 30px 20px 15px;
     }
     
     .stats-dashboard {
@@ -3243,6 +3476,37 @@ document.addEventListener('keydown', (e) => {
     .modal-content {
         padding: 25px 20px;
     }
+}
+
+/* Scrollbar styling */
+.activity-list::-webkit-scrollbar,
+.sent-postcards-list::-webkit-scrollbar,
+.received-postcards-list::-webkit-scrollbar,
+.postcard-grid-cover::-webkit-scrollbar {
+    width: 6px;
+}
+
+.activity-list::-webkit-scrollbar-track,
+.sent-postcards-list::-webkit-scrollbar-track,
+.received-postcards-list::-webkit-scrollbar-track,
+.postcard-grid-cover::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.activity-list::-webkit-scrollbar-thumb,
+.sent-postcards-list::-webkit-scrollbar-thumb,
+.received-postcards-list::-webkit-scrollbar-thumb,
+.postcard-grid-cover::-webkit-scrollbar-thumb {
+    background: rgba(181, 96, 11, 0.4);
+    border-radius: 3px;
+}
+
+.activity-list::-webkit-scrollbar-thumb:hover,
+.sent-postcards-list::-webkit-scrollbar-thumb:hover,
+.received-postcards-list::-webkit-scrollbar-thumb:hover,
+.postcard-grid-cover::-webkit-scrollbar-thumb:hover {
+    background: rgba(181, 96, 11, 0.6);
 }
 </style>
 {% endblock %}
