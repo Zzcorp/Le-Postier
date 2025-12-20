@@ -484,6 +484,8 @@ const allPostcardsData = [
 // Expanded floating keywords
 const riverKeywords = [
     { word: 'Seine', size: 'large', importance: 1 },
+    { word: 'Flottille', size: 'medium', importance: 1 },
+    { word: 'Viaduc', size: 'small', importance: 1 },
     { word: 'Marne', size: 'large', importance: 1 },
     { word: 'Bateau', size: 'large', importance: 1 },
     { word: 'Paris', size: 'large', importance: 1 },
@@ -502,7 +504,17 @@ const riverKeywords = [
     { word: 'Remorqueur', size: 'small', importance: 3 },
     { word: 'Lavoir', size: 'small', importance: 3 },
     { word: 'Pêcheur', size: 'small', importance: 3 },
-    { word: 'Inondation', size: 'small', importance: 3 },
+    { word: 'Système Gabet', size: 'small', importance: 3 },
+    { word: 'Traversée de paris à la nage', size: 'large', importance: 3 },
+    { word: 'Machine de Marly', size: 'small', importance: 3 },
+    { word: 'Restaurant du Vieux Garçon', size: 'medium', importance: 3 },
+    { word: 'bateau Touriste', size: 'small', importance: 3 },
+    { word: 'Accident du pont de l&#39;archevéché', size: 'large', importance: 3 },
+    { word: 'Championnat du monde de natation', size: 'large', importance: 3 },
+    { word: 'Cafuts', size: 'small', importance: 3 },
+    { word: 'Spa français', size: 'large', importance: 3 },
+    { word: 'Casino &quot;Tanton&quot;', size: 'medium', importance: 3 },
+    { word: 'Yacht &quot;Le Druide&quot;', size: 'small', importance: 3 },
     {% for theme in themes %}
     { word: '{{ theme.display_name|escapejs }}', size: 'medium', importance: 2 },
     {% endfor %}
