@@ -101,7 +101,28 @@
 <!-- River Background -->
 <div class="river-background" id="river-background">
     <div class="river-gradient"></div>
-    <svg class="waves-svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+    
+    <!-- Back Wave (slower, brighter) -->
+    <svg class="waves-svg waves-back" viewBox="0 0 1440 320" preserveAspectRatio="none">
+        <defs>
+            <linearGradient id="waveGradientBack" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:rgba(255,193,104,0.08)"/>
+                <stop offset="50%" style="stop-color:rgba(255,220,150,0.12)"/>
+                <stop offset="100%" style="stop-color:rgba(255,193,104,0.08)"/>
+            </linearGradient>
+        </defs>
+        <path class="wave wave-back" fill="url(#waveGradientBack)">
+            <animate attributeName="d"
+                     dur="20s"
+                     repeatCount="indefinite"
+                     values="M0,180L48,195C96,210,192,240,288,230C384,220,480,170,576,155C672,140,768,160,864,185C960,210,1056,240,1152,225C1248,210,1344,150,1392,120L1440,90L1440,320L0,320Z;
+                            M0,200L48,185C96,170,192,140,288,155C384,170,480,220,576,235C672,250,768,230,864,200C960,170,1056,140,1152,145C1248,150,1344,190,1392,210L1440,230L1440,320L0,320Z;
+                            M0,180L48,195C96,210,192,240,288,230C384,220,480,170,576,155C672,140,768,160,864,185C960,210,1056,240,1152,225C1248,210,1344,150,1392,120L1440,90L1440,320L0,320Z"/>
+        </path>
+    </svg>
+    
+    <!-- Front Wave (original, faster) -->
+    <svg class="waves-svg waves-front" viewBox="0 0 1440 320" preserveAspectRatio="none">
         <defs>
             <linearGradient id="waveGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" style="stop-color:rgba(181,96,11,0.12)"/>
@@ -118,6 +139,13 @@
                             M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L0,320Z"/>
         </path>
     </svg>
+    
+    <!-- Fish Container -->
+    <div class="fish-container" id="fish-container"></div>
+    
+    <!-- Light Particles Container -->
+    <div class="light-particles" id="light-particles"></div>
+    
     <div class="river-particles" id="river-particles"></div>
 </div>
  
@@ -287,6 +315,11 @@
             </div>
             {% endfor %}
         </div>
+        
+        <!-- Pagination -->
+        <div class="pagination-container" id="pagination-container">
+            <!-- Pagination will be populated by JS -->
+        </div>
        
         <div class="no-results" id="noResults" style="display:none;">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5">
@@ -347,6 +380,15 @@
                 </svg>
                 <span id="popup-like-count">0</span>
             </button>
+            
+            <!-- Paper Plane - Send to La Poste -->
+            <a class="popup-action-btn popup-send-btn" id="popup-send-btn" href="#" title="Envoyer cette carte">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13"/>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+                </svg>
+                <span>Envoyer</span>
+            </a>
            
             <a class="popup-action-btn" id="popup-video-btn" href="#" title="Voir l'animation" style="display:none;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -409,12 +451,17 @@
         </div>
     </div>
 </div>
+
+<!-- Bubble Pop Effect Container -->
+<div class="bubble-pop-container" id="bubble-pop-container"></div>
  
 <script>
 // =============================================
 // DATA
 // =============================================
 const csrfToken = '{{ csrf_token }}';
+const ITEMS_PER_PAGE = 50;
+let currentPage = 1;
  
 const allPostcardsData = [
     {% for postcard in postcards %}
@@ -468,7 +515,711 @@ let currentPostcardId = null;
 let popupsOpen = false;
 
 // =============================================
-// ZOOM FUNCTIONALITY - COMPLETELY REWRITTEN
+// IMPROVED SEARCH ENGINE
+// =============================================
+class ImprovedSearchEngine {
+    constructor() {
+        this.searchInput = document.getElementById('searchInput');
+        this.clearBtn = document.getElementById('clearBtn');
+        this.init();
+    }
+   
+    init() {
+        this.searchInput.addEventListener('input', (e) => this.handleInput(e));
+        this.updateClearButton();
+        
+        // Check URL for search query
+        const urlParams = new URLSearchParams(window.location.search);
+        const query = urlParams.get('keywords_input');
+        if (query) {
+            this.performSearch(query);
+        }
+    }
+   
+    handleInput(e) {
+        this.updateClearButton();
+    }
+   
+    updateClearButton() {
+        const hasValue = this.searchInput.value.trim().length > 0;
+        this.clearBtn.classList.toggle('visible', hasValue);
+    }
+    
+    // Google-like search: match exact phrase first, then individual words
+    performSearch(query) {
+        if (!query || query.trim() === '') {
+            filteredPostcards = [...allPostcardsData];
+            currentPage = 1;
+            renderCurrentPage();
+            return;
+        }
+        
+        const searchTerm = query.trim().toLowerCase();
+        
+        // Score-based ranking
+        const scoredPostcards = allPostcardsData.map(postcard => {
+            let score = 0;
+            const title = postcard.title.toLowerCase();
+            const keywords = postcard.keywords.toLowerCase();
+            const number = postcard.number.toLowerCase();
+            
+            // Exact phrase match in title (highest priority)
+            if (title.includes(searchTerm)) {
+                score += 100;
+                // Bonus for starts with
+                if (title.startsWith(searchTerm)) {
+                    score += 50;
+                }
+            }
+            
+            // Exact phrase match in keywords
+            if (keywords.includes(searchTerm)) {
+                score += 80;
+            }
+            
+            // Exact match in number
+            if (number.includes(searchTerm)) {
+                score += 70;
+            }
+            
+            // If no exact match, try word-by-word matching
+            if (score === 0) {
+                const words = searchTerm.split(/\s+/).filter(w => w.length > 1);
+                
+                words.forEach(word => {
+                    if (title.includes(word)) {
+                        score += 30;
+                    }
+                    if (keywords.includes(word)) {
+                        score += 20;
+                    }
+                    if (number.includes(word)) {
+                        score += 15;
+                    }
+                });
+            }
+            
+            return { postcard, score };
+        });
+        
+        // Filter and sort by score
+        filteredPostcards = scoredPostcards
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.postcard);
+        
+        currentPage = 1;
+        renderCurrentPage();
+        updateSearchInfo(filteredPostcards.length, query);
+    }
+}
+
+function updateSearchInfo(count, query) {
+    const searchInfo = document.getElementById('searchInfo');
+    if (query && count > 0) {
+        searchInfo.innerHTML = `
+            <p class="search-results-text">
+                <span class="result-count">${count}</span> résultat${count > 1 ? 's' : ''} pour
+                "<span class="result-query">${escapeHtml(query)}</span>"
+            </p>
+        `;
+    } else if (query && count === 0) {
+        searchInfo.innerHTML = `
+            <p class="search-results-text no-results-text">
+                Aucun résultat pour "<span class="result-query">${escapeHtml(query)}</span>"
+            </p>
+        `;
+    } else {
+        searchInfo.innerHTML = '';
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    window.location.href = '{% url "browse" %}';
+}
+
+// =============================================
+// PAGINATION SYSTEM
+// =============================================
+function renderCurrentPage() {
+    const grid = document.getElementById('postcards-grid');
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    const pageItems = filteredPostcards.slice(start, end);
+    
+    // Clear grid
+    grid.innerHTML = '';
+    
+    if (pageItems.length === 0) {
+        grid.innerHTML = `
+            <div class="no-results-message">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="m21 15-5-5L5 21"/>
+                </svg>
+                <h3>Aucune carte postale trouvée</h3>
+                <p>Modifiez vos critères de recherche ou parcourez les mots-clés ci-dessus.</p>
+            </div>
+        `;
+        document.getElementById('pagination-container').innerHTML = '';
+        document.getElementById('visible-count').textContent = '0';
+        return;
+    }
+    
+    // Render postcards
+    pageItems.forEach(postcard => {
+        const card = createPostcardCard(postcard);
+        grid.appendChild(card);
+    });
+    
+    // Render pagination
+    renderPagination();
+    
+    // Update count
+    document.getElementById('visible-count').textContent = filteredPostcards.length;
+    
+    // Re-initialize lazy loading
+    initLazyLoading();
+    
+    // Scroll to top of results
+    if (currentPage > 1) {
+        document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function createPostcardCard(postcard) {
+    const card = document.createElement('div');
+    card.className = 'postcard-card';
+    card.dataset.id = postcard.id;
+    card.dataset.number = postcard.number;
+    card.dataset.title = postcard.title;
+    card.dataset.keywords = postcard.keywords;
+    card.dataset.vignette = postcard.vignette_url;
+    card.dataset.grande = postcard.grande_url;
+    card.dataset.dos = postcard.dos_url;
+    card.dataset.zoom = postcard.zoom_url;
+    card.dataset.hasVideo = postcard.has_video;
+    card.dataset.videoUrl = postcard.video_url;
+    card.onclick = () => showDetail(postcard.id);
+    
+    const userLikes = new Set(); // This would be populated from server
+    const isLiked = userLikes.has(postcard.id);
+    
+    card.innerHTML = `
+        <div class="card-image-wrapper">
+            ${postcard.vignette_url ? `
+                <img class="card-image" data-src="${postcard.vignette_url}" alt="${escapeHtml(postcard.title)}" loading="lazy">
+                <div class="card-placeholder">
+                    <div class="placeholder-spinner"></div>
+                </div>
+            ` : `
+                <div class="card-no-image">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="m21 15-5-5L5 21"/>
+                    </svg>
+                </div>
+            `}
+            ${postcard.has_video ? `
+                <div class="animated-badge-static">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </div>
+            ` : ''}
+        </div>
+        <div class="card-overlay">
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="event.stopPropagation(); showDetail(${postcard.id})" title="Voir le détail">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                <button class="action-btn like-btn ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation(); toggleLike(event, ${postcard.id})" title="J'aime" data-id="${postcard.id}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                </button>
+                <button class="action-btn zoom-btn" onclick="event.stopPropagation(); showZoom(${postcard.id})" title="Agrandir">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35M11 8v6M8 11h6"/>
+                    </svg>
+                </button>
+                ${postcard.has_video ? `
+                    <a href="/cp-animes/?highlight=${postcard.id}" class="action-btn action-video" onclick="event.stopPropagation();" title="Voir l'animation">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                    </a>
+                ` : ''}
+            </div>
+            <p class="card-title">${escapeHtml(postcard.title.substring(0, 50))}${postcard.title.length > 50 ? '...' : ''}</p>
+            <span class="card-number">N° ${postcard.number}</span>
+        </div>
+    `;
+    
+    return card;
+}
+
+function renderPagination() {
+    const container = document.getElementById('pagination-container');
+    const totalPages = Math.ceil(filteredPostcards.length / ITEMS_PER_PAGE);
+    
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    html += `<button class="page-btn page-prev ${currentPage === 1 ? 'disabled' : ''}" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m15 18-6-6 6-6"/>
+        </svg>
+    </button>`;
+    
+    // Page numbers
+    const maxVisiblePages = 7;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    if (startPage > 1) {
+        html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+        if (startPage > 2) {
+            html += `<span class="page-ellipsis">...</span>`;
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span class="page-ellipsis">...</span>`;
+        }
+        html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+    }
+    
+    // Next button
+    html += `<button class="page-btn page-next ${currentPage === totalPages ? 'disabled' : ''}" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m9 18 6-6-6-6"/>
+        </svg>
+    </button>`;
+    
+    html += '</div>';
+    
+    // Page info
+    const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+    const end = Math.min(currentPage * ITEMS_PER_PAGE, filteredPostcards.length);
+    html += `<p class="page-info">${start} - ${end} sur ${filteredPostcards.length} cartes</p>`;
+    
+    container.innerHTML = html;
+}
+
+function goToPage(page) {
+    const totalPages = Math.ceil(filteredPostcards.length / ITEMS_PER_PAGE);
+    if (page < 1 || page > totalPages) return;
+    
+    currentPage = page;
+    renderCurrentPage();
+}
+
+function initLazyLoading() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                    img.onload = () => {
+                        img.classList.add('loaded');
+                        const placeholder = img.closest('.card-image-wrapper')?.querySelector('.card-placeholder');
+                        if (placeholder) placeholder.classList.add('hidden');
+                    };
+                    img.onerror = () => {
+                        const placeholder = img.closest('.card-image-wrapper')?.querySelector('.card-placeholder');
+                        if (placeholder) placeholder.classList.add('hidden');
+                    };
+                }
+                observer.unobserve(img);
+            }
+        });
+    }, { rootMargin: '100px', threshold: 0.1 });
+    
+    document.querySelectorAll('.card-image[data-src]').forEach(img => {
+        if (!img.classList.contains('loaded')) {
+            observer.observe(img);
+        }
+    });
+}
+
+// =============================================
+// FLOATING KEYWORDS WITH BUBBLE EFFECTS
+// =============================================
+class FloatingKeywords {
+    constructor() {
+        this.container = document.getElementById('river-keywords-container');
+        this.keywords = [];
+        this.animationFrameId = null;
+        this.isVisible = true;
+        this.maxVisibleKeywords = 15;
+       
+        if (!this.container) return;
+        this.init();
+    }
+   
+    init() {
+        this.createKeywords();
+        this.startAnimation();
+        this.setupVisibilityObserver();
+    }
+   
+    createKeywords() {
+        const selectedKeywords = this.selectKeywords();
+       
+        selectedKeywords.forEach((kw, index) => {
+            const element = document.createElement('button');
+            element.className = `floating-keyword keyword-${kw.size} bubble-keyword`;
+            element.textContent = kw.word;
+            element.dataset.word = kw.word;
+           
+            const startX = (index / selectedKeywords.length) * 100;
+            const startY = 15 + (index % 3) * 30 + Math.random() * 20;
+           
+            const baseSpeed = kw.size === 'large' ? 0.15 : kw.size === 'medium' ? 0.2 : 0.25;
+            const speed = baseSpeed + Math.random() * 0.1;
+           
+            const waveAmplitude = 8 + Math.random() * 12;
+            const waveFrequency = 0.3 + Math.random() * 0.4;
+            const waveOffset = Math.random() * Math.PI * 2;
+           
+            const keywordObj = {
+                element,
+                x: startX,
+                y: startY,
+                speed,
+                waveAmplitude,
+                waveFrequency,
+                waveOffset,
+                startTime: performance.now(),
+                word: kw.word
+            };
+           
+            this.keywords.push(keywordObj);
+            this.container.appendChild(element);
+           
+            element.addEventListener('click', (e) => this.onKeywordClick(e, kw.word, element));
+           
+            element.style.cssText = `
+                position: absolute;
+                left: ${startX}%;
+                top: ${startY}%;
+                opacity: 0.8;
+                transform: translateX(0) translateY(0);
+                transition: color 0.3s, text-shadow 0.3s;
+            `;
+        });
+    }
+   
+    selectKeywords() {
+        const shuffled = [...riverKeywords].sort(() => Math.random() - 0.5);
+        const large = shuffled.filter(k => k.size === 'large').slice(0, 4);
+        const medium = shuffled.filter(k => k.size === 'medium').slice(0, 6);
+        const small = shuffled.filter(k => k.size === 'small').slice(0, 5);
+        return [...large, ...medium, ...small];
+    }
+   
+    startAnimation() {
+        const animate = (timestamp) => {
+            if (!this.isVisible) {
+                this.animationFrameId = requestAnimationFrame(animate);
+                return;
+            }
+           
+            this.keywords.forEach(kw => {
+                const elapsed = (timestamp - kw.startTime) / 1000;
+               
+                kw.x -= kw.speed * 0.03;
+               
+                if (kw.x < -15) {
+                    kw.x = 105;
+                    kw.y = 15 + Math.random() * 70;
+                }
+               
+                const waveY = Math.sin(elapsed * kw.waveFrequency + kw.waveOffset) * kw.waveAmplitude;
+               
+                let opacity = 0.85;
+                if (kw.x > 85) opacity = (100 - kw.x) / 15;
+                else if (kw.x < 15) opacity = kw.x / 15;
+                opacity = Math.max(0.1, Math.min(0.85, opacity));
+               
+                kw.element.style.left = `${kw.x}%`;
+                kw.element.style.top = `${kw.y}%`;
+                kw.element.style.transform = `translateY(${waveY}px)`;
+                kw.element.style.opacity = opacity;
+            });
+           
+            this.animationFrameId = requestAnimationFrame(animate);
+        };
+       
+        this.animationFrameId = requestAnimationFrame(animate);
+    }
+   
+    setupVisibilityObserver() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                this.isVisible = entry.isIntersecting;
+            });
+        }, { threshold: 0.1 });
+       
+        observer.observe(this.container);
+    }
+   
+    onKeywordClick(event, word, element) {
+        // Create bubble pop effect
+        createBubblePop(event.clientX, event.clientY);
+        
+        // Add pop animation to the keyword
+        element.classList.add('popping');
+        
+        // Wait for animation then redirect
+        setTimeout(() => {
+            document.getElementById('searchInput').value = word;
+            document.getElementById('searchForm').submit();
+        }, 400);
+    }
+}
+
+// Bubble Pop Effect
+function createBubblePop(x, y) {
+    const container = document.getElementById('bubble-pop-container');
+    
+    // Create multiple bubble particles
+    for (let i = 0; i < 12; i++) {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble-particle';
+        
+        const angle = (i / 12) * Math.PI * 2;
+        const distance = 30 + Math.random() * 50;
+        const size = 8 + Math.random() * 16;
+        
+        bubble.style.cssText = `
+            left: ${x}px;
+            top: ${y}px;
+            width: ${size}px;
+            height: ${size}px;
+            --tx: ${Math.cos(angle) * distance}px;
+            --ty: ${Math.sin(angle) * distance}px;
+        `;
+        
+        container.appendChild(bubble);
+        
+        // Remove after animation
+        setTimeout(() => bubble.remove(), 600);
+    }
+    
+    // Create central burst
+    const burst = document.createElement('div');
+    burst.className = 'bubble-burst';
+    burst.style.cssText = `left: ${x}px; top: ${y}px;`;
+    container.appendChild(burst);
+    setTimeout(() => burst.remove(), 500);
+}
+
+// =============================================
+// FISH ANIMATION
+// =============================================
+class FishManager {
+    constructor() {
+        this.container = document.getElementById('fish-container');
+        this.fishes = [];
+        this.fishCount = 3;
+        
+        if (!this.container) return;
+        this.init();
+    }
+    
+    init() {
+        for (let i = 0; i < this.fishCount; i++) {
+            this.createFish(i);
+        }
+        this.animate();
+    }
+    
+    createFish(index) {
+        const fish = document.createElement('div');
+        fish.className = 'swimming-fish';
+        fish.innerHTML = `
+            <svg viewBox="0 0 50 30" fill="none">
+                <ellipse cx="25" cy="15" rx="20" ry="10" fill="rgba(181, 96, 11, 0.15)"/>
+                <path d="M5 15 L-5 5 L-5 25 Z" fill="rgba(181, 96, 11, 0.12)"/>
+                <circle cx="35" cy="12" r="2" fill="rgba(255, 255, 255, 0.2)"/>
+            </svg>
+        `;
+        
+        const size = 40 + Math.random() * 40;
+        const startY = 20 + Math.random() * 60;
+        const speed = 0.3 + Math.random() * 0.4;
+        const direction = Math.random() > 0.5 ? 1 : -1;
+        const startX = direction === 1 ? -15 : 115;
+        
+        const fishObj = {
+            element: fish,
+            x: startX,
+            y: startY,
+            speed: speed * direction,
+            size,
+            waveOffset: Math.random() * Math.PI * 2,
+            waveAmplitude: 3 + Math.random() * 5,
+            direction
+        };
+        
+        fish.style.cssText = `
+            position: absolute;
+            width: ${size}px;
+            height: ${size * 0.6}px;
+            left: ${startX}%;
+            top: ${startY}%;
+            transform: scaleX(${direction}) translateY(0);
+            opacity: 0.6;
+            transition: none;
+            pointer-events: none;
+        `;
+        
+        this.fishes.push(fishObj);
+        this.container.appendChild(fish);
+    }
+    
+    animate() {
+        const tick = (timestamp) => {
+            this.fishes.forEach(fish => {
+                fish.x += fish.speed * 0.02;
+                
+                // Reset position when fish goes off screen
+                if (fish.direction === 1 && fish.x > 115) {
+                    fish.x = -15;
+                    fish.y = 20 + Math.random() * 60;
+                } else if (fish.direction === -1 && fish.x < -15) {
+                    fish.x = 115;
+                    fish.y = 20 + Math.random() * 60;
+                }
+                
+                const waveY = Math.sin(timestamp * 0.001 + fish.waveOffset) * fish.waveAmplitude;
+                
+                fish.element.style.left = `${fish.x}%`;
+                fish.element.style.top = `${fish.y}%`;
+                fish.element.style.transform = `scaleX(${fish.direction}) translateY(${waveY}px)`;
+            });
+            
+            requestAnimationFrame(tick);
+        };
+        
+        requestAnimationFrame(tick);
+    }
+}
+
+// =============================================
+// LIGHT PARTICLES
+// =============================================
+class LightParticles {
+    constructor() {
+        this.container = document.getElementById('light-particles');
+        this.particles = [];
+        this.particleCount = 25;
+        
+        if (!this.container) return;
+        this.init();
+    }
+    
+    init() {
+        for (let i = 0; i < this.particleCount; i++) {
+            this.createParticle(i);
+        }
+        this.animate();
+    }
+    
+    createParticle(index) {
+        const particle = document.createElement('div');
+        particle.className = 'light-particle';
+        
+        const size = 2 + Math.random() * 4;
+        const startX = Math.random() * 100;
+        const startY = Math.random() * 100;
+        const speed = 0.1 + Math.random() * 0.2;
+        
+        const particleObj = {
+            element: particle,
+            x: startX,
+            y: startY,
+            speed,
+            size,
+            twinkleOffset: Math.random() * Math.PI * 2,
+            waveOffset: Math.random() * Math.PI * 2,
+            waveAmplitude: 5 + Math.random() * 10
+        };
+        
+        particle.style.cssText = `
+            position: absolute;
+            width: ${size}px;
+            height: ${size}px;
+            left: ${startX}%;
+            top: ${startY}%;
+            background: radial-gradient(circle, rgba(255, 220, 150, 0.8) 0%, rgba(255, 193, 104, 0.4) 50%, transparent 100%);
+            border-radius: 50%;
+            pointer-events: none;
+            box-shadow: 0 0 ${size * 2}px rgba(255, 193, 104, 0.3);
+        `;
+        
+        this.particles.push(particleObj);
+        this.container.appendChild(particle);
+    }
+    
+    animate() {
+        const tick = (timestamp) => {
+            this.particles.forEach(p => {
+                p.x -= p.speed * 0.03;
+                
+                if (p.x < -5) {
+                    p.x = 105;
+                    p.y = Math.random() * 100;
+                }
+                
+                const waveY = Math.sin(timestamp * 0.0008 + p.waveOffset) * p.waveAmplitude;
+                const twinkle = 0.3 + Math.sin(timestamp * 0.003 + p.twinkleOffset) * 0.5 + 0.5;
+                
+                p.element.style.left = `${p.x}%`;
+                p.element.style.top = `${p.y}%`;
+                p.element.style.transform = `translateY(${waveY}px)`;
+                p.element.style.opacity = twinkle * 0.7;
+            });
+            
+            requestAnimationFrame(tick);
+        };
+        
+        requestAnimationFrame(tick);
+    }
+}
+
+// =============================================
+// ZOOM FUNCTIONALITY
 // =============================================
 let zoomState = {
     scale: 1,
@@ -491,7 +1242,6 @@ function showZoom(id) {
     const img = document.getElementById('zoom-image');
     const wrapper = document.getElementById('zoom-image-wrapper');
     
-    // Reset zoom state
     zoomState = {
         scale: 1,
         minScale: 0.5,
@@ -505,23 +1255,19 @@ function showZoom(id) {
         lastY: 0
     };
     
-    // Use zoom URL or fall back to grande
     const imageUrl = postcard.zoom_url || postcard.grande_url || postcard.vignette_url;
     
     img.onload = function() {
-        // Reset transform after image loads
         updateZoomTransform();
         updateZoomLevel();
     };
     
     img.src = imageUrl;
     
-    // Show modal
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     popupsOpen = true;
     
-    // Initialize zoom controls
     initZoomControls();
 }
 
@@ -530,37 +1276,26 @@ function closeZoomPopup() {
     modal.classList.remove('active');
     document.body.style.overflow = '';
     popupsOpen = false;
-    
-    // Clean up event listeners
     removeZoomControls();
 }
 
 function initZoomControls() {
     const wrapper = document.getElementById('zoom-image-wrapper');
-    const img = document.getElementById('zoom-image');
     
-    // Mouse wheel zoom
     wrapper.addEventListener('wheel', handleWheel, { passive: false });
-    
-    // Drag to pan
     wrapper.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
-    // Double click to zoom
     wrapper.addEventListener('dblclick', handleDoubleClick);
-    
-    // Touch support
     wrapper.addEventListener('touchstart', handleTouchStart, { passive: false });
     wrapper.addEventListener('touchmove', handleTouchMove, { passive: false });
     wrapper.addEventListener('touchend', handleTouchEnd);
-    
-    // Keyboard shortcuts
     document.addEventListener('keydown', handleZoomKeyboard);
 }
 
 function removeZoomControls() {
     const wrapper = document.getElementById('zoom-image-wrapper');
+    if (!wrapper) return;
     
     wrapper.removeEventListener('wheel', handleWheel);
     wrapper.removeEventListener('mousedown', handleMouseDown);
@@ -579,16 +1314,13 @@ function handleWheel(e) {
     const wrapper = document.getElementById('zoom-image-wrapper');
     const rect = wrapper.getBoundingClientRect();
     
-    // Get mouse position relative to image center
     const mouseX = e.clientX - rect.left - rect.width / 2;
     const mouseY = e.clientY - rect.top - rect.height / 2;
     
-    // Determine zoom direction
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     const newScale = Math.min(Math.max(zoomState.scale + delta, zoomState.minScale), zoomState.maxScale);
     
     if (newScale !== zoomState.scale) {
-        // Adjust position to zoom towards mouse pointer
         const scaleFactor = newScale / zoomState.scale;
         zoomState.x = mouseX - (mouseX - zoomState.x) * scaleFactor;
         zoomState.y = mouseY - (mouseY - zoomState.y) * scaleFactor;
@@ -600,7 +1332,7 @@ function handleWheel(e) {
 }
 
 function handleMouseDown(e) {
-    if (e.button !== 0) return; // Only left click
+    if (e.button !== 0) return;
     
     zoomState.isDragging = true;
     zoomState.startX = e.clientX - zoomState.x;
@@ -634,19 +1366,16 @@ function handleDoubleClick(e) {
     const wrapper = document.getElementById('zoom-image-wrapper');
     const rect = wrapper.getBoundingClientRect();
     
-    // Get click position
     const mouseX = e.clientX - rect.left - rect.width / 2;
     const mouseY = e.clientY - rect.top - rect.height / 2;
     
     if (zoomState.scale < 2) {
-        // Zoom in to 2x centered on click
         const targetScale = 2;
         const scaleFactor = targetScale / zoomState.scale;
         zoomState.x = mouseX - (mouseX - zoomState.x) * scaleFactor;
         zoomState.y = mouseY - (mouseY - zoomState.y) * scaleFactor;
         zoomState.scale = targetScale;
     } else {
-        // Reset zoom
         zoomState.scale = 1;
         zoomState.x = 0;
         zoomState.y = 0;
@@ -656,18 +1385,15 @@ function handleDoubleClick(e) {
     updateZoomLevel();
 }
 
-// Touch handling
 let lastTouchDistance = 0;
 let lastTouchCenter = { x: 0, y: 0 };
 
 function handleTouchStart(e) {
     if (e.touches.length === 2) {
-        // Pinch zoom start
         lastTouchDistance = getTouchDistance(e.touches);
         lastTouchCenter = getTouchCenter(e.touches);
         e.preventDefault();
     } else if (e.touches.length === 1) {
-        // Single touch drag
         zoomState.isDragging = true;
         zoomState.startX = e.touches[0].clientX - zoomState.x;
         zoomState.startY = e.touches[0].clientY - zoomState.y;
@@ -677,9 +1403,7 @@ function handleTouchStart(e) {
 
 function handleTouchMove(e) {
     if (e.touches.length === 2) {
-        // Pinch zoom
         const newDistance = getTouchDistance(e.touches);
-        const newCenter = getTouchCenter(e.touches);
         
         const scaleDelta = (newDistance - lastTouchDistance) * 0.01;
         const newScale = Math.min(Math.max(zoomState.scale + scaleDelta, zoomState.minScale), zoomState.maxScale);
@@ -691,10 +1415,8 @@ function handleTouchMove(e) {
         }
         
         lastTouchDistance = newDistance;
-        lastTouchCenter = newCenter;
         e.preventDefault();
     } else if (e.touches.length === 1 && zoomState.isDragging) {
-        // Single touch drag
         zoomState.x = e.touches[0].clientX - zoomState.startX;
         zoomState.y = e.touches[0].clientY - zoomState.startY;
         updateZoomTransform();
@@ -800,171 +1522,12 @@ function updateZoomTransform(animate = false) {
     
     img.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px) scale(${zoomState.scale})`;
     
-    // Update cursor
     wrapper.style.cursor = zoomState.scale > 1 ? 'grab' : 'zoom-in';
 }
 
 function updateZoomLevel() {
     const levelDisplay = document.getElementById('zoom-level');
     levelDisplay.textContent = Math.round(zoomState.scale * 100) + '%';
-}
- 
-// =============================================
-// FLOATING KEYWORDS
-// =============================================
-class FloatingKeywords {
-    constructor() {
-        this.container = document.getElementById('river-keywords-container');
-        this.keywords = [];
-        this.animationFrameId = null;
-        this.isVisible = true;
-        this.maxVisibleKeywords = 15;
-       
-        if (!this.container) return;
-        this.init();
-    }
-   
-    init() {
-        this.createKeywords();
-        this.startAnimation();
-        this.setupVisibilityObserver();
-    }
-   
-    createKeywords() {
-        const selectedKeywords = this.selectKeywords();
-       
-        selectedKeywords.forEach((kw, index) => {
-            const element = document.createElement('button');
-            element.className = `floating-keyword keyword-${kw.size}`;
-            element.textContent = kw.word;
-            element.dataset.word = kw.word;
-           
-            const startX = (index / selectedKeywords.length) * 100;
-            const startY = 15 + (index % 3) * 30 + Math.random() * 20;
-           
-            const baseSpeed = kw.size === 'large' ? 0.15 : kw.size === 'medium' ? 0.2 : 0.25;
-            const speed = baseSpeed + Math.random() * 0.1;
-           
-            const waveAmplitude = 8 + Math.random() * 12;
-            const waveFrequency = 0.3 + Math.random() * 0.4;
-            const waveOffset = Math.random() * Math.PI * 2;
-           
-            const keywordObj = {
-                element,
-                x: startX,
-                y: startY,
-                speed,
-                waveAmplitude,
-                waveFrequency,
-                waveOffset,
-                startTime: performance.now(),
-                word: kw.word
-            };
-           
-            this.keywords.push(keywordObj);
-            this.container.appendChild(element);
-           
-            element.addEventListener('click', () => this.onKeywordClick(kw.word));
-           
-            element.style.cssText = `
-                position: absolute;
-                left: ${startX}%;
-                top: ${startY}%;
-                opacity: 0.8;
-                transform: translateX(0) translateY(0);
-                transition: color 0.3s, text-shadow 0.3s;
-            `;
-        });
-    }
-   
-    selectKeywords() {
-        const shuffled = [...riverKeywords].sort(() => Math.random() - 0.5);
-        const large = shuffled.filter(k => k.size === 'large').slice(0, 4);
-        const medium = shuffled.filter(k => k.size === 'medium').slice(0, 6);
-        const small = shuffled.filter(k => k.size === 'small').slice(0, 5);
-        return [...large, ...medium, ...small];
-    }
-   
-    startAnimation() {
-        const animate = (timestamp) => {
-            if (!this.isVisible) {
-                this.animationFrameId = requestAnimationFrame(animate);
-                return;
-            }
-           
-            this.keywords.forEach(kw => {
-                const elapsed = (timestamp - kw.startTime) / 1000;
-               
-                kw.x -= kw.speed * 0.03;
-               
-                if (kw.x < -15) {
-                    kw.x = 105;
-                    kw.y = 15 + Math.random() * 70;
-                }
-               
-                const waveY = Math.sin(elapsed * kw.waveFrequency + kw.waveOffset) * kw.waveAmplitude;
-               
-                let opacity = 0.85;
-                if (kw.x > 85) opacity = (100 - kw.x) / 15;
-                else if (kw.x < 15) opacity = kw.x / 15;
-                opacity = Math.max(0.1, Math.min(0.85, opacity));
-               
-                kw.element.style.left = `${kw.x}%`;
-                kw.element.style.top = `${kw.y}%`;
-                kw.element.style.transform = `translateY(${waveY}px)`;
-                kw.element.style.opacity = opacity;
-            });
-           
-            this.animationFrameId = requestAnimationFrame(animate);
-        };
-       
-        this.animationFrameId = requestAnimationFrame(animate);
-    }
-   
-    setupVisibilityObserver() {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                this.isVisible = entry.isIntersecting;
-            });
-        }, { threshold: 0.1 });
-       
-        observer.observe(this.container);
-    }
-   
-    onKeywordClick(word) {
-        document.getElementById('searchInput').value = word;
-        document.getElementById('searchForm').submit();
-    }
-}
- 
-// =============================================
-// SEARCH SYSTEM
-// =============================================
-class SearchEngine {
-    constructor() {
-        this.searchInput = document.getElementById('searchInput');
-        this.clearBtn = document.getElementById('clearBtn');
-        this.init();
-    }
-   
-    init() {
-        this.searchInput.addEventListener('input', (e) => this.handleInput(e));
-        this.updateClearButton();
-    }
-   
-    handleInput(e) {
-        this.updateClearButton();
-    }
-   
-    updateClearButton() {
-        const hasValue = this.searchInput.value.trim().length > 0;
-        this.clearBtn.classList.toggle('visible', hasValue);
-    }
-}
- 
-function clearSearch() {
-    document.getElementById('searchInput').value = '';
-    window.location.href = '{% url "browse" %}';
 }
  
 // =============================================
@@ -1150,10 +1713,14 @@ function showDetail(id) {
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
     document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
    
+    // Update send button link
+    const sendBtn = document.getElementById('popup-send-btn');
+    sendBtn.href = `/la-poste/?postcard=${id}`;
+   
     const videoBtn = document.getElementById('popup-video-btn');
     if (postcard.has_video) {
         videoBtn.style.display = 'flex';
-        videoBtn.href = '{% url "animated_gallery" %}?highlight=' + id;
+        videoBtn.href = '/cp-animes/?highlight=' + id;
     } else {
         videoBtn.style.display = 'none';
     }
@@ -1222,10 +1789,13 @@ function updatePopup() {
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
     document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
     
+    const sendBtn = document.getElementById('popup-send-btn');
+    sendBtn.href = `/la-poste/?postcard=${postcard.id}`;
+    
     const videoBtn = document.getElementById('popup-video-btn');
     if (postcard.has_video) {
         videoBtn.style.display = 'flex';
-        videoBtn.href = '{% url "animated_gallery" %}?highlight=' + postcard.id;
+        videoBtn.href = '/cp-animes/?highlight=' + postcard.id;
     } else {
         videoBtn.style.display = 'none';
     }
@@ -1362,7 +1932,7 @@ class LoadingManager {
 }
  
 // =============================================
-// KEYBOARD NAVIGATION - FIXED
+// KEYBOARD NAVIGATION
 // =============================================
 document.addEventListener('keydown', (e) => {
     // Cinema modal
@@ -1374,9 +1944,9 @@ document.addEventListener('keydown', (e) => {
         return;
     }
     
-    // Zoom modal - handled by its own keyboard handler
+    // Zoom modal
     if (document.getElementById('zoom-modal').classList.contains('active')) {
-        return; // Let the zoom keyboard handler deal with it
+        return;
     }
    
     // Detail popup
@@ -1402,8 +1972,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingManager = new LoadingManager();
     loadingManager.start();
    
-    window.searchEngine = new SearchEngine();
+    window.searchEngine = new ImprovedSearchEngine();
     window.floatingKeywords = new FloatingKeywords();
+    window.fishManager = new FishManager();
+    window.lightParticles = new LightParticles();
     new ImageLoader();
    
     if (document.getElementById('searchInput').value.trim()) {
@@ -1452,20 +2024,125 @@ document.addEventListener('DOMContentLoaded', () => {
     background: radial-gradient(ellipse at 20% 30%, rgba(255, 180, 50, 0.05) 0%, transparent 50%),
                 radial-gradient(ellipse at 80% 70%, rgba(181, 96, 11, 0.06) 0%, transparent 50%);
 }
- 
-.waves-svg {
+
+/* Back Wave - Slower, Brighter */
+.waves-svg.waves-back {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    min-height: 250px;
+    z-index: 1;
+}
+
+.waves-svg.waves-back .wave-back {
+    opacity: 0.5;
+}
+
+/* Front Wave - Original */
+.waves-svg.waves-front {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     height: 40%;
     min-height: 200px;
+    z-index: 2;
 }
  
 .wave { opacity: 0.4; }
+
+/* Fish Container */
+.fish-container {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.swimming-fish {
+    position: absolute;
+    opacity: 0.5;
+    filter: blur(0.5px);
+    transition: opacity 0.3s;
+}
+
+.swimming-fish svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Light Particles */
+.light-particles {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.light-particle {
+    position: absolute;
+    pointer-events: none;
+}
  
-.river-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.river-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
  
+/* ========================================
+   BUBBLE POP EFFECT
+   ======================================== */
+.bubble-pop-container {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.bubble-particle {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 220, 180, 0.9), rgba(181, 96, 11, 0.6));
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    animation: bubblePop 0.6s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes bubblePop {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0);
+        opacity: 0;
+    }
+}
+
+.bubble-burst {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 193, 104, 0.5) 0%, transparent 70%);
+    animation: burstExpand 0.5s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes burstExpand {
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+    }
+}
+
 /* ========================================
    BROWSE PAGE
    ======================================== */
@@ -1514,6 +2191,7 @@ document.addEventListener('DOMContentLoaded', () => {
  
 .search-info { margin-top: 12px; }
 .search-results-text { color: rgba(255,255,255,0.8); font-size: 0.9rem; }
+.search-results-text.no-results-text { color: rgba(255, 150, 150, 0.8); }
 .result-count { color: #ffc168; font-weight: 600; }
 .result-query { color: #b5600b; }
  
@@ -1625,50 +2303,184 @@ document.addEventListener('DOMContentLoaded', () => {
     overflow: hidden;
 }
  
-/* Floating Keywords */
+/* Floating Keywords with Bubble/Wavy borders */
 .floating-keyword {
     position: absolute;
     background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 25px;
     color: rgba(255, 255, 255, 0.85);
     cursor: pointer;
     white-space: nowrap;
     font-family: inherit;
-    transition: color 0.3s, text-shadow 0.3s, background 0.3s, border-color 0.3s;
+    transition: color 0.3s, text-shadow 0.3s, background 0.3s, border-color 0.3s, transform 0.3s;
     will-change: transform, left, top, opacity;
+}
+
+/* Bubble-like wavy border using SVG filter */
+.bubble-keyword {
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    position: relative;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+    box-shadow: 
+        inset 0 0 20px rgba(255, 255, 255, 0.05),
+        0 2px 10px rgba(0, 0, 0, 0.2);
+    animation: bubbleWobble 3s ease-in-out infinite;
+}
+
+.bubble-keyword::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 52px;
+    background: linear-gradient(45deg, 
+        rgba(255, 220, 180, 0.3) 0%, 
+        rgba(255, 255, 255, 0.1) 25%,
+        rgba(181, 96, 11, 0.2) 50%,
+        rgba(255, 255, 255, 0.1) 75%,
+        rgba(255, 220, 180, 0.3) 100%);
+    z-index: -1;
+    animation: borderShimmer 4s linear infinite;
+}
+
+@keyframes bubbleWobble {
+    0%, 100% { 
+        border-radius: 48% 52% 50% 50% / 50% 48% 52% 50%;
+    }
+    25% { 
+        border-radius: 50% 50% 48% 52% / 52% 50% 50% 48%;
+    }
+    50% { 
+        border-radius: 52% 48% 50% 50% / 50% 52% 48% 50%;
+    }
+    75% { 
+        border-radius: 50% 50% 52% 48% / 48% 50% 50% 52%;
+    }
+}
+
+@keyframes borderShimmer {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
 }
  
 .floating-keyword:hover {
     background: rgba(181, 96, 11, 0.5);
-    border-color: #b5600b;
     color: white;
     text-shadow: 0 0 15px rgba(255, 193, 104, 0.8);
     z-index: 10;
+    transform: scale(1.1) !important;
+}
+
+.floating-keyword.popping {
+    animation: keywordPop 0.4s ease-out forwards;
+}
+
+@keyframes keywordPop {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
 }
  
 /* Keyword sizes */
 .keyword-large {
-    padding: 12px 24px;
+    padding: 14px 28px;
     font-size: 1.1rem;
     font-weight: 600;
-    background: rgba(181, 96, 11, 0.2);
-    border-color: rgba(181, 96, 11, 0.4);
-    box-shadow: 0 4px 15px rgba(181, 96, 11, 0.2);
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.25), rgba(181, 96, 11, 0.1));
+    box-shadow: 
+        inset 0 0 30px rgba(255, 193, 104, 0.1),
+        0 4px 20px rgba(181, 96, 11, 0.25);
 }
  
 .keyword-medium {
-    padding: 10px 20px;
+    padding: 11px 22px;
     font-size: 0.95rem;
     font-weight: 500;
 }
  
 .keyword-small {
-    padding: 8px 16px;
+    padding: 9px 18px;
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.7);
 }
  
+/* ========================================
+   PAGINATION
+   ======================================== */
+.pagination-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin: 40px 0;
+    padding: 0 20px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.page-btn {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-btn:hover:not(.disabled) {
+    background: rgba(181, 96, 11, 0.4);
+    border-color: #b5600b;
+    transform: translateY(-2px);
+}
+
+.page-btn.active {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-color: #b5600b;
+    font-weight: 600;
+}
+
+.page-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-btn.page-prev,
+.page-btn.page-next {
+    padding: 0;
+}
+
+.page-ellipsis {
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0 8px;
+}
+
+.page-info {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+}
+
 /* ========================================
    CINEMA MODAL
    ======================================== */
@@ -1866,6 +2678,21 @@ document.addEventListener('DOMContentLoaded', () => {
     transition: all 0.3s;
 }
 .reset-btn:hover { transform: scale(1.05); }
+
+.no-results-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.no-results-message h3 {
+    color: white;
+    margin: 15px 0 8px;
+}
+
+.no-results-message p {
+    color: rgba(255, 255, 255, 0.6);
+}
  
 .browse-footer { text-align: center; padding: 30px; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
  
@@ -1953,8 +2780,28 @@ document.addEventListener('DOMContentLoaded', () => {
     transition: all 0.2s;
     text-decoration: none;
 }
-.popup-action-btn:hover { background: rgba(255,255,255,0.3); }
+.popup-action-btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px); }
 .popup-action-btn.liked { background: rgba(255, 100, 100, 0.4); }
+
+/* Paper Plane Send Button */
+.popup-send-btn {
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.popup-send-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.popup-send-btn svg {
+    transition: transform 0.3s;
+}
+
+.popup-send-btn:hover svg {
+    transform: translateX(2px) translateY(-2px);
+}
+
 #popup-title { color: white; font-size: 1rem; margin: 0; flex: 1; }
 #popup-number { color: rgba(255,255,255,0.8); font-size: 0.85rem; }
  
@@ -2116,9 +2963,9 @@ document.addEventListener('DOMContentLoaded', () => {
     .cinema-btn-title { font-size: 1.2rem; }
    
     .river-keywords-container { height: 150px; }
-    .keyword-large { padding: 10px 18px; font-size: 1rem; }
-    .keyword-medium { padding: 8px 14px; font-size: 0.9rem; }
-    .keyword-small { padding: 6px 12px; font-size: 0.8rem; }
+    .keyword-large { padding: 12px 22px; font-size: 1rem; }
+    .keyword-medium { padding: 10px 18px; font-size: 0.9rem; }
+    .keyword-small { padding: 8px 14px; font-size: 0.8rem; }
    
     .postcards-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
    
@@ -2142,6 +2989,25 @@ document.addEventListener('DOMContentLoaded', () => {
     
     .zoom-instructions {
         display: none;
+    }
+    
+    .popup-info {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .popup-actions {
+        flex-wrap: wrap;
+    }
+    
+    .pagination {
+        gap: 5px;
+    }
+    
+    .page-btn {
+        min-width: 36px;
+        height: 36px;
+        font-size: 0.85rem;
     }
 }
  
@@ -2169,6 +3035,10 @@ document.addEventListener('DOMContentLoaded', () => {
     .zoom-toolbar {
         width: calc(100% - 40px);
         justify-content: center;
+    }
+    
+    .popup-send-btn span {
+        display: none;
     }
 }
 </style>

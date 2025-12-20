@@ -786,14 +786,17 @@ def home(request):
 # ============================================
 
 def browse(request):
-    """Browse page"""
+    """Browse page with improved search"""
     import unicodedata
 
-    def remove_accents(text):
+    def normalize_text(text):
+        """Normalize text for search comparison"""
         if not text:
             return text
+        # Remove accents
         normalized = unicodedata.normalize('NFD', text)
-        return ''.join(char for char in normalized if unicodedata.category(char) != 'Mn')
+        normalized = ''.join(char for char in normalized if unicodedata.category(char) != 'Mn')
+        return normalized.lower().strip()
 
     try:
         query = request.GET.get('keywords_input', '').strip()
@@ -802,36 +805,58 @@ def browse(request):
         themes = Theme.objects.all()[:20]
 
         if query:
-            normalized_query = remove_accents(query.lower())
-            search_terms = normalized_query.split()
+            # Normalize the search query
+            normalized_query = normalize_text(query)
 
-            broad_q = Q()
-            for term in search_terms:
-                term_q = (
-                        Q(title__icontains=term) |
-                        Q(keywords__icontains=term) |
-                        Q(number__icontains=term)
-                )
-                broad_q |= term_q
+            # First, try exact phrase match (most relevant)
+            exact_phrase_q = (
+                    Q(title__icontains=query) |
+                    Q(keywords__icontains=query) |
+                    Q(number__icontains=query)
+            )
 
-            for term in query.split():
-                term_q = (
-                        Q(title__icontains=term) |
-                        Q(keywords__icontains=term) |
-                        Q(number__icontains=term)
-                )
-                broad_q |= term_q
+            # Get postcards matching exact phrase
+            exact_matches = postcards.filter(exact_phrase_q).distinct()
 
-            postcards = postcards.filter(broad_q).distinct()
+            # If we have fewer than 100 exact matches, also search for individual words
+            if exact_matches.count() < 100:
+                # Split query into words and search for each
+                words = query.split()
+                word_q = Q()
 
+                for word in words:
+                    if len(word) > 1:  # Skip single characters
+                        word_q |= (
+                                Q(title__icontains=word) |
+                                Q(keywords__icontains=word) |
+                                Q(number__icontains=word)
+                        )
+
+                # Get word matches excluding already found exact matches
+                word_matches = postcards.filter(word_q).exclude(
+                    id__in=exact_matches.values_list('id', flat=True)
+                ).distinct()
+
+                # Combine: exact matches first, then word matches
+                from itertools import chain
+                postcards_list = list(chain(exact_matches, word_matches))
+            else:
+                postcards_list = list(exact_matches)
+
+            # Log the search
             SearchLog.objects.create(
                 keyword=query,
-                results_count=postcards.count(),
+                results_count=len(postcards_list),
                 user=request.user if request.user.is_authenticated else None,
                 ip_address=get_client_ip(request)
             )
 
-        postcards = postcards.order_by('number')[:100]
+            postcards = postcards_list
+        else:
+            postcards = postcards.order_by('number')
+
+        # No limit here - pagination is handled by JavaScript
+        postcards = list(postcards) if isinstance(postcards, list) else list(postcards)
 
         user_likes = set()
         if request.user.is_authenticated:
@@ -854,7 +879,7 @@ def browse(request):
             'themes': themes,
             'query': query,
             'total_count': Postcard.objects.count(),
-            'displayed_count': postcards.count(),
+            'displayed_count': len(postcards),
             'user': request.user,
             'user_likes': user_likes,
         }
@@ -1195,6 +1220,15 @@ def la_poste(request):
     """La Poste - Social hub for sending postcards"""
     user_has_signature = bool(request.user.signature_image)
 
+    # Check if a specific postcard is preselected
+    preselected_postcard_id = request.GET.get('postcard')
+    preselected_postcard = None
+    if preselected_postcard_id:
+        try:
+            preselected_postcard = Postcard.objects.get(id=int(preselected_postcard_id))
+        except (Postcard.DoesNotExist, ValueError):
+            pass
+
     received = SentPostcard.objects.filter(
         recipient=request.user
     ).select_related('sender', 'postcard').order_by('-created_at')[:30]
@@ -1225,6 +1259,7 @@ def la_poste(request):
         'available_postcards': available_postcards,
         'animated_postcards': animated_postcards,
         'user_has_signature': user_has_signature,
+        'preselected_postcard': preselected_postcard,
     }
 
     return render(request, 'la_poste.html', context)
