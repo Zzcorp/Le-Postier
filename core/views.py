@@ -13,6 +13,7 @@ import json
 from django.db.models import Sum, Avg, F, Q, Count
 from django.db.models.functions import TruncDate, TruncHour, TruncMonth
 from collections import defaultdict
+from .utils import get_client_ip, get_location_from_ip, parse_user_agent_string, get_country_flag_emoji, format_duration
 
 from .models import (
     CustomUser, Postcard, PostcardLike, AnimationSuggestion, Theme,
@@ -847,7 +848,7 @@ def browse(request):
     except Exception as e:
         import traceback
         return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
-    
+
 
 def animated_gallery(request):
     """Animated postcards gallery page"""
@@ -1099,13 +1100,20 @@ def zoom_postcard(request, postcard_id):
 
 @require_http_methods(["POST"])
 def like_postcard(request, postcard_id):
-    """API endpoint to like/unlike a postcard"""
+    """API endpoint to like/unlike a postcard with full tracking"""
     try:
         postcard = get_object_or_404(Postcard, id=postcard_id)
         is_animated = request.POST.get('is_animated', 'false').lower() == 'true'
 
         if not request.session.session_key:
             request.session.create()
+
+        ip_address = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+
+        # Get location and device info
+        location = get_location_from_ip(ip_address)
+        ua_info = parse_user_agent_string(user_agent)
 
         like_kwargs = {
             'postcard': postcard,
@@ -1125,8 +1133,19 @@ def like_postcard(request, postcard_id):
             postcard.save(update_fields=['likes_count'])
             liked = False
         else:
-            like_kwargs['ip_address'] = get_client_ip(request)
-            PostcardLike.objects.create(**like_kwargs)
+            # Create like with full tracking info
+            PostcardLike.objects.create(
+                postcard=postcard,
+                user=request.user if request.user.is_authenticated else None,
+                session_key=request.session.session_key if not request.user.is_authenticated else '',
+                is_animated_like=is_animated,
+                ip_address=ip_address,
+                country=location.get('country', ''),
+                city=location.get('city', ''),
+                device_type=ua_info.get('device_type', ''),
+                browser=ua_info.get('browser', ''),
+                user_agent=user_agent,
+            )
             postcard.likes_count += 1
             postcard.save(update_fields=['likes_count'])
             liked = True
@@ -1462,18 +1481,49 @@ def search_users(request):
 # ============================================
 
 @user_passes_test(is_admin)
+# Replace the admin_dashboard view:
+@user_passes_test(is_admin)
 def admin_dashboard(request):
-    """Custom admin dashboard"""
+    """Comprehensive admin dashboard with full analytics"""
     try:
         today = timezone.now().date()
+        now = timezone.now()
         week_ago = today - timedelta(days=7)
         month_ago = today - timedelta(days=30)
+        yesterday = today - timedelta(days=1)
+        five_minutes_ago = now - timedelta(minutes=5)
 
-        # User stats
+        # =============================================
+        # REAL-TIME VISITORS
+        # =============================================
+        # Clean up old real-time records
+        RealTimeVisitor.objects.filter(last_activity__lt=five_minutes_ago).delete()
+
+        active_visitors = RealTimeVisitor.objects.all().order_by('-last_activity')
+        active_visitor_count = active_visitors.count()
+        active_visitors_list = list(active_visitors.values(
+            'ip_address', 'country', 'city', 'current_page', 'page_title',
+            'device_type', 'browser', 'last_activity', 'user__username'
+        )[:20])
+
+        # Add flag emojis
+        for visitor in active_visitors_list:
+            visitor['flag'] = get_country_flag_emoji(visitor.get('country', '')[:2] if visitor.get('country') else '')
+            if visitor['last_activity']:
+                visitor['last_activity'] = visitor['last_activity'].strftime('%H:%M:%S')
+
+        # =============================================
+        # USER STATISTICS
+        # =============================================
         total_users = CustomUser.objects.count()
         new_users_today = CustomUser.objects.filter(date_joined__date=today).count()
+        new_users_yesterday = CustomUser.objects.filter(date_joined__date=yesterday).count()
         new_users_week = CustomUser.objects.filter(date_joined__date__gte=week_ago).count()
         new_users_month = CustomUser.objects.filter(date_joined__date__gte=month_ago).count()
+
+        user_growth_percent = 0
+        if new_users_yesterday > 0:
+            user_growth_percent = round(((new_users_today - new_users_yesterday) / new_users_yesterday) * 100, 1)
 
         user_categories = {
             'unverified': CustomUser.objects.filter(category='subscribed_unverified').count(),
@@ -1483,148 +1533,792 @@ def admin_dashboard(request):
             'staff': CustomUser.objects.filter(is_staff=True).count(),
         }
 
-        # Postcard stats
+        # =============================================
+        # POSTCARD STATISTICS
+        # =============================================
         total_postcards = Postcard.objects.count()
         postcards_with_images = Postcard.objects.filter(has_images=True).count()
-        animated_postcards = postcards_with_images // 10
 
-        # Engagement stats
+        # Count animated postcards more accurately
+        animated_count = 0
+        for p in Postcard.objects.filter(has_images=True)[:500]:
+            if p.has_animation():
+                animated_count += 1
+        animated_postcards = animated_count
+
+        total_views = Postcard.objects.aggregate(total=Sum('views_count'))['total'] or 0
+        total_zooms = Postcard.objects.aggregate(total=Sum('zoom_count'))['total'] or 0
+
+        # =============================================
+        # PAGE VIEW STATISTICS
+        # =============================================
+        page_views_today = PageView.objects.filter(timestamp__date=today).count()
+        page_views_yesterday = PageView.objects.filter(timestamp__date=yesterday).count()
+        page_views_week = PageView.objects.filter(timestamp__date__gte=week_ago).count()
+        page_views_month = PageView.objects.filter(timestamp__date__gte=month_ago).count()
+        total_page_views = PageView.objects.count()
+
+        views_growth_percent = 0
+        if page_views_yesterday > 0:
+            views_growth_percent = round(((page_views_today - page_views_yesterday) / page_views_yesterday) * 100, 1)
+
+        # Unique visitors
+        unique_visitors_today = PageView.objects.filter(
+            timestamp__date=today
+        ).values('ip_address').distinct().count()
+
+        unique_visitors_week = PageView.objects.filter(
+            timestamp__date__gte=week_ago
+        ).values('ip_address').distinct().count()
+
+        # =============================================
+        # SESSION STATISTICS
+        # =============================================
+        sessions_today = VisitorSession.objects.filter(first_visit__date=today).count()
+        sessions_week = VisitorSession.objects.filter(first_visit__date__gte=week_ago).count()
+
+        # Average session duration
+        avg_session_duration = VisitorSession.objects.filter(
+            first_visit__date__gte=week_ago
+        ).aggregate(avg=Avg('total_time_spent'))['avg'] or 0
+        avg_session_duration = int(avg_session_duration)
+
+        # Pages per session
+        avg_pages = VisitorSession.objects.filter(
+            first_visit__date__gte=week_ago, page_views__gt=0
+        ).aggregate(avg=Avg('page_views'))['avg'] or 0
+        pages_per_session = round(avg_pages, 1)
+
+        # Bounce rate (sessions with only 1 page view)
+        single_page_sessions = VisitorSession.objects.filter(
+            first_visit__date__gte=week_ago, page_views=1
+        ).count()
+        total_sessions_week = VisitorSession.objects.filter(first_visit__date__gte=week_ago).count()
+        bounce_rate = round((single_page_sessions / total_sessions_week * 100), 1) if total_sessions_week > 0 else 0
+
+        # =============================================
+        # LIKE STATISTICS WITH FULL DETAILS
+        # =============================================
         total_likes = PostcardLike.objects.count()
         likes_today = PostcardLike.objects.filter(created_at__date=today).count()
+        likes_yesterday = PostcardLike.objects.filter(created_at__date=yesterday).count()
         likes_week = PostcardLike.objects.filter(created_at__date__gte=week_ago).count()
-        total_suggestions = AnimationSuggestion.objects.count()
-        pending_suggestions = AnimationSuggestion.objects.filter(status='pending').count()
 
-        # Search stats
+        likes_growth_percent = 0
+        if likes_yesterday > 0:
+            likes_growth_percent = round(((likes_today - likes_yesterday) / likes_yesterday) * 100, 1)
+
+        # Recent likes with full details
+        recent_likes = PostcardLike.objects.select_related('postcard', 'user').order_by('-created_at')[:50]
+        recent_likes_data = []
+        for like in recent_likes:
+            recent_likes_data.append({
+                'id': like.id,
+                'postcard_number': like.postcard.number if like.postcard else 'N/A',
+                'postcard_id': like.postcard.id if like.postcard else None,
+                'postcard_title': like.postcard.title[:30] if like.postcard else 'N/A',
+                'user': like.user.username if like.user else 'Anonyme',
+                'is_animated': like.is_animated_like,
+                'ip_address': like.ip_address or 'N/A',
+                'country': like.country or 'Unknown',
+                'city': like.city or 'Unknown',
+                'device_type': like.device_type or 'Unknown',
+                'browser': like.browser or 'Unknown',
+                'created_at': like.created_at.strftime('%d/%m/%Y %H:%M'),
+                'flag': get_country_flag_emoji(like.country[:2] if like.country else ''),
+            })
+
+        # Likes by country
+        likes_by_country = list(
+            PostcardLike.objects.exclude(country='').values('country')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+
+        # =============================================
+        # SEARCH STATISTICS
+        # =============================================
         total_searches = SearchLog.objects.count()
         searches_today = SearchLog.objects.filter(created_at__date=today).count()
         searches_week = SearchLog.objects.filter(created_at__date__gte=week_ago).count()
 
-        # Page view stats
-        total_views = PageView.objects.count()
-        views_today = PageView.objects.filter(timestamp__date=today).count()
-        views_week = PageView.objects.filter(timestamp__date__gte=week_ago).count()
-
-        # Top content
-        top_viewed_postcards = Postcard.objects.order_by('-views_count')[:10]
-        top_liked_postcards = Postcard.objects.order_by('-likes_count')[:10]
+        # Top searches all time
         top_searches_all = list(
             SearchLog.objects.values('keyword')
             .annotate(count=Count('id'), avg_results=Avg('results_count'))
             .order_by('-count')[:20]
         )
 
-        # Recent activity
-        recent_users = CustomUser.objects.order_by('-date_joined')[:15]
-        recent_searches = SearchLog.objects.order_by('-created_at')[:20]
-        recent_messages = ContactMessage.objects.order_by('-created_at')[:10]
-        recent_suggestions = AnimationSuggestion.objects.order_by('-created_at')[:15]
-        recent_likes = PostcardLike.objects.select_related('postcard', 'user').order_by('-created_at')[:25]
+        # Top searches today
+        top_searches_today = list(
+            SearchLog.objects.filter(created_at__date=today)
+            .values('keyword')
+            .annotate(count=Count('id'), avg_results=Avg('results_count'))
+            .order_by('-count')[:15]
+        )
 
-        # Messages
+        # Zero result searches
+        zero_result_searches = list(
+            SearchLog.objects.filter(results_count=0)
+            .values('keyword')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:15]
+        )
+
+        # Recent searches with details
+        recent_searches = SearchLog.objects.select_related('user').order_by('-created_at')[:30]
+
+        # =============================================
+        # GEOGRAPHIC DATA
+        # =============================================
+        # Top countries all time
+        top_countries = list(
+            VisitorSession.objects.exclude(country='')
+            .values('country', 'country_code')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:15]
+        )
+        for c in top_countries:
+            c['flag'] = get_country_flag_emoji(c.get('country_code', ''))
+
+        # Top cities
+        top_cities = list(
+            VisitorSession.objects.exclude(city='').exclude(city='Unknown')
+            .values('city', 'country')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:15]
+        )
+
+        # Countries today
+        countries_today = list(
+            PageView.objects.filter(timestamp__date=today)
+            .exclude(country='')
+            .values('country')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+        for c in countries_today:
+            c['flag'] = get_country_flag_emoji(c.get('country', '')[:2])
+
+        # =============================================
+        # DEVICE & BROWSER STATISTICS
+        # =============================================
+        device_stats = VisitorSession.objects.exclude(device_type='').values('device_type').annotate(
+            count=Count('id')
+        ).order_by('-count')
+
+        device_breakdown = {
+            'mobile': 0,
+            'tablet': 0,
+            'desktop': 0,
+            'other': 0,
+        }
+        for d in device_stats:
+            dtype = d['device_type'].lower()
+            if 'mobile' in dtype:
+                device_breakdown['mobile'] += d['count']
+            elif 'tablet' in dtype:
+                device_breakdown['tablet'] += d['count']
+            elif 'desktop' in dtype:
+                device_breakdown['desktop'] += d['count']
+            else:
+                device_breakdown['other'] += d['count']
+
+        # Top browsers
+        top_browsers = list(
+            VisitorSession.objects.exclude(browser='').exclude(browser='Unknown')
+            .values('browser')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+
+        # Top OS
+        top_os = list(
+            VisitorSession.objects.exclude(os='').exclude(os='Unknown')
+            .values('os')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+
+        # =============================================
+        # REFERRER STATISTICS
+        # =============================================
+        top_referrers = list(
+            VisitorSession.objects.exclude(referrer_domain='').exclude(referrer_domain__icontains='samathey')
+            .values('referrer_domain')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:15]
+        )
+
+        direct_traffic = VisitorSession.objects.filter(
+            Q(referrer='') | Q(referrer_domain='')
+        ).count()
+
+        referral_traffic = VisitorSession.objects.exclude(referrer='').exclude(referrer_domain='').count()
+
+        # =============================================
+        # MESSAGES & SUGGESTIONS
+        # =============================================
         total_messages = ContactMessage.objects.count()
         unread_messages = ContactMessage.objects.filter(is_read=False).count()
         messages_today = ContactMessage.objects.filter(created_at__date=today).count()
+        recent_messages = ContactMessage.objects.select_related('user').order_by('-created_at')[:15]
 
-        # Daily stats for chart
+        total_suggestions = AnimationSuggestion.objects.count()
+        pending_suggestions = AnimationSuggestion.objects.filter(status='pending').count()
+        recent_suggestions = AnimationSuggestion.objects.select_related(
+            'postcard', 'user'
+        ).order_by('-created_at')[:20]
+
+        # =============================================
+        # TOP POSTCARDS
+        # =============================================
+        top_viewed_postcards = Postcard.objects.order_by('-views_count')[:15]
+        top_liked_postcards = Postcard.objects.order_by('-likes_count')[:15]
+        top_zoomed_postcards = Postcard.objects.order_by('-zoom_count')[:10]
+
+        # Rarity statistics
+        rarity_stats = {}
+        for rarity in ['common', 'rare', 'very_rare']:
+            stats = Postcard.objects.filter(rarity=rarity).aggregate(
+                count=Count('id'),
+                total_views=Sum('views_count'),
+                total_likes=Sum('likes_count'),
+                total_zooms=Sum('zoom_count'),
+            )
+            rarity_stats[rarity] = {
+                'count': stats['count'] or 0,
+                'total_views': stats['total_views'] or 0,
+                'total_likes': stats['total_likes'] or 0,
+                'total_zooms': stats['total_zooms'] or 0,
+            }
+
+        # =============================================
+        # RECENT USERS
+        # =============================================
+        recent_users = CustomUser.objects.order_by('-date_joined')[:20]
+        recent_users_data = []
+        for user in recent_users:
+            recent_users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'category': user.category,
+                'is_staff': user.is_staff,
+                'is_superuser': user.is_superuser,
+                'email_verified': user.email_verified,
+                'date_joined': user.date_joined,
+                'last_login': user.last_login,
+                'registration_ip': user.registration_ip or 'N/A',
+                'country': user.country or 'N/A',
+                'city': user.city or 'N/A',
+            })
+
+        # =============================================
+        # IP ANALYSIS
+        # =============================================
+        # Most active IPs
+        most_active_ips = list(
+            VisitorSession.objects.values('ip_address', 'country', 'city', 'isp')
+            .annotate(
+                session_count=Count('id'),
+                total_page_views=Sum('page_views')
+            )
+            .order_by('-session_count')[:20]
+        )
+
+        # Suspicious IPs (many sessions from same IP)
+        suspicious_ips = list(
+            VisitorSession.objects.values('ip_address', 'country')
+            .annotate(count=Count('id'))
+            .filter(count__gte=10)
+            .order_by('-count')[:15]
+        )
+
+        # VPN/Proxy count
+        vpn_proxy_count = IPLocation.objects.filter(
+            Q(is_vpn=True) | Q(is_proxy=True)
+        ).count()
+
+        # =============================================
+        # HOURLY TRAFFIC (Today)
+        # =============================================
+        hourly_traffic = []
+        for hour in range(24):
+            count = PageView.objects.filter(
+                timestamp__date=today,
+                timestamp__hour=hour
+            ).count()
+            hourly_traffic.append({
+                'hour': f'{hour:02d}:00',
+                'count': count
+            })
+
+        # Peak hours
+        peak_hours = sorted(hourly_traffic, key=lambda x: x['count'], reverse=True)[:3]
+
+        # =============================================
+        # DAILY STATS (Last 30 days)
+        # =============================================
         daily_stats = []
         for i in range(30):
             date = today - timedelta(days=29 - i)
             daily_stats.append({
                 'date': date.strftime('%d/%m'),
+                'full_date': date.strftime('%Y-%m-%d'),
                 'views': PageView.objects.filter(timestamp__date=date).count(),
-                'sessions': 0,
+                'sessions': VisitorSession.objects.filter(first_visit__date=date).count(),
                 'searches': SearchLog.objects.filter(created_at__date=date).count(),
                 'likes': PostcardLike.objects.filter(created_at__date=date).count(),
                 'users': CustomUser.objects.filter(date_joined__date=date).count(),
+                'messages': ContactMessage.objects.filter(created_at__date=date).count(),
             })
 
-        # Placeholder data for analytics
-        active_visitor_count = 0
-        active_visitors_list = []
-        top_countries = []
-        top_cities = []
-        countries_today = []
-        device_breakdown = {'mobile': 0, 'tablet': 0, 'desktop': 0, 'other': 0}
-        top_browsers = []
-        top_os = []
-        top_referrers = []
-        sessions_today = 0
-        unique_visitors_today = 0
-        unique_visitors_week = 0
-        bounce_rate = 0
-        avg_session_duration = 0
-        pages_per_session = 0
-        rarity_stats = {
-            'common': {'total_views': 0, 'total_likes': 0},
-            'rare': {'total_views': 0, 'total_likes': 0},
-            'very_rare': {'total_views': 0, 'total_likes': 0},
+        # =============================================
+        # WEEKLY COMPARISON
+        # =============================================
+        this_week_start = today - timedelta(days=today.weekday())
+        last_week_start = this_week_start - timedelta(days=7)
+        last_week_end = this_week_start - timedelta(days=1)
+
+        this_week_views = PageView.objects.filter(timestamp__date__gte=this_week_start).count()
+        last_week_views = PageView.objects.filter(
+            timestamp__date__gte=last_week_start,
+            timestamp__date__lte=last_week_end
+        ).count()
+
+        week_over_week_change = 0
+        if last_week_views > 0:
+            week_over_week_change = round(((this_week_views - last_week_views) / last_week_views) * 100, 1)
+
+        # =============================================
+        # POSTCARD INTERACTIONS (Recent)
+        # =============================================
+        recent_interactions = list(
+            PostcardInteraction.objects.select_related('postcard', 'user', 'session')
+            .order_by('-timestamp')[:30]
+            .values(
+                'postcard__number', 'postcard__title', 'interaction_type',
+                'user__username', 'ip_address', 'country', 'device_type', 'timestamp'
+            )
+        )
+
+        # =============================================
+        # SYSTEM HEALTH
+        # =============================================
+        from pathlib import Path
+        import os
+
+        media_root = Path(settings.MEDIA_ROOT)
+        media_stats = {
+            'exists': media_root.exists(),
+            'vignette_count': 0,
+            'grande_count': 0,
+            'animated_count': 0,
         }
 
+        if media_root.exists():
+            vignette_path = media_root / 'postcards' / 'Vignette'
+            grande_path = media_root / 'postcards' / 'Grande'
+            animated_path = media_root / 'animated_cp'
+
+            if vignette_path.exists():
+                media_stats['vignette_count'] = len(list(vignette_path.glob('*.*')))
+            if grande_path.exists():
+                media_stats['grande_count'] = len(list(grande_path.glob('*.*')))
+            if animated_path.exists():
+                media_stats['animated_count'] = len(list(animated_path.glob('*.*')))
+
+        # =============================================
+        # CONTEXT
+        # =============================================
         context = {
+            # Real-time
             'active_visitor_count': active_visitor_count,
             'active_visitors_list': active_visitors_list,
+
+            # Users
             'total_users': total_users,
             'new_users_today': new_users_today,
+            'new_users_yesterday': new_users_yesterday,
             'new_users_week': new_users_week,
             'new_users_month': new_users_month,
+            'user_growth_percent': user_growth_percent,
             'user_categories': user_categories,
             'user_categories_choices': CustomUser.USER_CATEGORIES,
-            'recent_users': recent_users,
+            'recent_users': recent_users_data,
+
+            # Postcards
             'total_postcards': total_postcards,
             'postcards_with_images': postcards_with_images,
             'animated_postcards': animated_postcards,
+            'total_postcard_views': total_views,
+            'total_postcard_zooms': total_zooms,
             'top_viewed_postcards': top_viewed_postcards,
             'top_liked_postcards': top_liked_postcards,
-            'total_likes': total_likes,
-            'likes_today': likes_today,
-            'likes_week': likes_week,
-            'total_suggestions': total_suggestions,
-            'pending_suggestions': pending_suggestions,
-            'recent_likes': recent_likes,
-            'recent_suggestions': recent_suggestions,
-            'total_views': total_views,
-            'views_today': views_today,
-            'views_week': views_week,
+            'top_zoomed_postcards': top_zoomed_postcards,
+            'rarity_stats': rarity_stats,
+
+            # Page views
+            'page_views_today': page_views_today,
+            'page_views_yesterday': page_views_yesterday,
+            'page_views_week': page_views_week,
+            'page_views_month': page_views_month,
+            'total_page_views': total_page_views,
+            'views_growth_percent': views_growth_percent,
+
+            # Sessions
             'sessions_today': sessions_today,
+            'sessions_week': sessions_week,
             'unique_visitors_today': unique_visitors_today,
             'unique_visitors_week': unique_visitors_week,
-            'top_countries': top_countries,
-            'top_cities': top_cities,
-            'countries_today': countries_today,
-            'device_breakdown': device_breakdown,
-            'top_browsers': top_browsers,
-            'top_os': top_os,
-            'top_referrers': top_referrers,
+            'avg_session_duration': avg_session_duration,
+            'avg_session_duration_formatted': format_duration(avg_session_duration),
+            'pages_per_session': pages_per_session,
+            'bounce_rate': bounce_rate,
+            'week_over_week_change': week_over_week_change,
+
+            # Likes
+            'total_likes': total_likes,
+            'likes_today': likes_today,
+            'likes_yesterday': likes_yesterday,
+            'likes_week': likes_week,
+            'likes_growth_percent': likes_growth_percent,
+            'recent_likes': recent_likes_data,
+            'likes_by_country': likes_by_country,
+
+            # Searches
             'total_searches': total_searches,
             'searches_today': searches_today,
             'searches_week': searches_week,
             'top_searches_all': top_searches_all,
-            'top_searches_today': [],
-            'zero_result_searches': [],
+            'top_searches_today': top_searches_today,
+            'zero_result_searches': zero_result_searches,
             'recent_searches': recent_searches,
+
+            # Geographic
+            'top_countries': top_countries,
+            'top_cities': top_cities,
+            'countries_today': countries_today,
+
+            # Devices & Browsers
+            'device_breakdown': device_breakdown,
+            'top_browsers': top_browsers,
+            'top_os': top_os,
+
+            # Traffic sources
+            'top_referrers': top_referrers,
+            'direct_traffic': direct_traffic,
+            'referral_traffic': referral_traffic,
+
+            # Messages & Suggestions
             'total_messages': total_messages,
             'unread_messages': unread_messages,
             'messages_today': messages_today,
             'recent_messages': recent_messages,
-            'most_active_ips': [],
-            'suspicious_ips': [],
-            'vpn_proxy_count': 0,
-            'hourly_traffic': json.dumps([]),
+            'total_suggestions': total_suggestions,
+            'pending_suggestions': pending_suggestions,
+            'recent_suggestions': recent_suggestions,
+
+            # IP Analysis
+            'most_active_ips': most_active_ips,
+            'suspicious_ips': suspicious_ips,
+            'vpn_proxy_count': vpn_proxy_count,
+
+            # Time-based
+            'hourly_traffic': json.dumps(hourly_traffic),
             'daily_stats': json.dumps(daily_stats),
-            'peak_hours': [],
-            'avg_session_duration': avg_session_duration,
-            'bounce_rate': bounce_rate,
-            'pages_per_session': pages_per_session,
+            'peak_hours': peak_hours,
+
+            # Recent interactions
+            'recent_interactions': recent_interactions,
+
+            # System
+            'media_stats': media_stats,
             'total_themes': Theme.objects.count(),
-            'rarity_stats': rarity_stats,
-            'recent_interactions': [],
         }
 
         return render(request, 'admin_dashboard.html', context)
 
     except Exception as e:
+        import traceback
         return HttpResponse(f"<h1>Admin Error</h1><pre>{traceback.format_exc()}</pre>")
+
+
+# Add new API endpoints for admin dashboard
+@user_passes_test(is_admin)
+def admin_realtime_api(request):
+    """API endpoint for real-time visitor data"""
+    from .utils import get_country_flag_emoji
+
+    five_minutes_ago = timezone.now() - timedelta(minutes=5)
+    RealTimeVisitor.objects.filter(last_activity__lt=five_minutes_ago).delete()
+
+    visitors = RealTimeVisitor.objects.all().order_by('-last_activity')
+
+    data = {
+        'count': visitors.count(),
+        'visitors': []
+    }
+
+    for v in visitors[:30]:
+        data['visitors'].append({
+            'ip_address': v.ip_address,
+            'country': v.country,
+            'city': v.city,
+            'current_page': v.current_page,
+            'page_title': v.page_title,
+            'device_type': v.device_type,
+            'browser': v.browser,
+            'last_activity': v.last_activity.strftime('%H:%M:%S') if v.last_activity else '',
+            'username': v.user.username if v.user else None,
+            'flag': get_country_flag_emoji(v.country[:2] if v.country else ''),
+        })
+
+    return JsonResponse(data)
+
+
+@user_passes_test(is_admin)
+def admin_likes_api(request):
+    """API endpoint for likes with full details"""
+    from .utils import get_country_flag_emoji
+
+    page = int(request.GET.get('page', 1))
+    per_page = int(request.GET.get('per_page', 50))
+
+    likes = PostcardLike.objects.select_related('postcard', 'user').order_by('-created_at')
+
+    start = (page - 1) * per_page
+    end = start + per_page
+
+    likes_data = []
+    for like in likes[start:end]:
+        likes_data.append({
+            'id': like.id,
+            'postcard_number': like.postcard.number if like.postcard else 'N/A',
+            'postcard_id': like.postcard.id if like.postcard else None,
+            'postcard_title': like.postcard.title[:40] if like.postcard else 'N/A',
+            'user': like.user.username if like.user else 'Anonyme',
+            'is_animated': like.is_animated_like,
+            'ip_address': like.ip_address or 'N/A',
+            'country': like.country or 'Unknown',
+            'city': like.city or 'Unknown',
+            'device_type': like.device_type or 'Unknown',
+            'browser': like.browser or 'Unknown',
+            'created_at': like.created_at.strftime('%d/%m/%Y %H:%M:%S'),
+            'flag': get_country_flag_emoji(like.country[:2] if like.country else ''),
+        })
+
+    return JsonResponse({
+        'likes': likes_data,
+        'total': likes.count(),
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (likes.count() + per_page - 1) // per_page,
+    })
+
+
+@user_passes_test(is_admin)
+def admin_geographic_api(request):
+    """API endpoint for geographic analytics"""
+    from .utils import get_country_flag_emoji
+
+    period = request.GET.get('period', 'all')
+
+    if period == 'today':
+        date_filter = {'first_visit__date': timezone.now().date()}
+    elif period == 'week':
+        date_filter = {'first_visit__date__gte': timezone.now().date() - timedelta(days=7)}
+    elif period == 'month':
+        date_filter = {'first_visit__date__gte': timezone.now().date() - timedelta(days=30)}
+    else:
+        date_filter = {}
+
+    countries = list(
+        VisitorSession.objects.filter(**date_filter)
+        .exclude(country='')
+        .values('country', 'country_code')
+        .annotate(
+            count=Count('id'),
+            total_pages=Sum('page_views')
+        )
+        .order_by('-count')[:30]
+    )
+
+    for c in countries:
+        c['flag'] = get_country_flag_emoji(c.get('country_code', ''))
+
+    cities = list(
+        VisitorSession.objects.filter(**date_filter)
+        .exclude(city='').exclude(city='Unknown')
+        .values('city', 'country', 'country_code')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:30]
+    )
+
+    for c in cities:
+        c['flag'] = get_country_flag_emoji(c.get('country_code', ''))
+
+    return JsonResponse({
+        'countries': countries,
+        'cities': cities,
+    })
+
+
+@user_passes_test(is_admin)
+def admin_ip_lookup(request, ip_address):
+    """API endpoint to lookup IP address details"""
+    from .utils import get_location_from_ip, get_country_flag_emoji
+
+    # Get fresh location data
+    location = get_location_from_ip(ip_address)
+
+    # Get sessions from this IP
+    sessions = VisitorSession.objects.filter(ip_address=ip_address).order_by('-first_visit')
+
+    # Get page views from this IP
+    page_views = PageView.objects.filter(ip_address=ip_address).order_by('-timestamp')
+
+    # Get likes from this IP
+    likes = PostcardLike.objects.filter(ip_address=ip_address).select_related('postcard')
+
+    # Get searches from this IP
+    searches = SearchLog.objects.filter(ip_address=ip_address).order_by('-created_at')
+
+    sessions_data = []
+    for s in sessions[:20]:
+        sessions_data.append({
+            'first_visit': s.first_visit.strftime('%d/%m/%Y %H:%M'),
+            'last_activity': s.last_activity.strftime('%d/%m/%Y %H:%M') if s.last_activity else '',
+            'device_type': s.device_type,
+            'browser': s.browser,
+            'os': s.os,
+            'page_views': s.page_views,
+            'landing_page': s.landing_page,
+            'username': s.user.username if s.user else None,
+        })
+
+    likes_data = []
+    for like in likes[:20]:
+        likes_data.append({
+            'postcard_number': like.postcard.number if like.postcard else 'N/A',
+            'is_animated': like.is_animated_like,
+            'created_at': like.created_at.strftime('%d/%m/%Y %H:%M'),
+        })
+
+    searches_data = []
+    for search in searches[:20]:
+        searches_data.append({
+            'keyword': search.keyword,
+            'results_count': search.results_count,
+            'created_at': search.created_at.strftime('%d/%m/%Y %H:%M'),
+        })
+
+    return JsonResponse({
+        'ip_address': ip_address,
+        'location': {
+            'country': location.get('country', 'Unknown'),
+            'country_code': location.get('country_code', ''),
+            'city': location.get('city', 'Unknown'),
+            'region': location.get('region', ''),
+            'latitude': location.get('latitude'),
+            'longitude': location.get('longitude'),
+            'timezone': location.get('timezone', ''),
+            'isp': location.get('isp', ''),
+            'is_vpn': location.get('is_vpn', False),
+            'is_proxy': location.get('is_proxy', False),
+            'flag': get_country_flag_emoji(location.get('country_code', '')),
+        },
+        'total_sessions': sessions.count(),
+        'total_page_views': page_views.count(),
+        'total_likes': likes.count(),
+        'total_searches': searches.count(),
+        'sessions': sessions_data,
+        'likes': likes_data,
+        'searches': searches_data,
+    })
+
+
+@user_passes_test(is_admin)
+def admin_postcard_analytics(request, postcard_id):
+    """API endpoint for detailed postcard analytics"""
+    from .utils import get_country_flag_emoji
+
+    try:
+        postcard = Postcard.objects.get(id=postcard_id)
+    except Postcard.DoesNotExist:
+        return JsonResponse({'error': 'Postcard not found'}, status=404)
+
+    # Get likes with details
+    likes = PostcardLike.objects.filter(postcard=postcard).order_by('-created_at')
+
+    likes_by_country = list(
+        likes.exclude(country='').values('country')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:10]
+    )
+    for c in likes_by_country:
+        c['flag'] = get_country_flag_emoji(c.get('country', '')[:2])
+
+    likes_by_device = list(
+        likes.exclude(device_type='').values('device_type')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+
+    # Recent likes
+    recent_likes = []
+    for like in likes[:20]:
+        recent_likes.append({
+            'user': like.user.username if like.user else 'Anonyme',
+            'ip_address': like.ip_address or 'N/A',
+            'country': like.country or 'Unknown',
+            'city': like.city or 'Unknown',
+            'device_type': like.device_type or 'Unknown',
+            'browser': like.browser or 'Unknown',
+            'is_animated': like.is_animated_like,
+            'created_at': like.created_at.strftime('%d/%m/%Y %H:%M'),
+            'flag': get_country_flag_emoji(like.country[:2] if like.country else ''),
+        })
+
+    # Daily likes trend (last 30 days)
+    today = timezone.now().date()
+    daily_likes = []
+    for i in range(30):
+        date = today - timedelta(days=29 - i)
+        count = likes.filter(created_at__date=date).count()
+        daily_likes.append({
+            'date': date.strftime('%d/%m'),
+            'count': count
+        })
+
+    # Get interactions
+    interactions = PostcardInteraction.objects.filter(postcard=postcard)
+    interaction_types = list(
+        interactions.values('interaction_type')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+
+    return JsonResponse({
+        'postcard': {
+            'id': postcard.id,
+            'number': postcard.number,
+            'title': postcard.title,
+            'rarity': postcard.rarity,
+            'views_count': postcard.views_count,
+            'zoom_count': postcard.zoom_count,
+            'likes_count': postcard.likes_count,
+            'has_animation': postcard.has_animation(),
+            'vignette_url': postcard.get_vignette_url(),
+        },
+        'likes_total': likes.count(),
+        'likes_by_country': likes_by_country,
+        'likes_by_device': likes_by_device,
+        'recent_likes': recent_likes,
+        'daily_likes': daily_likes,
+        'interaction_types': interaction_types,
+    })
 
 
 @user_passes_test(is_admin)

@@ -327,11 +327,34 @@ class PostcardLike(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     is_animated_like = models.BooleanField(default=False, verbose_name="Like pour animation")
     created_at = models.DateTimeField(auto_now_add=True)
+    # New fields for enhanced tracking
+    country = models.CharField(max_length=100, blank=True, verbose_name="Pays")
+    city = models.CharField(max_length=100, blank=True, verbose_name="Ville")
+    device_type = models.CharField(max_length=50, blank=True, verbose_name="Type d'appareil")
+    browser = models.CharField(max_length=100, blank=True, verbose_name="Navigateur")
+    user_agent = models.TextField(blank=True, verbose_name="User Agent")
 
     class Meta:
         verbose_name = "Like"
         verbose_name_plural = "Likes"
+        ordering = ['-created_at']
 
+
+# Add a new model for tracking hourly stats
+class HourlyAnalytics(models.Model):
+    """Pre-aggregated hourly analytics"""
+    date = models.DateField()
+    hour = models.IntegerField()  # 0-23
+    page_views = models.IntegerField(default=0)
+    unique_visitors = models.IntegerField(default=0)
+    searches = models.IntegerField(default=0)
+    likes = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ['date', 'hour']
+        ordering = ['-date', '-hour']
+        verbose_name = "Analytique horaire"
+        verbose_name_plural = "Analytiques horaires"
 
 class AnimationSuggestion(models.Model):
     STATUS_CHOICES = [
