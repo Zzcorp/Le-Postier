@@ -102,6 +102,9 @@
 <div class="river-background" id="river-background">
     <div class="river-gradient"></div>
     
+    <!-- Fish Container - Behind everything -->
+    <div class="fish-container" id="fish-container"></div>
+    
     <!-- Back Wave (slower, brighter) -->
     <svg class="waves-svg waves-back" viewBox="0 0 1440 320" preserveAspectRatio="none">
         <defs>
@@ -139,9 +142,6 @@
                             M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L0,320Z"/>
         </path>
     </svg>
-    
-    <!-- Fish Container -->
-    <div class="fish-container" id="fish-container"></div>
     
     <!-- Light Particles Container -->
     <div class="light-particles" id="light-particles"></div>
@@ -364,6 +364,29 @@
    
     <div class="popup-image-container">
         <img id="popup-image" src="" alt="">
+        
+        <!-- Actions on image - bottom left -->
+        <div class="popup-image-actions">
+            <button class="popup-img-action-btn popup-like-img-btn" id="popup-like-img-btn" onclick="togglePopupLike()" title="J'aime">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span id="popup-like-count-img">0</span>
+            </button>
+            
+            <a class="popup-img-action-btn popup-send-img-btn" id="popup-send-img-btn" href="#" title="Envoyer cette carte">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13"/>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+                </svg>
+            </a>
+            
+            <a class="popup-img-action-btn popup-video-img-btn" id="popup-video-img-btn" href="#" title="Voir l'animation" style="display:none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+            </a>
+        </div>
     </div>
    
     <button class="popup-nav popup-next" id="popup-next" onclick="nextImage()" title="Suivant">
@@ -373,29 +396,6 @@
     </button>
    
     <div class="popup-info">
-        <div class="popup-actions">
-            <button class="popup-action-btn" id="popup-like-btn" onclick="togglePopupLike()" title="J'aime">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
-                <span id="popup-like-count">0</span>
-            </button>
-            
-            <!-- Paper Plane - Send to La Poste -->
-            <a class="popup-action-btn popup-send-btn" id="popup-send-btn" href="#" title="Envoyer cette carte">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 2L11 13"/>
-                    <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
-                </svg>
-                <span>Envoyer</span>
-            </a>
-           
-            <a class="popup-action-btn" id="popup-video-btn" href="#" title="Voir l'animation" style="display:none;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="5 3 19 12 5 21 5 3"/>
-                </svg>
-            </a>
-        </div>
         <h3 id="popup-title"></h3>
         <span id="popup-number"></span>
     </div>
@@ -515,9 +515,9 @@ let currentPostcardId = null;
 let popupsOpen = false;
 
 // =============================================
-// IMPROVED SEARCH ENGINE
+// SIMPLE EXACT PHRASE SEARCH
 // =============================================
-class ImprovedSearchEngine {
+class SimpleSearchEngine {
     constructor() {
         this.searchInput = document.getElementById('searchInput');
         this.clearBtn = document.getElementById('clearBtn');
@@ -527,13 +527,6 @@ class ImprovedSearchEngine {
     init() {
         this.searchInput.addEventListener('input', (e) => this.handleInput(e));
         this.updateClearButton();
-        
-        // Check URL for search query
-        const urlParams = new URLSearchParams(window.location.search);
-        const query = urlParams.get('keywords_input');
-        if (query) {
-            this.performSearch(query);
-        }
     }
    
     handleInput(e) {
@@ -543,94 +536,6 @@ class ImprovedSearchEngine {
     updateClearButton() {
         const hasValue = this.searchInput.value.trim().length > 0;
         this.clearBtn.classList.toggle('visible', hasValue);
-    }
-    
-    // Google-like search: match exact phrase first, then individual words
-    performSearch(query) {
-        if (!query || query.trim() === '') {
-            filteredPostcards = [...allPostcardsData];
-            currentPage = 1;
-            renderCurrentPage();
-            return;
-        }
-        
-        const searchTerm = query.trim().toLowerCase();
-        
-        // Score-based ranking
-        const scoredPostcards = allPostcardsData.map(postcard => {
-            let score = 0;
-            const title = postcard.title.toLowerCase();
-            const keywords = postcard.keywords.toLowerCase();
-            const number = postcard.number.toLowerCase();
-            
-            // Exact phrase match in title (highest priority)
-            if (title.includes(searchTerm)) {
-                score += 100;
-                // Bonus for starts with
-                if (title.startsWith(searchTerm)) {
-                    score += 50;
-                }
-            }
-            
-            // Exact phrase match in keywords
-            if (keywords.includes(searchTerm)) {
-                score += 80;
-            }
-            
-            // Exact match in number
-            if (number.includes(searchTerm)) {
-                score += 70;
-            }
-            
-            // If no exact match, try word-by-word matching
-            if (score === 0) {
-                const words = searchTerm.split(/\s+/).filter(w => w.length > 1);
-                
-                words.forEach(word => {
-                    if (title.includes(word)) {
-                        score += 30;
-                    }
-                    if (keywords.includes(word)) {
-                        score += 20;
-                    }
-                    if (number.includes(word)) {
-                        score += 15;
-                    }
-                });
-            }
-            
-            return { postcard, score };
-        });
-        
-        // Filter and sort by score
-        filteredPostcards = scoredPostcards
-            .filter(item => item.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .map(item => item.postcard);
-        
-        currentPage = 1;
-        renderCurrentPage();
-        updateSearchInfo(filteredPostcards.length, query);
-    }
-}
-
-function updateSearchInfo(count, query) {
-    const searchInfo = document.getElementById('searchInfo');
-    if (query && count > 0) {
-        searchInfo.innerHTML = `
-            <p class="search-results-text">
-                <span class="result-count">${count}</span> résultat${count > 1 ? 's' : ''} pour
-                "<span class="result-query">${escapeHtml(query)}</span>"
-            </p>
-        `;
-    } else if (query && count === 0) {
-        searchInfo.innerHTML = `
-            <p class="search-results-text no-results-text">
-                Aucun résultat pour "<span class="result-query">${escapeHtml(query)}</span>"
-            </p>
-        `;
-    } else {
-        searchInfo.innerHTML = '';
     }
 }
 
@@ -710,7 +615,7 @@ function createPostcardCard(postcard) {
     card.dataset.videoUrl = postcard.video_url;
     card.onclick = () => showDetail(postcard.id);
     
-    const userLikes = new Set(); // This would be populated from server
+    const userLikes = new Set();
     const isLiked = userLikes.has(postcard.id);
     
     card.innerHTML = `
@@ -898,7 +803,7 @@ class FloatingKeywords {
         selectedKeywords.forEach((kw, index) => {
             const element = document.createElement('button');
             element.className = `floating-keyword keyword-${kw.size} bubble-keyword`;
-            element.textContent = kw.word;
+            element.innerHTML = `<span class="keyword-text">${kw.word}</span>`;
             element.dataset.word = kw.word;
            
             const startX = (index / selectedKeywords.length) * 100;
@@ -910,6 +815,10 @@ class FloatingKeywords {
             const waveAmplitude = 8 + Math.random() * 12;
             const waveFrequency = 0.3 + Math.random() * 0.4;
             const waveOffset = Math.random() * Math.PI * 2;
+            
+            // Border oscillation parameters
+            const borderWaveSpeed = 0.5 + Math.random() * 0.5;
+            const borderWaveOffset = Math.random() * Math.PI * 2;
            
             const keywordObj = {
                 element,
@@ -919,6 +828,8 @@ class FloatingKeywords {
                 waveAmplitude,
                 waveFrequency,
                 waveOffset,
+                borderWaveSpeed,
+                borderWaveOffset,
                 startTime: performance.now(),
                 word: kw.word
             };
@@ -933,8 +844,6 @@ class FloatingKeywords {
                 left: ${startX}%;
                 top: ${startY}%;
                 opacity: 0.8;
-                transform: translateX(0) translateY(0);
-                transition: color 0.3s, text-shadow 0.3s;
             `;
         });
     }
@@ -970,11 +879,19 @@ class FloatingKeywords {
                 if (kw.x > 85) opacity = (100 - kw.x) / 15;
                 else if (kw.x < 15) opacity = kw.x / 15;
                 opacity = Math.max(0.1, Math.min(0.85, opacity));
+                
+                // Oscillating border radius for wavy effect
+                const borderWave = Math.sin(elapsed * kw.borderWaveSpeed + kw.borderWaveOffset);
+                const r1 = 45 + borderWave * 8;
+                const r2 = 55 - borderWave * 8;
+                const r3 = 50 + borderWave * 5;
+                const r4 = 50 - borderWave * 5;
                
                 kw.element.style.left = `${kw.x}%`;
                 kw.element.style.top = `${kw.y}%`;
                 kw.element.style.transform = `translateY(${waveY}px)`;
                 kw.element.style.opacity = opacity;
+                kw.element.style.borderRadius = `${r1}% ${r2}% ${r3}% ${r4}% / ${r2}% ${r1}% ${r4}% ${r3}%`;
             });
            
             this.animationFrameId = requestAnimationFrame(animate);
@@ -1045,88 +962,181 @@ function createBubblePop(x, y) {
 }
 
 // =============================================
-// FISH ANIMATION
+// FISH & SEAHORSE ANIMATION
 // =============================================
-class FishManager {
+class AquaticLifeManager {
     constructor() {
         this.container = document.getElementById('fish-container');
-        this.fishes = [];
-        this.fishCount = 3;
+        this.creatures = [];
         
         if (!this.container) return;
         this.init();
     }
     
     init() {
-        for (let i = 0; i < this.fishCount; i++) {
-            this.createFish(i);
-        }
+        // Create various fish
+        this.createFish({ size: 60, speed: 0.4, y: 25, type: 'fish', color: 'rgba(181, 96, 11, 0.25)' });
+        this.createFish({ size: 45, speed: 0.5, y: 45, type: 'fish', color: 'rgba(209, 135, 44, 0.2)' });
+        this.createFish({ size: 70, speed: 0.35, y: 65, type: 'fish', color: 'rgba(181, 96, 11, 0.22)' });
+        this.createFish({ size: 35, speed: 0.6, y: 35, type: 'fish', color: 'rgba(255, 193, 104, 0.18)' });
+        this.createFish({ size: 50, speed: 0.45, y: 55, type: 'fish', color: 'rgba(181, 96, 11, 0.2)' });
+        this.createFish({ size: 40, speed: 0.55, y: 75, type: 'fish', color: 'rgba(209, 135, 44, 0.18)' });
+        this.createFish({ size: 55, speed: 0.38, y: 20, type: 'fish', color: 'rgba(255, 193, 104, 0.2)' });
+        
+        // Create seahorse duo
+        this.createSeahorse({ size: 40, speed: 0.25, y: 40, offset: 0 });
+        this.createSeahorse({ size: 35, speed: 0.25, y: 48, offset: 15 }); // Following partner
+        
         this.animate();
     }
     
-    createFish(index) {
+    createFish(config) {
         const fish = document.createElement('div');
-        fish.className = 'swimming-fish';
+        fish.className = 'swimming-creature swimming-fish';
+        
+        const direction = Math.random() > 0.5 ? 1 : -1;
+        const startX = direction === 1 ? -20 : 120;
+        
         fish.innerHTML = `
-            <svg viewBox="0 0 50 30" fill="none">
-                <ellipse cx="25" cy="15" rx="20" ry="10" fill="rgba(181, 96, 11, 0.15)"/>
-                <path d="M5 15 L-5 5 L-5 25 Z" fill="rgba(181, 96, 11, 0.12)"/>
-                <circle cx="35" cy="12" r="2" fill="rgba(255, 255, 255, 0.2)"/>
+            <svg viewBox="0 0 60 35" fill="none">
+                <!-- Body -->
+                <ellipse cx="30" cy="17" rx="22" ry="12" fill="${config.color}"/>
+                <!-- Tail -->
+                <path d="M8 17 L-5 5 L-2 17 L-5 29 Z" fill="${config.color.replace('0.', '0.15').replace(')', ')')}"/>
+                <!-- Dorsal fin -->
+                <path d="M25 5 Q30 0 35 5 L30 10 Z" fill="${config.color.replace('0.', '0.12').replace(')', ')')}"/>
+                <!-- Eye -->
+                <circle cx="42" cy="14" r="3" fill="rgba(255, 255, 255, 0.3)"/>
+                <circle cx="43" cy="13" r="1.5" fill="rgba(255, 255, 255, 0.5)"/>
+                <!-- Pectoral fin -->
+                <ellipse cx="28" cy="22" rx="6" ry="4" fill="${config.color.replace('0.', '0.1').replace(')', ')')}" transform="rotate(-20 28 22)"/>
             </svg>
         `;
         
-        const size = 40 + Math.random() * 40;
-        const startY = 20 + Math.random() * 60;
-        const speed = 0.3 + Math.random() * 0.4;
-        const direction = Math.random() > 0.5 ? 1 : -1;
-        const startX = direction === 1 ? -15 : 115;
-        
-        const fishObj = {
+        const creatureObj = {
             element: fish,
             x: startX,
-            y: startY,
-            speed: speed * direction,
-            size,
+            y: config.y,
+            speed: config.speed * direction,
+            size: config.size,
             waveOffset: Math.random() * Math.PI * 2,
-            waveAmplitude: 3 + Math.random() * 5,
-            direction
+            waveAmplitude: 4 + Math.random() * 6,
+            tailWaveOffset: Math.random() * Math.PI * 2,
+            direction,
+            type: 'fish'
         };
         
         fish.style.cssText = `
             position: absolute;
-            width: ${size}px;
-            height: ${size * 0.6}px;
+            width: ${config.size}px;
+            height: ${config.size * 0.6}px;
             left: ${startX}%;
-            top: ${startY}%;
-            transform: scaleX(${direction}) translateY(0);
-            opacity: 0.6;
-            transition: none;
+            top: ${config.y}%;
+            transform: scaleX(${direction});
+            opacity: 0.8;
             pointer-events: none;
+            z-index: 1;
         `;
         
-        this.fishes.push(fishObj);
+        this.creatures.push(creatureObj);
         this.container.appendChild(fish);
+    }
+    
+    createSeahorse(config) {
+        const seahorse = document.createElement('div');
+        seahorse.className = 'swimming-creature swimming-seahorse';
+        
+        const startX = -20 + config.offset;
+        
+        seahorse.innerHTML = `
+            <svg viewBox="0 0 30 50" fill="none">
+                <!-- Head -->
+                <ellipse cx="18" cy="8" rx="8" ry="6" fill="rgba(181, 96, 11, 0.2)"/>
+                <!-- Snout -->
+                <ellipse cx="26" cy="10" rx="5" ry="2" fill="rgba(181, 96, 11, 0.18)"/>
+                <!-- Body curve -->
+                <path d="M15 12 Q8 20 10 30 Q12 40 18 48" stroke="rgba(181, 96, 11, 0.2)" stroke-width="8" fill="none" stroke-linecap="round"/>
+                <!-- Belly -->
+                <path d="M18 15 Q25 22 22 32 Q20 38 18 42" stroke="rgba(255, 193, 104, 0.15)" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <!-- Dorsal fin ridge -->
+                <path d="M12 18 Q6 22 8 28 Q6 32 10 36" stroke="rgba(181, 96, 11, 0.15)" stroke-width="3" fill="none"/>
+                <!-- Eye -->
+                <circle cx="20" cy="7" r="2" fill="rgba(255, 255, 255, 0.3)"/>
+                <!-- Crown/crest -->
+                <path d="M12 4 Q14 0 16 4 Q18 1 20 5" stroke="rgba(181, 96, 11, 0.18)" stroke-width="2" fill="none"/>
+                <!-- Tail curl -->
+                <path d="M18 48 Q22 50 20 46 Q18 44 20 42" stroke="rgba(181, 96, 11, 0.18)" stroke-width="3" fill="none" stroke-linecap="round"/>
+            </svg>
+        `;
+        
+        const creatureObj = {
+            element: seahorse,
+            x: startX,
+            y: config.y,
+            speed: config.speed,
+            size: config.size,
+            waveOffset: Math.random() * Math.PI * 2,
+            waveAmplitude: 2 + Math.random() * 3,
+            bobOffset: Math.random() * Math.PI * 2,
+            direction: 1,
+            type: 'seahorse',
+            partnerOffset: config.offset
+        };
+        
+        seahorse.style.cssText = `
+            position: absolute;
+            width: ${config.size}px;
+            height: ${config.size * 1.6}px;
+            left: ${startX}%;
+            top: ${config.y}%;
+            opacity: 0.7;
+            pointer-events: none;
+            z-index: 1;
+        `;
+        
+        this.creatures.push(creatureObj);
+        this.container.appendChild(seahorse);
     }
     
     animate() {
         const tick = (timestamp) => {
-            this.fishes.forEach(fish => {
-                fish.x += fish.speed * 0.02;
+            this.creatures.forEach(creature => {
+                creature.x += creature.speed * 0.025;
                 
-                // Reset position when fish goes off screen
-                if (fish.direction === 1 && fish.x > 115) {
-                    fish.x = -15;
-                    fish.y = 20 + Math.random() * 60;
-                } else if (fish.direction === -1 && fish.x < -15) {
-                    fish.x = 115;
-                    fish.y = 20 + Math.random() * 60;
+                // Reset position when off screen
+                if (creature.type === 'fish') {
+                    if (creature.direction === 1 && creature.x > 120) {
+                        creature.x = -20;
+                        creature.y = 15 + Math.random() * 70;
+                    } else if (creature.direction === -1 && creature.x < -20) {
+                        creature.x = 120;
+                        creature.y = 15 + Math.random() * 70;
+                    }
+                } else {
+                    // Seahorse
+                    if (creature.x > 120) {
+                        creature.x = -20 + creature.partnerOffset;
+                        creature.y = 30 + Math.random() * 40;
+                    }
                 }
                 
-                const waveY = Math.sin(timestamp * 0.001 + fish.waveOffset) * fish.waveAmplitude;
+                // Wave motion
+                let waveY, transform;
                 
-                fish.element.style.left = `${fish.x}%`;
-                fish.element.style.top = `${fish.y}%`;
-                fish.element.style.transform = `scaleX(${fish.direction}) translateY(${waveY}px)`;
+                if (creature.type === 'fish') {
+                    waveY = Math.sin(timestamp * 0.001 + creature.waveOffset) * creature.waveAmplitude;
+                    const tailWave = Math.sin(timestamp * 0.008 + creature.tailWaveOffset) * 3;
+                    transform = `scaleX(${creature.direction}) translateY(${waveY}px) rotate(${tailWave}deg)`;
+                } else {
+                    // Seahorse has bobbing motion
+                    waveY = Math.sin(timestamp * 0.0015 + creature.waveOffset) * creature.waveAmplitude;
+                    const bob = Math.sin(timestamp * 0.003 + creature.bobOffset) * 2;
+                    transform = `translateY(${waveY}px) rotate(${bob}deg)`;
+                }
+                
+                creature.element.style.left = `${creature.x}%`;
+                creature.element.style.top = `${creature.y}%`;
+                creature.element.style.transform = transform;
             });
             
             requestAnimationFrame(tick);
@@ -1143,7 +1153,7 @@ class LightParticles {
     constructor() {
         this.container = document.getElementById('light-particles');
         this.particles = [];
-        this.particleCount = 25;
+        this.particleCount = 30;
         
         if (!this.container) return;
         this.init();
@@ -1163,7 +1173,7 @@ class LightParticles {
         const size = 2 + Math.random() * 4;
         const startX = Math.random() * 100;
         const startY = Math.random() * 100;
-        const speed = 0.1 + Math.random() * 0.2;
+        const speed = 0.08 + Math.random() * 0.15;
         
         const particleObj = {
             element: particle,
@@ -1172,6 +1182,7 @@ class LightParticles {
             speed,
             size,
             twinkleOffset: Math.random() * Math.PI * 2,
+            twinkleSpeed: 0.002 + Math.random() * 0.003,
             waveOffset: Math.random() * Math.PI * 2,
             waveAmplitude: 5 + Math.random() * 10
         };
@@ -1182,10 +1193,10 @@ class LightParticles {
             height: ${size}px;
             left: ${startX}%;
             top: ${startY}%;
-            background: radial-gradient(circle, rgba(255, 220, 150, 0.8) 0%, rgba(255, 193, 104, 0.4) 50%, transparent 100%);
+            background: radial-gradient(circle, rgba(255, 230, 180, 0.9) 0%, rgba(255, 193, 104, 0.5) 40%, transparent 100%);
             border-radius: 50%;
             pointer-events: none;
-            box-shadow: 0 0 ${size * 2}px rgba(255, 193, 104, 0.3);
+            box-shadow: 0 0 ${size * 3}px rgba(255, 200, 120, 0.4);
         `;
         
         this.particles.push(particleObj);
@@ -1195,20 +1206,20 @@ class LightParticles {
     animate() {
         const tick = (timestamp) => {
             this.particles.forEach(p => {
-                p.x -= p.speed * 0.03;
+                p.x -= p.speed * 0.04;
                 
                 if (p.x < -5) {
                     p.x = 105;
                     p.y = Math.random() * 100;
                 }
                 
-                const waveY = Math.sin(timestamp * 0.0008 + p.waveOffset) * p.waveAmplitude;
-                const twinkle = 0.3 + Math.sin(timestamp * 0.003 + p.twinkleOffset) * 0.5 + 0.5;
+                const waveY = Math.sin(timestamp * 0.0006 + p.waveOffset) * p.waveAmplitude;
+                const twinkle = 0.3 + (Math.sin(timestamp * p.twinkleSpeed + p.twinkleOffset) * 0.5 + 0.5) * 0.7;
                 
                 p.element.style.left = `${p.x}%`;
                 p.element.style.top = `${p.y}%`;
                 p.element.style.transform = `translateY(${waveY}px)`;
-                p.element.style.opacity = twinkle * 0.7;
+                p.element.style.opacity = twinkle;
             });
             
             requestAnimationFrame(tick);
@@ -1711,13 +1722,14 @@ function showDetail(id) {
     document.getElementById('popup-image').src = postcard.grande_url || postcard.vignette_url;
     document.getElementById('popup-title').textContent = postcard.title;
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
-    document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
+    document.getElementById('popup-like-count-img').textContent = postcard.likes_count || 0;
    
     // Update send button link
-    const sendBtn = document.getElementById('popup-send-btn');
+    const sendBtn = document.getElementById('popup-send-img-btn');
     sendBtn.href = `/la-poste/?postcard=${id}`;
    
-    const videoBtn = document.getElementById('popup-video-btn');
+    // Update video button
+    const videoBtn = document.getElementById('popup-video-img-btn');
     if (postcard.has_video) {
         videoBtn.style.display = 'flex';
         videoBtn.href = '/cp-animes/?highlight=' + id;
@@ -1728,7 +1740,7 @@ function showDetail(id) {
     document.getElementById('popup-flip').style.display = postcard.dos_url ? 'flex' : 'none';
    
     const cardLikeBtn = document.querySelector(`.like-btn[data-id="${id}"]`);
-    const popupLikeBtn = document.getElementById('popup-like-btn');
+    const popupLikeBtn = document.getElementById('popup-like-img-btn');
     popupLikeBtn.classList.toggle('liked', cardLikeBtn?.classList.contains('liked'));
    
     document.getElementById('popup-overlay').classList.add('active');
@@ -1787,12 +1799,12 @@ function updatePopup() {
     document.getElementById('popup-image').src = postcard.grande_url || postcard.vignette_url;
     document.getElementById('popup-title').textContent = postcard.title;
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
-    document.getElementById('popup-like-count').textContent = postcard.likes_count || 0;
+    document.getElementById('popup-like-count-img').textContent = postcard.likes_count || 0;
     
-    const sendBtn = document.getElementById('popup-send-btn');
+    const sendBtn = document.getElementById('popup-send-img-btn');
     sendBtn.href = `/la-poste/?postcard=${postcard.id}`;
     
-    const videoBtn = document.getElementById('popup-video-btn');
+    const videoBtn = document.getElementById('popup-video-img-btn');
     if (postcard.has_video) {
         videoBtn.style.display = 'flex';
         videoBtn.href = '/cp-animes/?highlight=' + postcard.id;
@@ -1838,9 +1850,9 @@ async function toggleLike(event, postcardId) {
             }
            
             if (currentPostcardId === postcardId) {
-                const popupBtn = document.getElementById('popup-like-btn');
+                const popupBtn = document.getElementById('popup-like-img-btn');
                 popupBtn.classList.toggle('liked', data.liked);
-                document.getElementById('popup-like-count').textContent = data.likes_count;
+                document.getElementById('popup-like-count-img').textContent = data.likes_count;
             }
            
             const postcard = allPostcardsData.find(p => p.id === postcardId);
@@ -1972,9 +1984,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingManager = new LoadingManager();
     loadingManager.start();
    
-    window.searchEngine = new ImprovedSearchEngine();
+    window.searchEngine = new SimpleSearchEngine();
     window.floatingKeywords = new FloatingKeywords();
-    window.fishManager = new FishManager();
+    window.aquaticLife = new AquaticLifeManager();
     window.lightParticles = new LightParticles();
     new ImageLoader();
    
@@ -2023,6 +2035,28 @@ document.addEventListener('DOMContentLoaded', () => {
     position: absolute; inset: 0;
     background: radial-gradient(ellipse at 20% 30%, rgba(255, 180, 50, 0.05) 0%, transparent 50%),
                 radial-gradient(ellipse at 80% 70%, rgba(181, 96, 11, 0.06) 0%, transparent 50%);
+    z-index: 1;
+}
+
+/* Fish Container - Behind waves */
+.fish-container {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.swimming-creature {
+    position: absolute;
+    pointer-events: none;
+    will-change: transform, left, top;
+}
+
+.swimming-fish svg,
+.swimming-seahorse svg {
+    width: 100%;
+    height: 100%;
 }
 
 /* Back Wave - Slower, Brighter */
@@ -2033,11 +2067,11 @@ document.addEventListener('DOMContentLoaded', () => {
     width: 100%;
     height: 50%;
     min-height: 250px;
-    z-index: 1;
+    z-index: 3;
 }
 
 .waves-svg.waves-back .wave-back {
-    opacity: 0.5;
+    opacity: 0.6;
 }
 
 /* Front Wave - Original */
@@ -2048,37 +2082,16 @@ document.addEventListener('DOMContentLoaded', () => {
     width: 100%;
     height: 40%;
     min-height: 200px;
-    z-index: 2;
+    z-index: 4;
 }
  
 .wave { opacity: 0.4; }
-
-/* Fish Container */
-.fish-container {
-    position: absolute;
-    inset: 0;
-    z-index: 3;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.swimming-fish {
-    position: absolute;
-    opacity: 0.5;
-    filter: blur(0.5px);
-    transition: opacity 0.3s;
-}
-
-.swimming-fish svg {
-    width: 100%;
-    height: 100%;
-}
 
 /* Light Particles */
 .light-particles {
     position: absolute;
     inset: 0;
-    z-index: 4;
+    z-index: 5;
     pointer-events: none;
     overflow: hidden;
 }
@@ -2086,9 +2099,10 @@ document.addEventListener('DOMContentLoaded', () => {
 .light-particle {
     position: absolute;
     pointer-events: none;
+    will-change: transform, opacity;
 }
  
-.river-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.river-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 6; }
  
 /* ========================================
    BUBBLE POP EFFECT
@@ -2303,72 +2317,42 @@ document.addEventListener('DOMContentLoaded', () => {
     overflow: hidden;
 }
  
-/* Floating Keywords with Bubble/Wavy borders */
+/* Floating Keywords with oscillating wavy borders */
 .floating-keyword {
     position: absolute;
-    background: rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
     color: rgba(255, 255, 255, 0.85);
     cursor: pointer;
     white-space: nowrap;
     font-family: inherit;
-    transition: color 0.3s, text-shadow 0.3s, background 0.3s, border-color 0.3s, transform 0.3s;
-    will-change: transform, left, top, opacity;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    will-change: transform, left, top, opacity, border-radius;
 }
 
-/* Bubble-like wavy border using SVG filter */
 .bubble-keyword {
-    border: none;
     padding: 12px 24px;
-    border-radius: 50px;
-    position: relative;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
     box-shadow: 
         inset 0 0 20px rgba(255, 255, 255, 0.05),
         0 2px 10px rgba(0, 0, 0, 0.2);
-    animation: bubbleWobble 3s ease-in-out infinite;
 }
 
-.bubble-keyword::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: 52px;
-    background: linear-gradient(45deg, 
-        rgba(255, 220, 180, 0.3) 0%, 
-        rgba(255, 255, 255, 0.1) 25%,
-        rgba(181, 96, 11, 0.2) 50%,
-        rgba(255, 255, 255, 0.1) 75%,
-        rgba(255, 220, 180, 0.3) 100%);
-    z-index: -1;
-    animation: borderShimmer 4s linear infinite;
+.keyword-text {
+    position: relative;
+    z-index: 1;
 }
 
-@keyframes bubbleWobble {
-    0%, 100% { 
-        border-radius: 48% 52% 50% 50% / 50% 48% 52% 50%;
-    }
-    25% { 
-        border-radius: 50% 50% 48% 52% / 52% 50% 50% 48%;
-    }
-    50% { 
-        border-radius: 52% 48% 50% 50% / 50% 52% 48% 50%;
-    }
-    75% { 
-        border-radius: 50% 50% 52% 48% / 48% 50% 50% 52%;
-    }
-}
-
-@keyframes borderShimmer {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
-}
- 
+/* Hover - slight scale, no vertical movement */
 .floating-keyword:hover {
-    background: rgba(181, 96, 11, 0.5);
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.5), rgba(181, 96, 11, 0.3));
+    border-color: rgba(255, 193, 104, 0.6);
     color: white;
     text-shadow: 0 0 15px rgba(255, 193, 104, 0.8);
     z-index: 10;
-    transform: scale(1.1) !important;
+    transform: scale(1.08) !important;
+    box-shadow: 
+        inset 0 0 25px rgba(255, 193, 104, 0.15),
+        0 4px 20px rgba(181, 96, 11, 0.4);
 }
 
 .floating-keyword.popping {
@@ -2396,6 +2380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     font-size: 1.1rem;
     font-weight: 600;
     background: linear-gradient(135deg, rgba(181, 96, 11, 0.25), rgba(181, 96, 11, 0.1));
+    border-color: rgba(181, 96, 11, 0.35);
     box-shadow: 
         inset 0 0 30px rgba(255, 193, 104, 0.1),
         0 4px 20px rgba(181, 96, 11, 0.25);
@@ -2756,6 +2741,7 @@ document.addEventListener('DOMContentLoaded', () => {
 .popup-next { right: -60px; }
  
 .popup-image-container {
+    position: relative;
     max-width: 80vw; max-height: 70vh;
     display: flex; align-items: center; justify-content: center;
 }
@@ -2764,42 +2750,70 @@ document.addEventListener('DOMContentLoaded', () => {
     border-radius: 8px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.5);
 }
+
+/* Actions on image - bottom left */
+.popup-image-actions {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+}
+
+.popup-img-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.popup-img-action-btn:hover {
+    background: rgba(181, 96, 11, 0.8);
+    border-color: #b5600b;
+    transform: translateY(-2px);
+}
+
+.popup-img-action-btn.liked {
+    background: rgba(255, 100, 100, 0.5);
+    border-color: #ff6b6b;
+}
+
+.popup-img-action-btn.liked svg {
+    fill: #ff6b6b;
+}
+
+.popup-send-img-btn:hover svg {
+    transform: translateX(2px) translateY(-2px);
+}
+
+.popup-send-img-btn svg {
+    transition: transform 0.3s;
+}
+
+.popup-video-img-btn {
+    background: rgba(181, 96, 11, 0.6);
+    border-color: rgba(255, 193, 104, 0.5);
+}
+
+.popup-video-img-btn:hover {
+    background: #b5600b;
+}
  
 .popup-info {
     background: linear-gradient(135deg, rgba(181, 96, 11, 0.9), rgba(209, 135, 44, 0.9));
     padding: 15px 20px;
     border-radius: 0 0 8px 8px;
     display: flex; align-items: center; gap: 15px;
-}
-.popup-actions { display: flex; gap: 8px; }
-.popup-action-btn {
-    display: flex; align-items: center; gap: 5px;
-    padding: 8px 12px;
-    background: rgba(255,255,255,0.2); border: none; border-radius: 20px;
-    color: white; cursor: pointer; font-size: 0.85rem;
-    transition: all 0.2s;
-    text-decoration: none;
-}
-.popup-action-btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px); }
-.popup-action-btn.liked { background: rgba(255, 100, 100, 0.4); }
-
-/* Paper Plane Send Button */
-.popup-send-btn {
-    background: rgba(255, 255, 255, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.popup-send-btn:hover {
-    background: rgba(255, 255, 255, 0.4);
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-.popup-send-btn svg {
-    transition: transform 0.3s;
-}
-
-.popup-send-btn:hover svg {
-    transform: translateX(2px) translateY(-2px);
 }
 
 #popup-title { color: white; font-size: 1rem; margin: 0; flex: 1; }
@@ -2972,6 +2986,21 @@ document.addEventListener('DOMContentLoaded', () => {
     .popup-nav { display: none; }
     .popup-flip { top: 10px; left: 10px; }
     .popup-close { top: 10px; right: 10px; }
+    
+    .popup-image-actions {
+        bottom: 10px;
+        left: 10px;
+        gap: 8px;
+    }
+    
+    .popup-img-action-btn {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .popup-img-action-btn span {
+        display: none;
+    }
    
     .cinema-mode-selector { flex-wrap: wrap; justify-content: center; }
     .mode-btn { padding: 6px 10px; font-size: 0.75rem; }
@@ -2994,10 +3023,6 @@ document.addEventListener('DOMContentLoaded', () => {
     .popup-info {
         flex-wrap: wrap;
         gap: 10px;
-    }
-    
-    .popup-actions {
-        flex-wrap: wrap;
     }
     
     .pagination {
@@ -3037,8 +3062,13 @@ document.addEventListener('DOMContentLoaded', () => {
         justify-content: center;
     }
     
-    .popup-send-btn span {
-        display: none;
+    .popup-image-actions {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .popup-img-action-btn {
+        padding: 8px 10px;
     }
 }
 </style>

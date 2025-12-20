@@ -786,18 +786,7 @@ def home(request):
 # ============================================
 
 def browse(request):
-    """Browse page with improved search"""
-    import unicodedata
-
-    def normalize_text(text):
-        """Normalize text for search comparison"""
-        if not text:
-            return text
-        # Remove accents
-        normalized = unicodedata.normalize('NFD', text)
-        normalized = ''.join(char for char in normalized if unicodedata.category(char) != 'Mn')
-        return normalized.lower().strip()
-
+    """Browse page with exact phrase search"""
     try:
         query = request.GET.get('keywords_input', '').strip()
 
@@ -805,58 +794,27 @@ def browse(request):
         themes = Theme.objects.all()[:20]
 
         if query:
-            # Normalize the search query
-            normalized_query = normalize_text(query)
-
-            # First, try exact phrase match (most relevant)
-            exact_phrase_q = (
-                    Q(title__icontains=query) |
-                    Q(keywords__icontains=query) |
-                    Q(number__icontains=query)
-            )
-
-            # Get postcards matching exact phrase
-            exact_matches = postcards.filter(exact_phrase_q).distinct()
-
-            # If we have fewer than 100 exact matches, also search for individual words
-            if exact_matches.count() < 100:
-                # Split query into words and search for each
-                words = query.split()
-                word_q = Q()
-
-                for word in words:
-                    if len(word) > 1:  # Skip single characters
-                        word_q |= (
-                                Q(title__icontains=word) |
-                                Q(keywords__icontains=word) |
-                                Q(number__icontains=word)
-                        )
-
-                # Get word matches excluding already found exact matches
-                word_matches = postcards.filter(word_q).exclude(
-                    id__in=exact_matches.values_list('id', flat=True)
-                ).distinct()
-
-                # Combine: exact matches first, then word matches
-                from itertools import chain
-                postcards_list = list(chain(exact_matches, word_matches))
-            else:
-                postcards_list = list(exact_matches)
+            # EXACT PHRASE SEARCH - do not split the query
+            # Search for the exact phrase in title, keywords, or number
+            postcards = postcards.filter(
+                Q(title__icontains=query) |
+                Q(keywords__icontains=query) |
+                Q(number__icontains=query)
+            ).distinct()
 
             # Log the search
             SearchLog.objects.create(
                 keyword=query,
-                results_count=len(postcards_list),
+                results_count=postcards.count(),
                 user=request.user if request.user.is_authenticated else None,
                 ip_address=get_client_ip(request)
             )
 
-            postcards = postcards_list
-        else:
-            postcards = postcards.order_by('number')
+        # Order results
+        postcards = postcards.order_by('number')
 
-        # No limit here - pagination is handled by JavaScript
-        postcards = list(postcards) if isinstance(postcards, list) else list(postcards)
+        # Convert to list for template
+        postcards = list(postcards)
 
         user_likes = set()
         if request.user.is_authenticated:
@@ -887,8 +845,9 @@ def browse(request):
         return render(request, 'browse.html', context)
 
     except Exception as e:
+        import traceback
         return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
-
+    
 
 def animated_gallery(request):
     """Animated postcards gallery page"""
