@@ -820,57 +820,46 @@ def home(request):
 # BROWSE & GALLERY VIEWS
 # ============================================
 
-def normalize_text(text):
-    """Remove accents and normalize text for search"""
+def remove_accents(text):
+    """Remove accents from text for accent-insensitive search"""
     if not text:
-        return ""
-    # Normalize to NFD (decomposed form), then remove combining characters (accents)
-    normalized = unicodedata.normalize('NFD', text)
-    # Remove combining diacritical marks
-    without_accents = ''.join(c for c in normalized if unicodedata.category(c) != 'Mn')
-    return without_accents.lower()
+        return ''
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', text)
+        if unicodedata.category(c) != 'Mn'
+    )
 
 
 def browse(request):
-    """Browse page with accent-insensitive exact phrase search"""
+    """Browse page with exact phrase search"""
     try:
         query = request.GET.get('keywords_input', '').strip()
 
         postcards = Postcard.objects.filter(has_images=True)
         themes = Theme.objects.all()[:20]
 
+        # Then in the search:
         if query:
-            # Normalize the query (remove accents, lowercase)
-            normalized_query = normalize_text(query)
+            normalized_query = remove_accents(query.lower())
 
             # Get all postcards and filter in Python for accent-insensitive search
-            all_postcards = list(postcards)
-            filtered_postcards = []
+            all_postcards = postcards.filter(has_images=True)
+            matching_ids = []
 
             for postcard in all_postcards:
-                # Normalize postcard fields
-                normalized_title = normalize_text(postcard.title)
-                normalized_keywords = normalize_text(postcard.keywords)
-                normalized_number = normalize_text(str(postcard.number))
+                title_normalized = remove_accents(postcard.title.lower()) if postcard.title else ''
+                keywords_normalized = remove_accents(postcard.keywords.lower()) if postcard.keywords else ''
+                number_str = str(postcard.number).lower()
 
-                # Check if normalized query is in any normalized field
-                if (normalized_query in normalized_title or
-                        normalized_query in normalized_keywords or
-                        normalized_query in normalized_number):
-                    filtered_postcards.append(postcard)
+                if (normalized_query in title_normalized or
+                        normalized_query in keywords_normalized or
+                        normalized_query in number_str):
+                    matching_ids.append(postcard.id)
 
-            postcards = filtered_postcards
+            postcards = Postcard.objects.filter(id__in=matching_ids, has_images=True)
 
-            # Log the search
-            SearchLog.objects.create(
-                keyword=query,
-                results_count=len(postcards),
-                user=request.user if request.user.is_authenticated else None,
-                ip_address=get_client_ip(request)
-            )
-        else:
-            # Order results
-            postcards = list(postcards.order_by('number'))
+        # Convert to list for template
+        postcards = list(postcards)
 
         user_likes = set()
         if request.user.is_authenticated:

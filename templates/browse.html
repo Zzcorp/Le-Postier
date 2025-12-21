@@ -16,8 +16,8 @@
     </div>
 </div>
  
-<!-- Cinema/Diaporama Modal - HIDDEN BY DEFAULT -->
-<div class="cinema-modal" id="cinemaModal">
+<!-- Cinema/Diaporama Modal - HIDDEN BY DEFAULT with visibility:hidden -->
+<div class="cinema-modal" id="cinemaModal" style="display: none; visibility: hidden;">
     <div class="cinema-backdrop" onclick="closeCinema()"></div>
     <div class="cinema-container">
         <button class="cinema-close" onclick="closeCinema()" title="Fermer">
@@ -457,17 +457,6 @@
  
 <script>
 // =============================================
-// ACCENT NORMALIZATION FUNCTION
-// =============================================
-function normalizeText(text) {
-    if (!text) return '';
-    // Normalize to NFD and remove combining diacritical marks (accents)
-    return text.normalize('NFD')
-               .replace(/[\u0300-\u036f]/g, '')
-               .toLowerCase();
-}
-
-// =============================================
 // DATA
 // =============================================
 const csrfToken = '{{ csrf_token }}';
@@ -538,7 +527,28 @@ let currentPostcardId = null;
 let popupsOpen = false;
 
 // =============================================
-// SIMPLE EXACT PHRASE SEARCH
+// ACCENT-INSENSITIVE SEARCH UTILITIES
+// =============================================
+
+/**
+ * Remove accents from a string for accent-insensitive comparison
+ * This normalizes characters like é, è, ê, ë to e
+ */
+function removeAccents(str) {
+    if (!str) return '';
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * Normalize a string for search: lowercase and remove accents
+ */
+function normalizeForSearch(str) {
+    if (!str) return '';
+    return removeAccents(str.toLowerCase().trim());
+}
+
+// =============================================
+// SIMPLE EXACT PHRASE SEARCH (ACCENT INSENSITIVE)
 // =============================================
 class SimpleSearchEngine {
     constructor() {
@@ -1583,7 +1593,10 @@ function openCinema() {
     }
    
     cinemaIndex = 0;
-    document.getElementById('cinemaModal').classList.add('active');
+    const modal = document.getElementById('cinemaModal');
+    modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     popupsOpen = true;
     updateCinemaDisplay();
@@ -1591,7 +1604,15 @@ function openCinema() {
  
 function closeCinema() {
     stopCinemaPlay();
-    document.getElementById('cinemaModal').classList.remove('active');
+    const modal = document.getElementById('cinemaModal');
+    modal.classList.remove('active');
+    // Hide after transition
+    setTimeout(() => {
+        if (!modal.classList.contains('active')) {
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
+        }
+    }, 300);
     document.body.style.overflow = '';
     popupsOpen = false;
    
@@ -1971,7 +1992,8 @@ class LoadingManager {
 // =============================================
 document.addEventListener('keydown', (e) => {
     // Cinema modal
-    if (document.getElementById('cinemaModal').classList.contains('active')) {
+    const cinemaModal = document.getElementById('cinemaModal');
+    if (cinemaModal && cinemaModal.classList.contains('active')) {
         if (e.key === 'ArrowLeft') cinemaPrev();
         else if (e.key === 'ArrowRight') cinemaNext();
         else if (e.key === ' ') { e.preventDefault(); toggleCinemaPlay(); }
@@ -2297,28 +2319,234 @@ document.addEventListener('DOMContentLoaded', () => {
 .cinema-big-btn:hover .cinema-btn-arrow svg { stroke: white; }
  
 /* ========================================
-   CINEMA MODAL - HIDDEN BY DEFAULT
+   FLOATING RIVER KEYWORDS SECTION
+   ======================================== */
+.river-keywords-section {
+    position: relative;
+    max-width: 100%;
+    margin: 0 auto 30px;
+    padding: 0;
+    overflow: hidden;
+    transition: all 0.5s ease;
+}
+ 
+.river-keywords-section.searching {
+    height: 0;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+ 
+.river-keywords-header {
+    text-align: center;
+    padding: 0 20px 15px;
+    position: relative;
+    z-index: 2;
+}
+ 
+.river-keywords-header h3 {
+    color: white;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+}
+ 
+.river-keywords-header p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+}
+ 
+.river-keywords-container {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+}
+ 
+/* Floating Keywords with oscillating wavy borders */
+.floating-keyword {
+    position: absolute;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    will-change: transform, left, top, opacity, border-radius;
+}
+
+.bubble-keyword {
+    padding: 12px 24px;
+    box-shadow: 
+        inset 0 0 20px rgba(255, 255, 255, 0.05),
+        0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.keyword-text {
+    position: relative;
+    z-index: 1;
+}
+
+/* Hover - slight scale, no vertical movement */
+.floating-keyword:hover {
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.5), rgba(181, 96, 11, 0.3));
+    border-color: rgba(255, 193, 104, 0.6);
+    color: white;
+    text-shadow: 0 0 15px rgba(255, 193, 104, 0.8);
+    z-index: 10;
+    transform: scale(1.08) !important;
+    box-shadow: 
+        inset 0 0 25px rgba(255, 193, 104, 0.15),
+        0 4px 20px rgba(181, 96, 11, 0.4);
+}
+
+.floating-keyword.popping {
+    animation: keywordPop 0.4s ease-out forwards;
+}
+
+@keyframes keywordPop {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+ 
+/* Keyword sizes */
+.keyword-large {
+    padding: 14px 28px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, rgba(181, 96, 11, 0.25), rgba(181, 96, 11, 0.1));
+    border-color: rgba(181, 96, 11, 0.35);
+    box-shadow: 
+        inset 0 0 30px rgba(255, 193, 104, 0.1),
+        0 4px 20px rgba(181, 96, 11, 0.25);
+}
+ 
+.keyword-medium {
+    padding: 11px 22px;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+ 
+.keyword-small {
+    padding: 9px 18px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+ 
+/* ========================================
+   PAGINATION
+   ======================================== */
+.pagination-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin: 40px 0;
+    padding: 0 20px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.page-btn {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-btn:hover:not(.disabled) {
+    background: rgba(181, 96, 11, 0.4);
+    border-color: #b5600b;
+    transform: translateY(-2px);
+}
+
+.page-btn.active {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-color: #b5600b;
+    font-weight: 600;
+}
+
+.page-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-btn.page-prev,
+.page-btn.page-next {
+    padding: 0;
+}
+
+.page-ellipsis {
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0 8px;
+}
+
+.page-info {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+}
+
+/* ========================================
+   CINEMA MODAL - PROPERLY HIDDEN BY DEFAULT
    ======================================== */
 .cinema-modal {
-    position: fixed; inset: 0; z-index: 5000;
-    display: none;
-    align-items: center; justify-content: center;
-    visibility: hidden;
+    position: fixed; 
+    inset: 0; 
+    z-index: 5000;
+    /* CRITICAL: These ensure modal is completely hidden during page load */
+    display: none !important;
+    visibility: hidden !important;
     opacity: 0;
+    align-items: center; 
+    justify-content: center;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
-.cinema-modal.active { 
-    display: flex; 
-    visibility: visible;
+
+/* Only show when active class is added by JavaScript */
+.cinema-modal.active {
+    display: flex !important;
+    visibility: visible !important;
     opacity: 1;
 }
+
 .cinema-backdrop { 
-    position: absolute; inset: 0; 
+    position: absolute; 
+    inset: 0; 
     background: rgba(0,0,0,0.97); 
 }
  
 .cinema-container {
-    position: relative; width: 95%; max-width: 1000px;
-    display: flex; flex-direction: column; align-items: center;
+    position: relative; 
+    width: 95%; 
+    max-width: 1000px;
+    display: flex; 
+    flex-direction: column; 
+    align-items: center;
 }
  
 .cinema-close {
@@ -2911,143 +3139,5 @@ document.addEventListener('DOMContentLoaded', () => {
         padding: 8px 10px;
     }
 }
-
-/* ========================================
-   BASE & LOADING
-   ======================================== */
-.loading-overlay {
-    position: fixed; inset: 0; z-index: 9999;
-    background: #1a1208;
-    display: flex; align-items: center; justify-content: center;
-    transition: opacity 0.3s ease;
-}
-.loading-overlay.hidden { opacity: 0; pointer-events: none; }
-.loading-content { text-align: center; }
-.loading-spinner {
-    width: 40px; height: 40px; margin: 0 auto 15px;
-    border: 3px solid rgba(181, 96, 11, 0.2);
-    border-top-color: #b5600b; border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-bottom: 12px; }
-.loading-progress { width: 150px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin: 0 auto; }
-.loading-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #b5600b, #ffc168); transition: width 0.1s; }
-
-/* ========================================
-   CINEMA MODAL - HIDDEN BY DEFAULT
-   ======================================== */
-.cinema-modal {
-    position: fixed; inset: 0; z-index: 5000;
-    display: none;  /* Hidden by default */
-    align-items: center; justify-content: center;
-    visibility: hidden;  /* Extra safety */
-    opacity: 0;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.cinema-modal.active { 
-    display: flex; 
-    visibility: visible;
-    opacity: 1;
-}
-.cinema-backdrop { 
-    position: absolute; inset: 0; 
-    background: rgba(0,0,0,0.97);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-.cinema-modal.active .cinema-backdrop {
-    opacity: 1;
-}
-
-.cinema-container {
-    position: relative; 
-    width: 95%; 
-    max-width: 1000px;
-    display: flex; 
-    flex-direction: column; 
-    align-items: center;
-    opacity: 0;
-    transform: scale(0.95);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.cinema-modal.active .cinema-container {
-    opacity: 1;
-    transform: scale(1);
-}
-
-/* Rest of cinema styles... */
-.cinema-close {
-    position: absolute; top: -50px; right: 0;
-    width: 44px; height: 44px;
-    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 50%; color: white; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.3s;
-}
-.cinema-close:hover { background: #b5600b; border-color: #b5600b; transform: rotate(90deg); }
- 
-.cinema-screen {
-    position: relative; width: 100%; max-height: 60vh;
-    display: flex; align-items: center; justify-content: center;
-    background: #000; border-radius: 8px; overflow: hidden;
-}
-.cinema-media { max-width: 100%; max-height: 60vh; border-radius: 8px; }
-.cinema-loading {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(0,0,0,0.8);
-}
-.cinema-spinner {
-    width: 36px; height: 36px;
-    border: 3px solid rgba(255,255,255,0.2);
-    border-top-color: #b5600b; border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
- 
-.cinema-info {
-    text-align: center; padding: 15px;
-    display: flex; align-items: center; gap: 15px; flex-wrap: wrap; justify-content: center;
-}
-.cinema-info h3 { color: white; font-size: 1rem; margin: 0; }
-.cinema-info span { color: rgba(255,255,255,0.6); font-size: 0.85rem; }
-.cinema-counter {
-    background: rgba(181, 96, 11, 0.3); padding: 4px 12px;
-    border-radius: 15px; font-size: 0.8rem;
-}
- 
-.cinema-controls { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
-.cinema-nav-btn {
-    width: 44px; height: 44px;
-    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 50%; color: white; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.3s;
-}
-.cinema-nav-btn:hover { background: rgba(181, 96, 11, 0.5); border-color: #b5600b; }
-.cinema-play-btn {
-    width: 56px; height: 56px;
-    background: linear-gradient(135deg, #b5600b, #d1872c);
-    border: none; border-radius: 50%; color: white; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.3s;
-}
-.cinema-play-btn:hover { transform: scale(1.08); }
- 
-.cinema-mode-selector { display: flex; gap: 6px; margin: 12px 0; }
-.mode-btn {
-    display: flex; align-items: center; gap: 5px;
-    padding: 8px 14px;
-    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 20px; color: rgba(255,255,255,0.7); font-size: 0.8rem;
-    cursor: pointer; transition: all 0.3s;
-}
-.mode-btn:hover { background: rgba(181, 96, 11, 0.3); border-color: rgba(181, 96, 11, 0.5); }
-.mode-btn.active { background: #b5600b; border-color: #b5600b; color: white; }
-.mode-btn svg { stroke: currentColor; }
- 
-.cinema-progress { width: 100%; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 8px; }
-.cinema-progress-bar { height: 100%; background: linear-gradient(90deg, #b5600b, #ffc168); border-radius: 2px; transition: width 0.3s; width: 0%; }
-
 </style>
 {% endblock %}
