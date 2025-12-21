@@ -1,8 +1,4 @@
 # core/management/commands/update_flags.py
-"""
-Update has_images flag for all postcards based on actual files on disk.
-"""
-
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from core.models import Postcard
@@ -10,129 +6,205 @@ from pathlib import Path
 import os
 
 
-def get_media_root():
-    """Get the correct media root path - always use persistent disk on Render"""
-    if os.environ.get('RENDER', 'false').lower() == 'true' or Path('/var/data').exists():
-        return Path('/var/data/media')
-    return Path(settings.MEDIA_ROOT)
-
-
 class Command(BaseCommand):
-    help = 'Update postcard flags based on actual media files on persistent disk'
+    help = 'Update has_images flags for all postcards based on actual files on disk'
 
     def add_arguments(self, parser):
-        parser.add_argument('--verbose', action='store_true', help='Show detailed output')
+        parser.add_argument(
+            '--verbose',
+            action='store_true',
+            help='Show detailed output'
+        )
+        parser.add_argument(
+            '--check-only',
+            action='store_true',
+            help='Only check and report, do not update'
+        )
 
     def handle(self, *args, **options):
         verbose = options['verbose']
+        check_only = options['check_only']
 
-        # CRITICAL: Use the correct media root
-        media_root = get_media_root()
+        # Determine media root - CRITICAL for Render
+        is_render = os.environ.get('RENDER', 'false').lower() == 'true'
+        persistent_exists = Path('/var/data').exists()
 
-        self.stdout.write(f"\n{'=' * 60}")
-        self.stdout.write("Updating Postcard Flags")
-        self.stdout.write(f"{'=' * 60}")
-        self.stdout.write(f"RENDER env: {os.environ.get('RENDER', 'not set')}")
-        self.stdout.write(f"/var/data exists: {Path('/var/data').exists()}")
-        self.stdout.write(self.style.SUCCESS(f"Media root: {media_root}"))
-        self.stdout.write(f"Media root exists: {media_root.exists()}")
-
-        if not media_root.exists():
-            self.stderr.write(self.style.ERROR(f"Media root does not exist: {media_root}"))
-            self.stderr.write("Creating directories...")
-            self.create_directories(media_root)
-
-        # Scan what files exist
-        self.stdout.write("\nScanning media folders...")
-
-        existing_files = {
-            'Vignette': set(),
-            'Grande': set(),
-            'Dos': set(),
-            'Zoom': set(),
-            'animated': set(),
-        }
-
-        # Scan postcard folders
-        for folder in ['Vignette', 'Grande', 'Dos', 'Zoom']:
-            folder_path = media_root / 'postcards' / folder
-            if folder_path.exists():
-                for ext in ['*.jpg', '*.jpeg', '*.png', '*.JPG', '*.JPEG', '*.PNG', '*.gif', '*.GIF']:
-                    for f in folder_path.glob(ext):
-                        num = f.stem
-                        if '_' in num:
-                            num = num.split('_')[0]
-                        existing_files[folder].add(num)
-                self.stdout.write(f"  {folder}: {len(existing_files[folder])} files")
-            else:
-                self.stdout.write(f"  {folder}: NOT FOUND")
-
-        # Scan animated folder
-        animated_path = media_root / 'animated_cp'
-        if animated_path.exists():
-            for ext in ['*.mp4', '*.webm', '*.MP4', '*.WEBM']:
-                for f in animated_path.glob(ext):
-                    num = f.stem.split('_')[0]
-                    existing_files['animated'].add(num)
-            self.stdout.write(f"  animated: {len(existing_files['animated'])} files")
+        if is_render or persistent_exists:
+            media_root = Path('/var/data/media')
         else:
-            self.stdout.write(f"  animated: NOT FOUND")
+            media_root = Path(settings.MEDIA_ROOT)
+
+        self.stdout.write(f'Environment: RENDER={is_render}, /var/data exists={persistent_exists}')
+        self.stdout.write(f'Using media root: {media_root}')
+        self.stdout.write(f'Media root exists: {media_root.exists()}')
+
+        # Define directories
+        vignette_dir = media_root / 'postcards' / 'Vignette'
+        grande_dir = media_root / 'postcards' / 'Grande'
+        dos_dir = media_root / 'postcards' / 'Dos'
+        zoom_dir = media_root / 'postcards' / 'Zoom'
+        animated_dir = media_root / 'animated_cp'
+
+        # Report directory status
+        self.stdout.write('')
+        self.stdout.write('Directory Status:')
+        for name, dir_path in [
+            ('Vignette', vignette_dir),
+            ('Grande', grande_dir),
+            ('Dos', dos_dir),
+            ('Zoom', zoom_dir),
+            ('Animated', animated_dir)
+        ]:
+            if dir_path.exists():
+                files = list(dir_path.glob('*.*'))
+                self.stdout.write(self.style.SUCCESS(f'  {name}: {len(files)} files'))
+                if verbose and files:
+                    for f in files[:5]:
+                        self.stdout.write(f'    - {f.name}')
+                    if len(files) > 5:
+                        self.stdout.write(f'    ... and {len(files) - 5} more')
+            else:
+                self.stdout.write(self.style.WARNING(f'  {name}: NOT FOUND at {dir_path}'))
+
+        # Build file indexes (stem -> filename mapping)
+        # Handle both padded (000001) and unpadded (1) numbers
+        self.stdout.write('')
+        self.stdout.write('Building file indexes...')
+
+        def build_index(directory):
+            """Build index mapping both padded and unpadded numbers to files"""
+            index = {}
+            if not directory.exists():
+                return index
+
+            for f in directory.glob('*.*'):
+                if f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.webm']:
+                    stem = f.stem.lower()
+                    # Store by exact stem
+                    index[stem] = f
+
+                    # Also store by numeric value (removes leading zeros)
+                    try:
+                        # Handle files like "000001_0" for multiple animations
+                        base = stem.split('_')[0]
+                        num = int(base)
+                        index[str(num)] = f
+                        index[str(num).zfill(6)] = f
+                    except ValueError:
+                        pass
+
+            return index
+
+        vignette_index = build_index(vignette_dir)
+        grande_index = build_index(grande_dir)
+        animated_index = build_index(animated_dir)
+
+        self.stdout.write(f'Vignette index: {len(vignette_index)} entries')
+        self.stdout.write(f'Grande index: {len(grande_index)} entries')
+        self.stdout.write(f'Animated index: {len(animated_index)} entries')
 
         # Update postcards
-        self.stdout.write("\nUpdating postcards in database...")
+        self.stdout.write('')
+        self.stdout.write('Updating postcards...')
 
         postcards = Postcard.objects.all()
         total = postcards.count()
 
-        if total == 0:
-            self.stdout.write(self.style.WARNING("No postcards in database. Run import_csv or populate_from_images first."))
-            return
+        updated_to_has_images = 0
+        updated_to_no_images = 0
+        already_correct = 0
+        with_animation = 0
 
-        updated = 0
-        has_images_count = 0
-        has_animation_count = 0
+        updates = []
 
-        for i, postcard in enumerate(postcards):
-            padded_num = postcard.get_padded_number()
+        for i, postcard in enumerate(postcards, 1):
+            # Get different number formats
+            number = str(postcard.number).strip()
+            number_lower = number.lower()
 
-            has_vignette = padded_num in existing_files['Vignette']
-            has_animation = padded_num in existing_files['animated']
+            # Get padded number
+            try:
+                num_digits = ''.join(filter(str.isdigit, number))
+                if num_digits:
+                    padded = num_digits.zfill(6)
+                else:
+                    padded = number.zfill(6)
+            except:
+                padded = number.zfill(6)
 
-            changed = False
-            if postcard.has_images != has_vignette:
-                postcard.has_images = has_vignette
-                changed = True
+            padded_lower = padded.lower()
 
-            if changed:
-                postcard.save(update_fields=['has_images'])
-                updated += 1
+            # Check for vignette (primary indicator of has_images)
+            has_vignette = (
+                    number_lower in vignette_index or
+                    padded_lower in vignette_index or
+                    number in vignette_index or
+                    padded in vignette_index
+            )
 
-            if has_vignette:
-                has_images_count += 1
+            # Also check grande as fallback
+            has_grande = (
+                    number_lower in grande_index or
+                    padded_lower in grande_index or
+                    number in grande_index or
+                    padded in grande_index
+            )
+
+            # Has images if either vignette or grande exists
+            should_have_images = has_vignette or has_grande
+
+            # Check animation
+            has_animation = (
+                    number_lower in animated_index or
+                    padded_lower in animated_index or
+                    number in animated_index or
+                    padded in animated_index
+            )
+
             if has_animation:
-                has_animation_count += 1
+                with_animation += 1
 
-            if verbose and (i + 1) % 500 == 0:
-                self.stdout.write(f"  Progress: {i + 1}/{total}")
+            # Compare with current flag
+            if postcard.has_images != should_have_images:
+                if not check_only:
+                    postcard.has_images = should_have_images
+                    updates.append(postcard)
 
-        self.stdout.write(f"\n{'=' * 60}")
-        self.stdout.write(self.style.SUCCESS("UPDATE COMPLETE"))
-        self.stdout.write(f"{'=' * 60}")
-        self.stdout.write(f"Total postcards: {total}")
-        self.stdout.write(f"With images: {has_images_count}")
-        self.stdout.write(f"With animation: {has_animation_count}")
-        self.stdout.write(f"Records updated: {updated}")
-        self.stdout.write(f"{'=' * 60}\n")
+                if should_have_images:
+                    updated_to_has_images += 1
+                    if verbose:
+                        self.stdout.write(f'  + {number}: now has images')
+                else:
+                    updated_to_no_images += 1
+                    if verbose:
+                        self.stdout.write(f'  - {number}: no longer has images')
+            else:
+                already_correct += 1
 
-    def create_directories(self, media_root):
-        """Create all necessary directories"""
-        directories = [
-            media_root / 'postcards' / 'Vignette',
-            media_root / 'postcards' / 'Grande',
-            media_root / 'postcards' / 'Dos',
-            media_root / 'postcards' / 'Zoom',
-            media_root / 'animated_cp',
-            media_root / 'signatures',
-        ]
-        for d in directories:
-            d.mkdir(parents=True, exist_ok=True)
+            if i % 1000 == 0:
+                self.stdout.write(f'Processed {i}/{total}...')
+
+        # Bulk update
+        if updates and not check_only:
+            Postcard.objects.bulk_update(updates, ['has_images'], batch_size=500)
+            self.stdout.write(f'Saved {len(updates)} updates')
+
+        # Final report
+        self.stdout.write('')
+        self.stdout.write('=' * 60)
+        self.stdout.write('UPDATE FLAGS SUMMARY')
+        self.stdout.write('=' * 60)
+        self.stdout.write(f'Total postcards: {total}')
+        self.stdout.write(f'Already correct: {already_correct}')
+        self.stdout.write(self.style.SUCCESS(f'Updated to has_images=True: {updated_to_has_images}'))
+        self.stdout.write(self.style.WARNING(f'Updated to has_images=False: {updated_to_no_images}'))
+        self.stdout.write(f'With animation files: {with_animation}')
+        self.stdout.write('')
+        self.stdout.write(f'Final counts:')
+        self.stdout.write(f'  With images: {Postcard.objects.filter(has_images=True).count()}')
+        self.stdout.write(f'  Without images: {Postcard.objects.filter(has_images=False).count()}')
+
+        if check_only:
+            self.stdout.write('')
+            self.stdout.write(self.style.WARNING('CHECK ONLY mode - no changes were saved'))
+            self.stdout.write('Run without --check-only to apply changes')
