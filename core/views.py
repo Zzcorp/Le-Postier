@@ -10,11 +10,11 @@ from django.conf import settings
 from datetime import timedelta
 import traceback
 import json
+import unicodedata
 from django.db.models import Sum, Avg, F, Q, Count
 from django.db.models.functions import TruncDate, TruncHour, TruncMonth
 from collections import defaultdict
 from .utils import get_client_ip, get_location_from_ip, parse_user_agent_string, get_country_flag_emoji, format_duration
-import unicodedata
 
 from .models import (
     CustomUser, Postcard, PostcardLike, AnimationSuggestion, Theme,
@@ -130,6 +130,76 @@ L'équipe Le Postier
     except Exception as e:
         print(f"Error sending verification email: {e}")
         return False
+
+
+# ============================================
+# ACCENT-INSENSITIVE SEARCH UTILITIES
+# ============================================
+
+def remove_accents(text):
+    """
+    Remove accents from a string for accent-insensitive comparison.
+    Normalizes characters like é, è, ê, ë to e
+    """
+    if not text:
+        return ''
+    # Normalize to NFD (decomposed form), then remove combining characters
+    normalized = unicodedata.normalize('NFD', text)
+    return ''.join(char for char in normalized if unicodedata.category(char) != 'Mn')
+
+
+def normalize_for_search(text):
+    """Normalize a string for search: lowercase and remove accents"""
+    if not text:
+        return ''
+    return remove_accents(text.lower().strip())
+
+
+def search_postcards_accent_insensitive(queryset, query):
+    """
+    Perform accent-insensitive search on postcards.
+    Searches in title, keywords, and number fields.
+    Returns a filtered queryset.
+    """
+    if not query:
+        return queryset
+
+    # Normalize the search query
+    normalized_query = normalize_for_search(query)
+
+    # Get all postcards from queryset and filter in Python for accent-insensitive matching
+    # This is necessary because SQLite doesn't support accent-insensitive collation by default
+
+    # First, try database-level icontains (handles case-insensitivity)
+    db_results = queryset.filter(
+        Q(title__icontains=query) |
+        Q(keywords__icontains=query) |
+        Q(number__icontains=query)
+    )
+
+    # Get IDs from database search
+    db_result_ids = set(db_results.values_list('id', flat=True))
+
+    # Now do accent-insensitive search on all postcards
+    accent_insensitive_ids = set()
+
+    for postcard in queryset:
+        # Normalize postcard fields
+        normalized_title = normalize_for_search(postcard.title)
+        normalized_keywords = normalize_for_search(postcard.keywords)
+        normalized_number = normalize_for_search(postcard.number)
+
+        # Check if normalized query is in any normalized field
+        if (normalized_query in normalized_title or
+                normalized_query in normalized_keywords or
+                normalized_query in normalized_number):
+            accent_insensitive_ids.add(postcard.id)
+
+    # Combine both result sets
+    all_matching_ids = db_result_ids | accent_insensitive_ids
+
+    # Return filtered queryset maintaining the original queryset's properties
+    return queryset.filter(id__in=all_matching_ids)
 
 
 # ============================================
@@ -820,43 +890,28 @@ def home(request):
 # BROWSE & GALLERY VIEWS
 # ============================================
 
-def remove_accents(text):
-    """Remove accents from text for accent-insensitive search"""
-    if not text:
-        return ''
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', text)
-        if unicodedata.category(c) != 'Mn'
-    )
-
-
 def browse(request):
-    """Browse page with exact phrase search"""
+    """Browse page with accent-insensitive search across title and keywords"""
     try:
         query = request.GET.get('keywords_input', '').strip()
 
         postcards = Postcard.objects.filter(has_images=True)
         themes = Theme.objects.all()[:20]
 
-        # Then in the search:
         if query:
-            normalized_query = remove_accents(query.lower())
+            # Use accent-insensitive search across title, keywords, and number
+            postcards = search_postcards_accent_insensitive(postcards, query)
 
-            # Get all postcards and filter in Python for accent-insensitive search
-            all_postcards = postcards.filter(has_images=True)
-            matching_ids = []
+            # Log the search
+            SearchLog.objects.create(
+                keyword=query,
+                results_count=postcards.count(),
+                user=request.user if request.user.is_authenticated else None,
+                ip_address=get_client_ip(request)
+            )
 
-            for postcard in all_postcards:
-                title_normalized = remove_accents(postcard.title.lower()) if postcard.title else ''
-                keywords_normalized = remove_accents(postcard.keywords.lower()) if postcard.keywords else ''
-                number_str = str(postcard.number).lower()
-
-                if (normalized_query in title_normalized or
-                        normalized_query in keywords_normalized or
-                        normalized_query in number_str):
-                    matching_ids.append(postcard.id)
-
-            postcards = Postcard.objects.filter(id__in=matching_ids, has_images=True)
+        # Order results
+        postcards = postcards.order_by('number')
 
         # Convert to list for template
         postcards = list(postcards)
@@ -1524,8 +1579,6 @@ def search_users(request):
 # ADMIN DASHBOARD VIEWS
 # ============================================
 
-@user_passes_test(is_admin)
-# Replace the admin_dashboard view:
 @user_passes_test(is_admin)
 def admin_dashboard(request):
     """Comprehensive admin dashboard with full analytics"""
@@ -2591,75 +2644,6 @@ def admin_next_postcard_number(request):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
-
-@user_passes_test(is_admin)
-def admin_realtime_api(request):
-    """API endpoint for real-time visitor data"""
-    five_minutes_ago = timezone.now() - timedelta(minutes=5)
-    RealTimeVisitor.objects.filter(last_activity__lt=five_minutes_ago).delete()
-
-    visitors = RealTimeVisitor.objects.all()
-
-    data = {
-        'count': visitors.count(),
-        'visitors': list(visitors.values(
-            'ip_address', 'country', 'city', 'current_page',
-            'device_type', 'browser', 'last_activity', 'user__username'
-        )[:30])
-    }
-
-    for v in data['visitors']:
-        if v['last_activity']:
-            v['last_activity'] = v['last_activity'].strftime('%H:%M:%S')
-
-    return JsonResponse(data)
-
-
-@user_passes_test(is_admin)
-def admin_geographic_api(request):
-    """API endpoint for geographic analytics"""
-    return JsonResponse({'countries': [], 'cities': []})
-
-
-@user_passes_test(is_admin)
-def admin_ip_lookup(request, ip_address):
-    """API endpoint to lookup IP address details"""
-    return JsonResponse({
-        'ip_address': ip_address,
-        'location': {},
-        'total_sessions': 0,
-        'total_page_views': 0,
-        'sessions': [],
-    })
-
-
-@user_passes_test(is_admin)
-def admin_postcard_analytics(request, postcard_id):
-    """API endpoint for detailed postcard analytics"""
-    try:
-        postcard = Postcard.objects.get(id=postcard_id)
-    except Postcard.DoesNotExist:
-        return JsonResponse({'error': 'Postcard not found'}, status=404)
-
-    return JsonResponse({
-        'postcard': {
-            'id': postcard.id,
-            'number': postcard.number,
-            'title': postcard.title,
-            'rarity': postcard.rarity,
-            'views_count': postcard.views_count,
-            'zoom_count': postcard.zoom_count,
-            'likes_count': postcard.likes_count,
-            'has_animation': postcard.has_animation(),
-            'vignette_url': postcard.get_vignette_url(),
-        },
-        'interaction_types': {},
-        'country_breakdown': [],
-        'device_breakdown': {},
-        'daily_views': [],
-        'recent_likes': [],
-    })
 
 
 @user_passes_test(is_admin)
