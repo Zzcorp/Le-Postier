@@ -158,32 +158,34 @@ def normalize_for_search(text):
 def search_postcards(base_queryset, query):
     """
     Perform accent-insensitive search on postcards.
-    Searches in title, keywords, and number fields.
-    Returns a list of matching postcard IDs.
-
-    This function:
-    1. Normalizes the search query (removes accents, lowercases)
-    2. For each postcard, normalizes title, keywords, and number
-    3. Checks if the normalized query appears in any of these fields
-    4. Returns matching postcard IDs
+    Searches in title AND keywords fields (combined results).
+    Returns a filtered queryset.
     """
     if not query:
         return base_queryset
 
-    # Normalize the search query
+    # Normalize the search query - remove quotes and extra spaces
     normalized_query = normalize_for_search(query)
+    # Also try without quotes in case user typed them
+    clean_query = normalized_query.replace('"', '').replace("'", '').strip()
 
     print(f"[SEARCH DEBUG] Original query: '{query}'")
     print(f"[SEARCH DEBUG] Normalized query: '{normalized_query}'")
+    print(f"[SEARCH DEBUG] Clean query (no quotes): '{clean_query}'")
 
-    # Collect matching IDs
-    matching_ids = set()
+    # Collect matching IDs with source tracking
+    title_matches = set()
+    keyword_matches = set()
+    number_matches = set()
 
-    # We need to evaluate the queryset to iterate
     # Get all postcards from the base queryset
     all_postcards = list(base_queryset.values('id', 'title', 'keywords', 'number'))
 
     print(f"[SEARCH DEBUG] Searching through {len(all_postcards)} postcards")
+
+    # Count how many have keywords
+    postcards_with_keywords = sum(1 for p in all_postcards if p.get('keywords') and p['keywords'].strip())
+    print(f"[SEARCH DEBUG] Postcards with keywords: {postcards_with_keywords}")
 
     for postcard in all_postcards:
         postcard_id = postcard['id']
@@ -197,28 +199,40 @@ def search_postcards(base_queryset, query):
         normalized_keywords = normalize_for_search(keywords)
         normalized_number = normalize_for_search(number)
 
-        # Check if query is in any field
-        found_in_title = normalized_query in normalized_title
-        found_in_keywords = normalized_query in normalized_keywords
-        found_in_number = normalized_query in normalized_number
+        # Check both the normalized query and clean query (without quotes)
+        queries_to_check = [normalized_query]
+        if clean_query != normalized_query:
+            queries_to_check.append(clean_query)
 
-        if found_in_title or found_in_keywords or found_in_number:
-            matching_ids.add(postcard_id)
-            # Debug output for first few matches
-            if len(matching_ids) <= 5:
-                print(f"[SEARCH DEBUG] Match found - ID: {postcard_id}")
-                if found_in_title:
-                    print(f"  -> Found in title: '{title[:50]}...'")
-                if found_in_keywords:
-                    print(f"  -> Found in keywords: '{keywords[:100]}...'")
-                if found_in_number:
-                    print(f"  -> Found in number: '{number}'")
+        for q in queries_to_check:
+            if q in normalized_title:
+                title_matches.add(postcard_id)
+            if q in normalized_keywords:
+                keyword_matches.add(postcard_id)
+            if q in normalized_number:
+                number_matches.add(postcard_id)
 
-    print(f"[SEARCH DEBUG] Total matches: {len(matching_ids)}")
+    # Debug output
+    print(f"[SEARCH DEBUG] Title matches: {len(title_matches)}")
+    print(f"[SEARCH DEBUG] Keyword matches: {len(keyword_matches)}")
+    print(f"[SEARCH DEBUG] Number matches: {len(number_matches)}")
+
+    # Show some keyword matches for debugging
+    if keyword_matches:
+        print(f"[SEARCH DEBUG] Sample keyword matches:")
+        for pid in list(keyword_matches)[:5]:
+            p = next((x for x in all_postcards if x['id'] == pid), None)
+            if p:
+                print(f"  -> ID {pid}: keywords='{p.get('keywords', '')[:100]}...'")
+
+    # Combine all matches
+    all_matching_ids = title_matches | keyword_matches | number_matches
+
+    print(f"[SEARCH DEBUG] Total unique matches: {len(all_matching_ids)}")
 
     # Return filtered queryset
-    if matching_ids:
-        return base_queryset.filter(id__in=matching_ids)
+    if all_matching_ids:
+        return base_queryset.filter(id__in=all_matching_ids)
     else:
         return base_queryset.none()
 
@@ -921,7 +935,7 @@ def browse(request):
         themes = Theme.objects.all()[:20]
 
         if query:
-            # Use the new search function that searches title, keywords, AND number
+            # Use the search function that searches title, keywords, AND number
             postcards = search_postcards(base_queryset, query)
 
             # Log the search with actual result count
@@ -2833,18 +2847,37 @@ def debug_search(request):
     output.append(f"Normalized query: '{normalize_for_search(query)}'")
     output.append("")
 
-    # Get some sample postcards
-    samples = Postcard.objects.filter(has_images=True)[:10]
-    output.append(f"Sample postcards (first 10 with images):")
+    # Check if keywords field has data
+    total_postcards = Postcard.objects.filter(has_images=True).count()
+    postcards_with_keywords = Postcard.objects.filter(has_images=True).exclude(keywords='').exclude(
+        keywords__isnull=True).count()
+
+    output.append(f"Total postcards with images: {total_postcards}")
+    output.append(f"Postcards WITH keywords: {postcards_with_keywords}")
+    output.append(f"Postcards WITHOUT keywords: {total_postcards - postcards_with_keywords}")
+    output.append("")
+
+    # Show some postcards with keywords
+    output.append("Sample postcards WITH keywords:")
     output.append("-" * 40)
 
-    for p in samples:
+    samples_with_kw = Postcard.objects.filter(has_images=True).exclude(keywords='').exclude(keywords__isnull=True)[:5]
+    for p in samples_with_kw:
         output.append(f"ID: {p.id}, Number: {p.number}")
         output.append(f"  Title: {p.title[:60]}...")
-        output.append(f"  Keywords: {p.keywords[:100]}..." if p.keywords else "  Keywords: (none)")
-        output.append(f"  Normalized Title: {normalize_for_search(p.title)[:60]}...")
-        output.append(
-            f"  Normalized Keywords: {normalize_for_search(p.keywords)[:100]}..." if p.keywords else "  Normalized Keywords: (none)")
+        output.append(f"  Keywords: {p.keywords[:150]}...")
+        output.append("")
+
+    # Show some postcards without keywords
+    output.append("")
+    output.append("Sample postcards WITHOUT keywords:")
+    output.append("-" * 40)
+
+    samples_no_kw = Postcard.objects.filter(has_images=True, keywords='')[:3]
+    for p in samples_no_kw:
+        output.append(f"ID: {p.id}, Number: {p.number}")
+        output.append(f"  Title: {p.title[:60]}...")
+        output.append(f"  Keywords: '{p.keywords}' (empty)")
         output.append("")
 
     if query:
@@ -2852,15 +2885,52 @@ def debug_search(request):
         output.append("SEARCH RESULTS")
         output.append("=" * 40)
 
-        base_queryset = Postcard.objects.filter(has_images=True)
-        results = search_postcards(base_queryset, query)
+        normalized_query = normalize_for_search(query)
+        clean_query = normalized_query.replace('"', '').replace("'", '').strip()
 
-        output.append(f"Found {results.count()} results")
+        output.append(f"Normalized query: '{normalized_query}'")
+        output.append(f"Clean query: '{clean_query}'")
         output.append("")
 
-        for p in results[:20]:
-            output.append(f"- {p.number}: {p.title[:50]}...")
-            if p.keywords:
-                output.append(f"  Keywords: {p.keywords[:80]}...")
+        # Manual search to show details
+        title_matches = []
+        keyword_matches = []
+
+        all_postcards = Postcard.objects.filter(has_images=True).values('id', 'number', 'title', 'keywords')
+
+        for p in all_postcards:
+            norm_title = normalize_for_search(p['title'])
+            norm_keywords = normalize_for_search(p['keywords'] or '')
+
+            queries = [normalized_query, clean_query] if clean_query != normalized_query else [normalized_query]
+
+            for q in queries:
+                if q and q in norm_title:
+                    title_matches.append(p)
+                    break
+
+            for q in queries:
+                if q and norm_keywords and q in norm_keywords:
+                    keyword_matches.append(p)
+                    break
+
+        output.append(f"TITLE MATCHES: {len(title_matches)}")
+        for p in title_matches[:10]:
+            output.append(f"  - {p['number']}: {p['title'][:50]}...")
+
+        output.append("")
+        output.append(f"KEYWORD MATCHES: {len(keyword_matches)}")
+        for p in keyword_matches[:10]:
+            output.append(f"  - {p['number']}: {p['title'][:40]}...")
+            output.append(f"    Keywords: {(p['keywords'] or '')[:80]}...")
+
+        # Check for the specific query in keywords
+        output.append("")
+        output.append(f"Searching for '{clean_query}' in all keywords...")
+
+        found_in_any = Postcard.objects.filter(has_images=True, keywords__icontains=clean_query.replace(' ', ''))[:5]
+        output.append(f"Database icontains search found: {found_in_any.count()}")
+        for p in found_in_any:
+            output.append(f"  - {p.number}: {p.keywords[:100]}...")
 
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")
