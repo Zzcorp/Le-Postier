@@ -90,7 +90,7 @@ class Command(BaseCommand):
         keywords_col = None
 
         number_names = ['number', 'numero', 'numéro', 'num', 'n°', 'no', 'id', 'ref']
-        keywords_names = ['keywords', 'keyword', 'mots-cles', 'mots-clés', 'mots_cles', 'motscles', 'tags', 'tag',
+        keywords_names = ['keywords', 'keyword', 'mots-cles', 'mots clefs', 'mots_clefs', 'motscles', 'tags', 'tag',
                           'categories', 'category']
 
         for i, col in enumerate(header):
