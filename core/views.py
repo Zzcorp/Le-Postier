@@ -144,7 +144,7 @@ def remove_accents(text):
     if not text:
         return ''
     # Normalize to NFD (decomposed form), then remove combining characters
-    normalized = unicodedata.normalize('NFD', text)
+    normalized = unicodedata.normalize('NFD', str(text))
     return ''.join(char for char in normalized if unicodedata.category(char) != 'Mn')
 
 
@@ -152,54 +152,75 @@ def normalize_for_search(text):
     """Normalize a string for search: lowercase and remove accents"""
     if not text:
         return ''
-    return remove_accents(text.lower().strip())
+    return remove_accents(str(text).lower().strip())
 
 
-def search_postcards_accent_insensitive(queryset, query):
+def search_postcards(base_queryset, query):
     """
     Perform accent-insensitive search on postcards.
     Searches in title, keywords, and number fields.
-    Returns a filtered queryset.
+    Returns a list of matching postcard IDs.
+
+    This function:
+    1. Normalizes the search query (removes accents, lowercases)
+    2. For each postcard, normalizes title, keywords, and number
+    3. Checks if the normalized query appears in any of these fields
+    4. Returns matching postcard IDs
     """
     if not query:
-        return queryset
+        return base_queryset
 
     # Normalize the search query
     normalized_query = normalize_for_search(query)
 
-    # Get all postcards from queryset and filter in Python for accent-insensitive matching
-    # This is necessary because SQLite doesn't support accent-insensitive collation by default
+    print(f"[SEARCH DEBUG] Original query: '{query}'")
+    print(f"[SEARCH DEBUG] Normalized query: '{normalized_query}'")
 
-    # First, try database-level icontains (handles case-insensitivity)
-    db_results = queryset.filter(
-        Q(title__icontains=query) |
-        Q(keywords__icontains=query) |
-        Q(number__icontains=query)
-    )
+    # Collect matching IDs
+    matching_ids = set()
 
-    # Get IDs from database search
-    db_result_ids = set(db_results.values_list('id', flat=True))
+    # We need to evaluate the queryset to iterate
+    # Get all postcards from the base queryset
+    all_postcards = list(base_queryset.values('id', 'title', 'keywords', 'number'))
 
-    # Now do accent-insensitive search on all postcards
-    accent_insensitive_ids = set()
+    print(f"[SEARCH DEBUG] Searching through {len(all_postcards)} postcards")
 
-    for postcard in queryset:
-        # Normalize postcard fields
-        normalized_title = normalize_for_search(postcard.title)
-        normalized_keywords = normalize_for_search(postcard.keywords)
-        normalized_number = normalize_for_search(postcard.number)
+    for postcard in all_postcards:
+        postcard_id = postcard['id']
 
-        # Check if normalized query is in any normalized field
-        if (normalized_query in normalized_title or
-                normalized_query in normalized_keywords or
-                normalized_query in normalized_number):
-            accent_insensitive_ids.add(postcard.id)
+        # Get and normalize each field
+        title = postcard.get('title') or ''
+        keywords = postcard.get('keywords') or ''
+        number = postcard.get('number') or ''
 
-    # Combine both result sets
-    all_matching_ids = db_result_ids | accent_insensitive_ids
+        normalized_title = normalize_for_search(title)
+        normalized_keywords = normalize_for_search(keywords)
+        normalized_number = normalize_for_search(number)
 
-    # Return filtered queryset maintaining the original queryset's properties
-    return queryset.filter(id__in=all_matching_ids)
+        # Check if query is in any field
+        found_in_title = normalized_query in normalized_title
+        found_in_keywords = normalized_query in normalized_keywords
+        found_in_number = normalized_query in normalized_number
+
+        if found_in_title or found_in_keywords or found_in_number:
+            matching_ids.add(postcard_id)
+            # Debug output for first few matches
+            if len(matching_ids) <= 5:
+                print(f"[SEARCH DEBUG] Match found - ID: {postcard_id}")
+                if found_in_title:
+                    print(f"  -> Found in title: '{title[:50]}...'")
+                if found_in_keywords:
+                    print(f"  -> Found in keywords: '{keywords[:100]}...'")
+                if found_in_number:
+                    print(f"  -> Found in number: '{number}'")
+
+    print(f"[SEARCH DEBUG] Total matches: {len(matching_ids)}")
+
+    # Return filtered queryset
+    if matching_ids:
+        return base_queryset.filter(id__in=matching_ids)
+    else:
+        return base_queryset.none()
 
 
 # ============================================
@@ -891,31 +912,37 @@ def home(request):
 # ============================================
 
 def browse(request):
-    """Browse page with accent-insensitive search across title and keywords"""
+    """Browse page with accent-insensitive search across title AND keywords"""
     try:
         query = request.GET.get('keywords_input', '').strip()
 
-        postcards = Postcard.objects.filter(has_images=True)
+        # Start with all postcards that have images
+        base_queryset = Postcard.objects.filter(has_images=True)
         themes = Theme.objects.all()[:20]
 
         if query:
-            # Use accent-insensitive search across title, keywords, and number
-            postcards = search_postcards_accent_insensitive(postcards, query)
+            # Use the new search function that searches title, keywords, AND number
+            postcards = search_postcards(base_queryset, query)
 
-            # Log the search
+            # Log the search with actual result count
+            result_count = postcards.count()
             SearchLog.objects.create(
                 keyword=query,
-                results_count=postcards.count(),
+                results_count=result_count,
                 user=request.user if request.user.is_authenticated else None,
                 ip_address=get_client_ip(request)
             )
+            print(f"[BROWSE] Search for '{query}' returned {result_count} results")
+        else:
+            postcards = base_queryset
 
-        # Order results
+        # Order results by number
         postcards = postcards.order_by('number')
 
         # Convert to list for template
-        postcards = list(postcards)
+        postcards_list = list(postcards)
 
+        # Get user likes
         user_likes = set()
         if request.user.is_authenticated:
             user_likes = set(
@@ -933,11 +960,11 @@ def browse(request):
             )
 
         context = {
-            'postcards': postcards,
+            'postcards': postcards_list,
             'themes': themes,
             'query': query,
             'total_count': Postcard.objects.count(),
-            'displayed_count': len(postcards),
+            'displayed_count': len(postcards_list),
             'user': request.user,
             'user_likes': user_likes,
         }
@@ -946,6 +973,7 @@ def browse(request):
 
     except Exception as e:
         import traceback
+        print(f"[BROWSE ERROR] {traceback.format_exc()}")
         return HttpResponse(f"<h1>Browse Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
@@ -1593,7 +1621,6 @@ def admin_dashboard(request):
         # =============================================
         # REAL-TIME VISITORS
         # =============================================
-        # Clean up old real-time records
         RealTimeVisitor.objects.filter(last_activity__lt=five_minutes_ago).delete()
 
         active_visitors = RealTimeVisitor.objects.all().order_by('-last_activity')
@@ -1603,7 +1630,6 @@ def admin_dashboard(request):
             'device_type', 'browser', 'last_activity', 'user__username'
         )[:20])
 
-        # Add flag emojis
         for visitor in active_visitors_list:
             visitor['flag'] = get_country_flag_emoji(visitor.get('country', '')[:2] if visitor.get('country') else '')
             if visitor['last_activity']:
@@ -1636,7 +1662,6 @@ def admin_dashboard(request):
         total_postcards = Postcard.objects.count()
         postcards_with_images = Postcard.objects.filter(has_images=True).count()
 
-        # Count animated postcards more accurately
         animated_count = 0
         for p in Postcard.objects.filter(has_images=True)[:500]:
             if p.has_animation():
@@ -1659,7 +1684,6 @@ def admin_dashboard(request):
         if page_views_yesterday > 0:
             views_growth_percent = round(((page_views_today - page_views_yesterday) / page_views_yesterday) * 100, 1)
 
-        # Unique visitors
         unique_visitors_today = PageView.objects.filter(
             timestamp__date=today
         ).values('ip_address').distinct().count()
@@ -1674,19 +1698,16 @@ def admin_dashboard(request):
         sessions_today = VisitorSession.objects.filter(first_visit__date=today).count()
         sessions_week = VisitorSession.objects.filter(first_visit__date__gte=week_ago).count()
 
-        # Average session duration
         avg_session_duration = VisitorSession.objects.filter(
             first_visit__date__gte=week_ago
         ).aggregate(avg=Avg('total_time_spent'))['avg'] or 0
         avg_session_duration = int(avg_session_duration)
 
-        # Pages per session
         avg_pages = VisitorSession.objects.filter(
             first_visit__date__gte=week_ago, page_views__gt=0
         ).aggregate(avg=Avg('page_views'))['avg'] or 0
         pages_per_session = round(avg_pages, 1)
 
-        # Bounce rate (sessions with only 1 page view)
         single_page_sessions = VisitorSession.objects.filter(
             first_visit__date__gte=week_ago, page_views=1
         ).count()
@@ -1694,7 +1715,7 @@ def admin_dashboard(request):
         bounce_rate = round((single_page_sessions / total_sessions_week * 100), 1) if total_sessions_week > 0 else 0
 
         # =============================================
-        # LIKE STATISTICS WITH FULL DETAILS
+        # LIKE STATISTICS
         # =============================================
         total_likes = PostcardLike.objects.count()
         likes_today = PostcardLike.objects.filter(created_at__date=today).count()
@@ -1705,7 +1726,6 @@ def admin_dashboard(request):
         if likes_yesterday > 0:
             likes_growth_percent = round(((likes_today - likes_yesterday) / likes_yesterday) * 100, 1)
 
-        # Recent likes with full details
         recent_likes = PostcardLike.objects.select_related('postcard', 'user').order_by('-created_at')[:50]
         recent_likes_data = []
         for like in recent_likes:
@@ -1725,7 +1745,6 @@ def admin_dashboard(request):
                 'flag': get_country_flag_emoji(like.country[:2] if like.country else ''),
             })
 
-        # Likes by country
         likes_by_country = list(
             PostcardLike.objects.exclude(country='').values('country')
             .annotate(count=Count('id'))
@@ -1739,14 +1758,12 @@ def admin_dashboard(request):
         searches_today = SearchLog.objects.filter(created_at__date=today).count()
         searches_week = SearchLog.objects.filter(created_at__date__gte=week_ago).count()
 
-        # Top searches all time
         top_searches_all = list(
             SearchLog.objects.values('keyword')
             .annotate(count=Count('id'), avg_results=Avg('results_count'))
             .order_by('-count')[:20]
         )
 
-        # Top searches today
         top_searches_today = list(
             SearchLog.objects.filter(created_at__date=today)
             .values('keyword')
@@ -1754,7 +1771,6 @@ def admin_dashboard(request):
             .order_by('-count')[:15]
         )
 
-        # Zero result searches
         zero_result_searches = list(
             SearchLog.objects.filter(results_count=0)
             .values('keyword')
@@ -1762,13 +1778,11 @@ def admin_dashboard(request):
             .order_by('-count')[:15]
         )
 
-        # Recent searches with details
         recent_searches = SearchLog.objects.select_related('user').order_by('-created_at')[:30]
 
         # =============================================
         # GEOGRAPHIC DATA
         # =============================================
-        # Top countries all time
         top_countries = list(
             VisitorSession.objects.exclude(country='')
             .values('country', 'country_code')
@@ -1778,7 +1792,6 @@ def admin_dashboard(request):
         for c in top_countries:
             c['flag'] = get_country_flag_emoji(c.get('country_code', ''))
 
-        # Top cities
         top_cities = list(
             VisitorSession.objects.exclude(city='').exclude(city='Unknown')
             .values('city', 'country')
@@ -1786,7 +1799,6 @@ def admin_dashboard(request):
             .order_by('-count')[:15]
         )
 
-        # Countries today
         countries_today = list(
             PageView.objects.filter(timestamp__date=today)
             .exclude(country='')
@@ -1821,7 +1833,6 @@ def admin_dashboard(request):
             else:
                 device_breakdown['other'] += d['count']
 
-        # Top browsers
         top_browsers = list(
             VisitorSession.objects.exclude(browser='').exclude(browser='Unknown')
             .values('browser')
@@ -1829,7 +1840,6 @@ def admin_dashboard(request):
             .order_by('-count')[:10]
         )
 
-        # Top OS
         top_os = list(
             VisitorSession.objects.exclude(os='').exclude(os='Unknown')
             .values('os')
@@ -1874,7 +1884,6 @@ def admin_dashboard(request):
         top_liked_postcards = Postcard.objects.order_by('-likes_count')[:15]
         top_zoomed_postcards = Postcard.objects.order_by('-zoom_count')[:10]
 
-        # Rarity statistics
         rarity_stats = {}
         for rarity in ['common', 'rare', 'very_rare']:
             stats = Postcard.objects.filter(rarity=rarity).aggregate(
@@ -1914,7 +1923,6 @@ def admin_dashboard(request):
         # =============================================
         # IP ANALYSIS
         # =============================================
-        # Most active IPs
         most_active_ips = list(
             VisitorSession.objects.values('ip_address', 'country', 'city', 'isp')
             .annotate(
@@ -1924,7 +1932,6 @@ def admin_dashboard(request):
             .order_by('-session_count')[:20]
         )
 
-        # Suspicious IPs (many sessions from same IP)
         suspicious_ips = list(
             VisitorSession.objects.values('ip_address', 'country')
             .annotate(count=Count('id'))
@@ -1932,7 +1939,6 @@ def admin_dashboard(request):
             .order_by('-count')[:15]
         )
 
-        # VPN/Proxy count
         vpn_proxy_count = IPLocation.objects.filter(
             Q(is_vpn=True) | Q(is_proxy=True)
         ).count()
@@ -1951,7 +1957,6 @@ def admin_dashboard(request):
                 'count': count
             })
 
-        # Peak hours
         peak_hours = sorted(hourly_traffic, key=lambda x: x['count'], reverse=True)[:3]
 
         # =============================================
@@ -2030,11 +2035,8 @@ def admin_dashboard(request):
         # CONTEXT
         # =============================================
         context = {
-            # Real-time
             'active_visitor_count': active_visitor_count,
             'active_visitors_list': active_visitors_list,
-
-            # Users
             'total_users': total_users,
             'new_users_today': new_users_today,
             'new_users_yesterday': new_users_yesterday,
@@ -2044,8 +2046,6 @@ def admin_dashboard(request):
             'user_categories': user_categories,
             'user_categories_choices': CustomUser.USER_CATEGORIES,
             'recent_users': recent_users_data,
-
-            # Postcards
             'total_postcards': total_postcards,
             'postcards_with_images': postcards_with_images,
             'animated_postcards': animated_postcards,
@@ -2055,16 +2055,12 @@ def admin_dashboard(request):
             'top_liked_postcards': top_liked_postcards,
             'top_zoomed_postcards': top_zoomed_postcards,
             'rarity_stats': rarity_stats,
-
-            # Page views
             'page_views_today': page_views_today,
             'page_views_yesterday': page_views_yesterday,
             'page_views_week': page_views_week,
             'page_views_month': page_views_month,
             'total_page_views': total_page_views,
             'views_growth_percent': views_growth_percent,
-
-            # Sessions
             'sessions_today': sessions_today,
             'sessions_week': sessions_week,
             'unique_visitors_today': unique_visitors_today,
@@ -2074,8 +2070,6 @@ def admin_dashboard(request):
             'pages_per_session': pages_per_session,
             'bounce_rate': bounce_rate,
             'week_over_week_change': week_over_week_change,
-
-            # Likes
             'total_likes': total_likes,
             'likes_today': likes_today,
             'likes_yesterday': likes_yesterday,
@@ -2083,8 +2077,6 @@ def admin_dashboard(request):
             'likes_growth_percent': likes_growth_percent,
             'recent_likes': recent_likes_data,
             'likes_by_country': likes_by_country,
-
-            # Searches
             'total_searches': total_searches,
             'searches_today': searches_today,
             'searches_week': searches_week,
@@ -2092,23 +2084,15 @@ def admin_dashboard(request):
             'top_searches_today': top_searches_today,
             'zero_result_searches': zero_result_searches,
             'recent_searches': recent_searches,
-
-            # Geographic
             'top_countries': top_countries,
             'top_cities': top_cities,
             'countries_today': countries_today,
-
-            # Devices & Browsers
             'device_breakdown': device_breakdown,
             'top_browsers': top_browsers,
             'top_os': top_os,
-
-            # Traffic sources
             'top_referrers': top_referrers,
             'direct_traffic': direct_traffic,
             'referral_traffic': referral_traffic,
-
-            # Messages & Suggestions
             'total_messages': total_messages,
             'unread_messages': unread_messages,
             'messages_today': messages_today,
@@ -2116,21 +2100,13 @@ def admin_dashboard(request):
             'total_suggestions': total_suggestions,
             'pending_suggestions': pending_suggestions,
             'recent_suggestions': recent_suggestions,
-
-            # IP Analysis
             'most_active_ips': most_active_ips,
             'suspicious_ips': suspicious_ips,
             'vpn_proxy_count': vpn_proxy_count,
-
-            # Time-based
             'hourly_traffic': json.dumps(hourly_traffic),
             'daily_stats': json.dumps(daily_stats),
             'peak_hours': peak_hours,
-
-            # Recent interactions
             'recent_interactions': recent_interactions,
-
-            # System
             'media_stats': media_stats,
             'total_themes': Theme.objects.count(),
         }
@@ -2142,12 +2118,9 @@ def admin_dashboard(request):
         return HttpResponse(f"<h1>Admin Error</h1><pre>{traceback.format_exc()}</pre>")
 
 
-# Add new API endpoints for admin dashboard
 @user_passes_test(is_admin)
 def admin_realtime_api(request):
     """API endpoint for real-time visitor data"""
-    from .utils import get_country_flag_emoji
-
     five_minutes_ago = timezone.now() - timedelta(minutes=5)
     RealTimeVisitor.objects.filter(last_activity__lt=five_minutes_ago).delete()
 
@@ -2178,8 +2151,6 @@ def admin_realtime_api(request):
 @user_passes_test(is_admin)
 def admin_likes_api(request):
     """API endpoint for likes with full details"""
-    from .utils import get_country_flag_emoji
-
     page = int(request.GET.get('page', 1))
     per_page = int(request.GET.get('per_page', 50))
 
@@ -2218,8 +2189,6 @@ def admin_likes_api(request):
 @user_passes_test(is_admin)
 def admin_geographic_api(request):
     """API endpoint for geographic analytics"""
-    from .utils import get_country_flag_emoji
-
     period = request.GET.get('period', 'all')
 
     if period == 'today':
@@ -2265,21 +2234,11 @@ def admin_geographic_api(request):
 @user_passes_test(is_admin)
 def admin_ip_lookup(request, ip_address):
     """API endpoint to lookup IP address details"""
-    from .utils import get_location_from_ip, get_country_flag_emoji
-
-    # Get fresh location data
     location = get_location_from_ip(ip_address)
 
-    # Get sessions from this IP
     sessions = VisitorSession.objects.filter(ip_address=ip_address).order_by('-first_visit')
-
-    # Get page views from this IP
     page_views = PageView.objects.filter(ip_address=ip_address).order_by('-timestamp')
-
-    # Get likes from this IP
     likes = PostcardLike.objects.filter(ip_address=ip_address).select_related('postcard')
-
-    # Get searches from this IP
     searches = SearchLog.objects.filter(ip_address=ip_address).order_by('-created_at')
 
     sessions_data = []
@@ -2339,14 +2298,11 @@ def admin_ip_lookup(request, ip_address):
 @user_passes_test(is_admin)
 def admin_postcard_analytics(request, postcard_id):
     """API endpoint for detailed postcard analytics"""
-    from .utils import get_country_flag_emoji
-
     try:
         postcard = Postcard.objects.get(id=postcard_id)
     except Postcard.DoesNotExist:
         return JsonResponse({'error': 'Postcard not found'}, status=404)
 
-    # Get likes with details
     likes = PostcardLike.objects.filter(postcard=postcard).order_by('-created_at')
 
     likes_by_country = list(
@@ -2363,7 +2319,6 @@ def admin_postcard_analytics(request, postcard_id):
         .order_by('-count')
     )
 
-    # Recent likes
     recent_likes = []
     for like in likes[:20]:
         recent_likes.append({
@@ -2378,7 +2333,6 @@ def admin_postcard_analytics(request, postcard_id):
             'flag': get_country_flag_emoji(like.country[:2] if like.country else ''),
         })
 
-    # Daily likes trend (last 30 days)
     today = timezone.now().date()
     daily_likes = []
     for i in range(30):
@@ -2389,7 +2343,6 @@ def admin_postcard_analytics(request, postcard_id):
             'count': count
         })
 
-    # Get interactions
     interactions = PostcardInteraction.objects.filter(postcard=postcard)
     interaction_types = list(
         interactions.values('interaction_type')
@@ -2863,5 +2816,51 @@ def debug_media(request):
 
     output.append("")
     output.append("=" * 60)
+
+    return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")
+
+
+def debug_search(request):
+    """Debug endpoint to test search functionality"""
+    query = request.GET.get('q', '')
+
+    output = []
+    output.append("=" * 60)
+    output.append("SEARCH DEBUG")
+    output.append("=" * 60)
+    output.append("")
+    output.append(f"Query: '{query}'")
+    output.append(f"Normalized query: '{normalize_for_search(query)}'")
+    output.append("")
+
+    # Get some sample postcards
+    samples = Postcard.objects.filter(has_images=True)[:10]
+    output.append(f"Sample postcards (first 10 with images):")
+    output.append("-" * 40)
+
+    for p in samples:
+        output.append(f"ID: {p.id}, Number: {p.number}")
+        output.append(f"  Title: {p.title[:60]}...")
+        output.append(f"  Keywords: {p.keywords[:100]}..." if p.keywords else "  Keywords: (none)")
+        output.append(f"  Normalized Title: {normalize_for_search(p.title)[:60]}...")
+        output.append(
+            f"  Normalized Keywords: {normalize_for_search(p.keywords)[:100]}..." if p.keywords else "  Normalized Keywords: (none)")
+        output.append("")
+
+    if query:
+        output.append("=" * 40)
+        output.append("SEARCH RESULTS")
+        output.append("=" * 40)
+
+        base_queryset = Postcard.objects.filter(has_images=True)
+        results = search_postcards(base_queryset, query)
+
+        output.append(f"Found {results.count()} results")
+        output.append("")
+
+        for p in results[:20]:
+            output.append(f"- {p.number}: {p.title[:50]}...")
+            if p.keywords:
+                output.append(f"  Keywords: {p.keywords[:80]}...")
 
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")
