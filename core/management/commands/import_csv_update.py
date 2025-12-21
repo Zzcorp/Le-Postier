@@ -171,7 +171,7 @@ class Command(BaseCommand):
                                 break
 
                         keywords = ''
-                        for field in ['keywords', 'Mots clefs', 'mots clés', 'tags', 'mot_cle', 'motcles', 'keyword']:
+                        for field in ['keywords', 'Mots clefs', 'mots_clefs', 'tags', 'mot_cle', 'motcles', 'keyword']:
                             if field in row and row[field]:
                                 keywords = str(row[field]).strip()
                                 break

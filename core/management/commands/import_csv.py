@@ -1,318 +1,252 @@
 # core/management/commands/import_csv.py
-"""
-Import postcard metadata from CSV file.
-Handles various CSV formats and encodings.
-Updates existing postcards with title, keywords, description.
-"""
-
-from django.core.management.base import BaseCommand
-from django.db import transaction
-from django.conf import settings
-from core.models import Postcard
-from pathlib import Path
 import csv
-import re
+import os
+from django.core.management.base import BaseCommand
+from core.models import Postcard
 
 
 class Command(BaseCommand):
-    help = 'Import postcard metadata from CSV file'
+    help = 'Import postcards from CSV file with keywords support'
 
     def add_arguments(self, parser):
-        parser.add_argument('csv_file', type=str, help='Path to CSV file')
-        parser.add_argument('--delimiter', type=str, default='auto',
-                            help='CSV delimiter (auto, comma, semicolon, tab)')
-        parser.add_argument('--encoding', type=str, default='auto',
-                            help='File encoding (auto, utf-8, latin-1, etc.)')
-        parser.add_argument('--update', action='store_true',
-                            help='Update existing postcards')
-        parser.add_argument('--create-missing', action='store_true',
-                            help='Create postcards that do not exist')
-        parser.add_argument('--dry-run', action='store_true',
-                            help='Preview without saving')
-        parser.add_argument('--clear', action='store_true',
-                            help='Clear existing postcards first')
-        parser.add_argument('--limit', type=int, default=0,
-                            help='Limit number of imports')
-        parser.add_argument('--skip-header', action='store_true', default=True,
-                            help='Skip first row as header')
-        parser.add_argument('--preview', action='store_true',
-                            help='Preview CSV structure and first rows')
-        # Column mapping
-        parser.add_argument('--number-col', type=int, default=0,
-                            help='Column index for postcard number')
-        parser.add_argument('--title-col', type=int, default=1,
-                            help='Column index for title')
-        parser.add_argument('--keywords-col', type=int, default=2,
-                            help='Column index for keywords')
-        parser.add_argument('--desc-col', type=int, default=-1,
-                            help='Column index for description (-1 to skip)')
-        parser.add_argument('--rarity-col', type=int, default=-1,
-                            help='Column index for rarity (-1 to skip)')
+        parser.add_argument('csv_file', type=str, help='Path to the CSV file')
+        parser.add_argument(
+            '--update',
+            action='store_true',
+            help='Update existing postcards instead of skipping them',
+        )
+        parser.add_argument(
+            '--delimiter',
+            type=str,
+            default=';',
+            help='CSV delimiter (default: ;)',
+        )
+        parser.add_argument(
+            '--encoding',
+            type=str,
+            default='utf-8',
+            help='File encoding (default: utf-8)',
+        )
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Show what would be imported without actually importing',
+        )
 
     def handle(self, *args, **options):
-        csv_path = Path(options['csv_file'])
+        csv_file = options['csv_file']
+        update_existing = options['update']
+        delimiter = options['delimiter']
+        encoding = options['encoding']
+        dry_run = options['dry_run']
 
-        if not csv_path.exists():
-            self.stderr.write(self.style.ERROR(f"File not found: {csv_path}"))
+        if not os.path.exists(csv_file):
+            self.stderr.write(self.style.ERROR(f'File not found: {csv_file}'))
             return
 
-        self.stdout.write(f"\n{'=' * 70}")
-        self.stdout.write(f"CSV Import: {csv_path.name}")
-        self.stdout.write(f"{'=' * 70}")
+        self.stdout.write(f'Reading CSV file: {csv_file}')
+        self.stdout.write(f'Delimiter: "{delimiter}", Encoding: {encoding}')
+        self.stdout.write(f'Update existing: {update_existing}')
+        if dry_run:
+            self.stdout.write(self.style.WARNING('DRY RUN - No changes will be made'))
+        self.stdout.write('')
 
-        # Detect encoding
-        encoding = self.detect_encoding(csv_path, options['encoding'])
-        self.stdout.write(f"Encoding: {encoding}")
+        # Try different encodings if the specified one fails
+        encodings_to_try = [encoding, 'utf-8', 'utf-8-sig', 'latin-1', 'cp1252', 'iso-8859-1']
 
-        # Detect delimiter
-        delimiter = self.detect_delimiter(csv_path, encoding, options['delimiter'])
-        self.stdout.write(f"Delimiter: '{delimiter}'")
+        file_content = None
+        used_encoding = None
 
-        # Read and preview CSV
-        rows = self.read_csv(csv_path, encoding, delimiter)
-
-        if not rows:
-            self.stderr.write(self.style.ERROR("No data found in CSV"))
-            return
-
-        self.stdout.write(f"Total rows: {len(rows)}")
-
-        # Skip header if needed
-        header = None
-        if options['skip_header'] and rows:
-            header = rows[0]
-            rows = rows[1:]
-            self.stdout.write(f"Header: {header[:5]}{'...' if len(header) > 5 else ''}")
-
-        # Preview first few rows
-        self.stdout.write("\nPreview (first 3 rows):")
-        for i, row in enumerate(rows[:3]):
-            preview = [str(c)[:30] for c in row[:4]]
-            self.stdout.write(f"  Row {i + 1}: {preview}")
-
-        if options['preview']:
-            self.stdout.write("\nPreview mode - no import performed")
-            self.show_column_analysis(rows[:100], header)
-            return
-
-        if options['dry_run']:
-            self.stdout.write(self.style.WARNING("\n[DRY RUN] - No changes will be made"))
-
-        # Clear existing if requested
-        if options['clear'] and not options['dry_run']:
-            count = Postcard.objects.count()
-            Postcard.objects.all().delete()
-            self.stdout.write(f"\nCleared {count} existing postcards")
-
-        # Import data
-        self.import_rows(rows, options)
-
-    def detect_encoding(self, filepath, hint):
-        """Detect file encoding"""
-        if hint != 'auto':
-            return hint
-
-        encodings = ['utf-8-sig', 'utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
-
-        for enc in encodings:
+        for enc in encodings_to_try:
             try:
-                with open(filepath, 'r', encoding=enc) as f:
-                    f.read(1024)
-                return enc
-            except (UnicodeDecodeError, UnicodeError):
+                with open(csv_file, 'r', encoding=enc) as f:
+                    file_content = f.read()
+                    used_encoding = enc
+                    break
+            except UnicodeDecodeError:
                 continue
 
-        return 'utf-8'
-
-    def detect_delimiter(self, filepath, encoding, hint):
-        """Detect CSV delimiter"""
-        if hint == 'comma':
-            return ','
-        elif hint == 'semicolon':
-            return ';'
-        elif hint == 'tab':
-            return '\t'
-        elif hint != 'auto':
-            return hint
-
-        with open(filepath, 'r', encoding=encoding) as f:
-            sample = f.read(4096)
-
-        # Count occurrences
-        counts = {
-            ';': sample.count(';'),
-            ',': sample.count(','),
-            '\t': sample.count('\t'),
-        }
-
-        # Return delimiter with most occurrences
-        return max(counts, key=counts.get)
-
-    def read_csv(self, filepath, encoding, delimiter):
-        """Read CSV file"""
-        rows = []
-
-        with open(filepath, 'r', encoding=encoding) as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            for row in reader:
-                if row:  # Skip empty rows
-                    rows.append(row)
-
-        return rows
-
-    def show_column_analysis(self, rows, header):
-        """Analyze columns to help with mapping"""
-        self.stdout.write("\n" + "=" * 50)
-        self.stdout.write("Column Analysis")
-        self.stdout.write("=" * 50)
-
-        if not rows:
+        if file_content is None:
+            self.stderr.write(self.style.ERROR('Could not read file with any encoding'))
             return
 
-        num_cols = max(len(row) for row in rows)
+        self.stdout.write(f'Successfully read file with encoding: {used_encoding}')
 
-        for col_idx in range(min(num_cols, 10)):
-            samples = []
-            for row in rows[:5]:
-                if col_idx < len(row):
-                    val = str(row[col_idx])[:40]
-                    samples.append(val)
+        # Parse CSV
+        lines = file_content.splitlines()
 
-            col_name = header[col_idx] if header and col_idx < len(header) else f"Column {col_idx}"
-            self.stdout.write(f"\n[{col_idx}] {col_name}:")
-            for s in samples:
-                self.stdout.write(f"    {s}")
+        if not lines:
+            self.stderr.write(self.style.ERROR('CSV file is empty'))
+            return
 
-    def import_rows(self, rows, options):
-        """Import rows to database"""
-        number_col = options['number_col']
-        title_col = options['title_col']
-        keywords_col = options['keywords_col']
-        desc_col = options['desc_col']
-        rarity_col = options['rarity_col']
-        update_existing = options['update']
-        create_missing = options.get('create_missing', True)
-        dry_run = options['dry_run']
-        limit = options['limit']
+        # Detect delimiter if needed
+        first_line = lines[0]
+        if delimiter not in first_line:
+            # Try to auto-detect delimiter
+            for test_delim in [';', ',', '\t', '|']:
+                if test_delim in first_line:
+                    delimiter = test_delim
+                    self.stdout.write(f'Auto-detected delimiter: "{delimiter}"')
+                    break
 
-        if limit > 0:
-            rows = rows[:limit]
+        reader = csv.reader(lines, delimiter=delimiter)
 
-        created = 0
-        updated = 0
-        skipped = 0
-        not_found = 0
-        errors = 0
+        # Get header row
+        try:
+            header = next(reader)
+        except StopIteration:
+            self.stderr.write(self.style.ERROR('CSV file has no header row'))
+            return
 
-        self.stdout.write(f"\nImporting {len(rows)} rows...")
+        # Clean header names (remove BOM, whitespace, lowercase)
+        header = [col.strip().lower().replace('\ufeff', '') for col in header]
 
-        with transaction.atomic():
-            for i, row in enumerate(rows):
-                try:
-                    # Extract number
-                    if number_col >= len(row):
-                        errors += 1
-                        continue
+        self.stdout.write(f'Found columns: {header}')
+        self.stdout.write('')
 
-                    number = str(row[number_col]).strip()
-
-                    # Clean number - extract digits and pad
-                    number_digits = ''.join(filter(str.isdigit, number))
-                    if not number_digits:
-                        errors += 1
-                        continue
-
-                    number = number_digits.zfill(6)
-
-                    # Extract title
-                    title = ''
-                    if title_col >= 0 and title_col < len(row):
-                        title = str(row[title_col]).strip()
-                    if not title:
-                        title = f"Carte Postale N° {number}"
-
-                    # Extract keywords
-                    keywords = ''
-                    if keywords_col >= 0 and keywords_col < len(row):
-                        keywords = str(row[keywords_col]).strip()
-
-                    # Extract description
-                    description = ''
-                    if desc_col >= 0 and desc_col < len(row):
-                        description = str(row[desc_col]).strip()
-
-                    # Extract rarity
-                    rarity = 'common'
-                    if rarity_col >= 0 and rarity_col < len(row):
-                        rarity = self.map_rarity(str(row[rarity_col]).strip())
-
-                    if dry_run:
-                        self.stdout.write(f"  [{i + 1}] {number}: {title[:40]}...")
-                        created += 1
-                        continue
-
-                    # Check if postcard exists
-                    try:
-                        postcard = Postcard.objects.get(number=number)
-                        if update_existing:
-                            postcard.title = title[:500]
-                            postcard.description = description
-                            postcard.keywords = keywords
-                            postcard.rarity = rarity
-                            postcard.save()
-                            updated += 1
-                        else:
-                            skipped += 1
-                    except Postcard.DoesNotExist:
-                        if create_missing:
-                            Postcard.objects.create(
-                                number=number,
-                                title=title[:500],
-                                description=description,
-                                keywords=keywords,
-                                rarity=rarity,
-                                has_images=False,  # Will be updated by update_flags
-                            )
-                            created += 1
-                        else:
-                            not_found += 1
-
-                    # Progress indicator
-                    if (i + 1) % 500 == 0:
-                        self.stdout.write(f"  Progress: {i + 1}/{len(rows)}")
-
-                except Exception as e:
-                    errors += 1
-                    if errors < 10:
-                        self.stderr.write(self.style.WARNING(f"  Row {i + 1} error: {e}"))
-
-        # Summary
-        self.stdout.write(f"\n{'=' * 70}")
-        self.stdout.write(self.style.SUCCESS("IMPORT COMPLETE"))
-        self.stdout.write(f"{'=' * 70}")
-        self.stdout.write(f"Created: {created}")
-        self.stdout.write(f"Updated: {updated}")
-        self.stdout.write(f"Skipped: {skipped}")
-        self.stdout.write(f"Not Found: {not_found}")
-        self.stdout.write(f"Errors: {errors}")
-        self.stdout.write(f"Total in DB: {Postcard.objects.count()}")
-        self.stdout.write(f"{'=' * 70}\n")
-
-    def map_rarity(self, value):
-        """Map rarity value to model choice"""
-        if not value:
-            return 'common'
-
-        value = value.lower().strip()
-
-        mapping = {
-            'common': 'common', 'commune': 'common', 'c': 'common',
-            '0': 'common', '1': 'common', 'normale': 'common',
-            'rare': 'rare', 'r': 'rare', '2': 'rare',
-            'very_rare': 'very_rare', 'very rare': 'very_rare',
-            'tres_rare': 'very_rare', 'très rare': 'very_rare',
-            'tres rare': 'very_rare', 'vr': 'very_rare',
-            'tr': 'very_rare', '3': 'very_rare',
+        # Map column names to our fields
+        # Support various column name formats
+        column_mapping = {
+            'number': ['number', 'numero', 'numéro', 'num', 'n°', 'no', 'id', 'ref', 'reference', 'référence'],
+            'title': ['title', 'titre', 'name', 'nom', 'description', 'label', 'libelle', 'libellé'],
+            'keywords': ['keywords', 'keyword', 'mots-cles', 'mots-clés', 'mots_cles', 'motscles', 'tags', 'tag',
+                         'categories', 'category', 'categorie', 'catégorie', 'themes', 'theme', 'thème'],
+            'description': ['description', 'desc', 'details', 'détails', 'note', 'notes', 'comment', 'commentaire'],
+            'rarity': ['rarity', 'rarete', 'rareté', 'rare'],
         }
 
-        return mapping.get(value, 'common')
+        # Find column indices
+        col_indices = {}
+        for field, possible_names in column_mapping.items():
+            for i, col in enumerate(header):
+                if col in possible_names:
+                    col_indices[field] = i
+                    self.stdout.write(f'  Mapped "{col}" -> {field}')
+                    break
+
+        self.stdout.write('')
+
+        # Check required columns
+        if 'number' not in col_indices:
+            self.stderr.write(self.style.ERROR('Could not find "number" column'))
+            self.stderr.write(f'Available columns: {header}')
+            return
+
+        if 'title' not in col_indices:
+            self.stderr.write(self.style.ERROR('Could not find "title" column'))
+            self.stderr.write(f'Available columns: {header}')
+            return
+
+        # Report on keywords column
+        if 'keywords' in col_indices:
+            self.stdout.write(self.style.SUCCESS(f'Keywords column found at index {col_indices["keywords"]}'))
+        else:
+            self.stdout.write(self.style.WARNING('No keywords column found - keywords will be empty'))
+
+        self.stdout.write('')
+
+        # Process rows
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+        error_count = 0
+        keywords_count = 0
+
+        row_num = 1  # Header is row 0
+        for row in reader:
+            row_num += 1
+
+            # Skip empty rows
+            if not row or all(cell.strip() == '' for cell in row):
+                continue
+
+            try:
+                # Get number
+                number = row[col_indices['number']].strip() if col_indices['number'] < len(row) else ''
+                if not number:
+                    self.stdout.write(f'  Row {row_num}: Skipping - no number')
+                    skipped_count += 1
+                    continue
+
+                # Get title
+                title = row[col_indices['title']].strip() if col_indices['title'] < len(row) else ''
+                if not title:
+                    title = f'Carte postale {number}'
+
+                # Get keywords
+                keywords = ''
+                if 'keywords' in col_indices and col_indices['keywords'] < len(row):
+                    keywords = row[col_indices['keywords']].strip()
+                    if keywords:
+                        keywords_count += 1
+
+                # Get description
+                description = ''
+                if 'description' in col_indices and col_indices['description'] < len(row):
+                    description = row[col_indices['description']].strip()
+
+                # Get rarity
+                rarity = 'common'
+                if 'rarity' in col_indices and col_indices['rarity'] < len(row):
+                    rarity_value = row[col_indices['rarity']].strip().lower()
+                    if rarity_value in ['rare', 'r']:
+                        rarity = 'rare'
+                    elif rarity_value in ['very_rare', 'very rare', 'tres rare', 'très rare', 'vr', 'tr']:
+                        rarity = 'very_rare'
+
+                if dry_run:
+                    self.stdout.write(f'  Would import: {number} - {title[:40]}... (keywords: {len(keywords)} chars)')
+                    continue
+
+                # Check if postcard exists
+                existing = Postcard.objects.filter(number=number).first()
+
+                if existing:
+                    if update_existing:
+                        existing.title = title
+                        existing.keywords = keywords
+                        existing.description = description
+                        existing.rarity = rarity
+                        existing.save()
+                        updated_count += 1
+                        if row_num <= 10 or row_num % 100 == 0:
+                            self.stdout.write(f'  Updated: {number} - {title[:40]}...')
+                    else:
+                        skipped_count += 1
+                else:
+                    Postcard.objects.create(
+                        number=number,
+                        title=title,
+                        keywords=keywords,
+                        description=description,
+                        rarity=rarity,
+                    )
+                    created_count += 1
+                    if row_num <= 10 or row_num % 100 == 0:
+                        self.stdout.write(f'  Created: {number} - {title[:40]}...')
+
+            except Exception as e:
+                self.stderr.write(f'  Row {row_num}: Error - {str(e)}')
+                error_count += 1
+                continue
+
+        # Summary
+        self.stdout.write('')
+        self.stdout.write('=' * 50)
+        self.stdout.write('IMPORT SUMMARY')
+        self.stdout.write('=' * 50)
+
+        if dry_run:
+            self.stdout.write(self.style.WARNING('DRY RUN - No changes were made'))
+        else:
+            self.stdout.write(self.style.SUCCESS(f'Created: {created_count}'))
+            self.stdout.write(self.style.SUCCESS(f'Updated: {updated_count}'))
+
+        self.stdout.write(f'Skipped: {skipped_count}')
+        self.stdout.write(f'Errors: {error_count}')
+        self.stdout.write(f'Rows with keywords: {keywords_count}')
+        self.stdout.write('')
+
+        # Verify keywords were imported
+        total_with_keywords = Postcard.objects.exclude(keywords='').exclude(keywords__isnull=True).count()
+        self.stdout.write(f'Total postcards in DB with keywords: {total_with_keywords}')
