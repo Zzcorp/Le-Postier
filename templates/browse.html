@@ -513,8 +513,8 @@ const riverKeywords = [
     { word: 'Championnat du monde de natation', size: 'large', importance: 3 },
     { word: 'Cafuts', size: 'small', importance: 3 },
     { word: 'Spa français', size: 'large', importance: 3 },
-    { word: 'Casino &quot;Tanton&quot;', size: 'medium', importance: 3 },
-    { word: 'Yacht &quot;Le Druide&quot;', size: 'small', importance: 3 },
+    { word: 'Casino "Tanton"', size: 'medium', importance: 3 },
+    { word: 'Yacht "Le Druide"', size: 'small', importance: 3 },
     {% for theme in themes %}
     { word: '{{ theme.display_name|escapejs }}', size: 'medium', importance: 2 },
     {% endfor %}
@@ -822,7 +822,7 @@ class FloatingKeywords {
             const startY = 15 + (index % 3) * 30 + Math.random() * 20;
            
             const baseSpeed = kw.size === 'large' ? 0.15 : kw.size === 'medium' ? 0.2 : 0.25;
-            const speed = baseSpeed + Math.random() * 0.1;
+            const speed = baseSpeed + Math.random() * 0.3;
            
             const waveAmplitude = 8 + Math.random() * 12;
             const waveFrequency = 0.3 + Math.random() * 0.4;
