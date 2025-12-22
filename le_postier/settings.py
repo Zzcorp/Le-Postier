@@ -195,13 +195,30 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
 # =============================================================================
 # EMAIL CONFIGURATION
 # =============================================================================
+# =============================================================================
+# EMAIL CONFIGURATION - HOSTINGER SMTP
+# =============================================================================
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='zz.corp.hd@gmail.com')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='Elpatron2026!')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@samathey.fr')
 
-# For development/testing without SMTP, you can use console backend:
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Hostinger SMTP Settings
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.hostinger.com')
+EMAIL_PORT = config('EMAIL_PORT', default=465, cast=int)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=True, cast=bool)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
+
+# Your Hostinger email credentials
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='no-reply@collection-samathey.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')  # Set this in your .env file
+
+# Default sender
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Le Postier <no-reply@collection-samathey.com>')
+SERVER_EMAIL = config('SERVER_EMAIL', default='no-reply@collection-samathey.com')
+
+# Admin emails - recipients for contact form and notifications
+ADMIN_EMAILS = ['sam@samathey.com', 's.mathey@z-data.fr']
+
+# Email subject prefix
+EMAIL_SUBJECT_PREFIX = '[Le Postier] '
+
+# Timeout for email connections
+EMAIL_TIMEOUT = 30

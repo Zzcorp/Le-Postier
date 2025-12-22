@@ -1,16 +1,18 @@
+# core/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import login, authenticate, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 from datetime import timedelta
 import traceback
 import json
 import unicodedata
+import logging
 from django.db.models import Sum, Avg, F, Q, Count
 from django.db.models.functions import TruncDate, TruncHour, TruncMonth
 from collections import defaultdict
@@ -26,6 +28,9 @@ from .forms import (
     ContactForm, SimpleRegistrationForm, VerificationCodeForm,
     SetPasswordForm, ProfileUpdateForm
 )
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 def robots_txt(request):
@@ -93,11 +98,49 @@ def log_activity(user, action, details='', request=None, related_postcard=None, 
     )
 
 
+# ============================================
+# EMAIL UTILITIES
+# ============================================
+
+def get_admin_emails():
+    """Get list of admin emails from settings"""
+    return getattr(settings, 'ADMIN_EMAILS', ['sam@samathey.com', 's.mathey@z-data.fr'])
+
+
+def send_admin_notification(subject, message, html_message=None):
+    """Send notification email to all admin emails"""
+    admin_emails = get_admin_emails()
+
+    try:
+        if html_message:
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=admin_emails,
+            )
+            email.attach_alternative(html_message, "text/html")
+            email.send(fail_silently=False)
+        else:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+                fail_silently=False,
+            )
+        logger.info(f"Admin notification sent: {subject}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send admin notification: {e}")
+        return False
+
+
 def send_verification_email(user):
     """Send verification code email to user"""
     code = user.generate_new_verification_code()
 
-    subject = 'Vérification de votre compte - Le Postier'
+    subject = 'Vérification de votre compte - Collection Samathey'
 
     html_message = render_to_string('emails/verification_code.html', {
         'user': user,
@@ -111,24 +154,163 @@ Votre code de vérification est : {code}
 
 Ce code expire dans 30 minutes.
 
-Si vous n'avez pas créé de compte sur Le Postier, ignorez cet email.
+Si vous n'avez pas créé de compte sur Collection Samathey, ignorez cet email.
 
 Cordialement,
-L'équipe Le Postier
+L'équipe Collection Samathey
     """
 
     try:
-        send_mail(
+        # Send to user
+        email = EmailMultiAlternatives(
             subject=subject,
-            message=plain_message,
+            body=plain_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            html_message=html_message,
-            fail_silently=False,
+            to=[user.email],
         )
+        email.attach_alternative(html_message, "text/html")
+        email.send(fail_silently=False)
+
+        logger.info(f"Verification email sent to {user.email}")
+
+        # Send notification to admins about new registration
+        admin_subject = f'[Collection Samathey] Nouvelle inscription: {user.username}'
+        admin_message = f"""
+Nouvelle inscription sur Collection Samathey:
+
+Utilisateur: {user.username}
+Email: {user.email}
+Date: {timezone.now().strftime('%d/%m/%Y %H:%M')}
+
+Un code de vérification a été envoyé à l'utilisateur.
+
+---
+Notification automatique de Collection Samathey
+        """
+
+        admin_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Georgia, serif; background-color: #f5f0e8; padding: 20px; }}
+        .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }}
+        .header {{ text-align: center; border-bottom: 2px solid #b5600b; padding-bottom: 20px; margin-bottom: 20px; }}
+        .header h1 {{ color: #b5600b; margin: 0; }}
+        .content {{ color: #333; line-height: 1.8; }}
+        .info-box {{ background: #f8f4ef; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 4px solid #b5600b; }}
+        .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Nouvelle Inscription</h1>
+        </div>
+        <div class="content">
+            <p>Un nouvel utilisateur s'est inscrit sur Collection Samathey:</p>
+            <div class="info-box">
+                <p><strong>Utilisateur:</strong> {user.username}</p>
+                <p><strong>Email:</strong> {user.email}</p>
+                <p><strong>Date:</strong> {timezone.now().strftime('%d/%m/%Y à %H:%M')}</p>
+            </div>
+            <p>Un code de vérification a été envoyé à l'utilisateur.</p>
+        </div>
+        <div class="footer">
+            Notification automatique de Collection Samathey
+        </div>
+    </div>
+</body>
+</html>
+        """
+
+        send_admin_notification(admin_subject, admin_message, admin_html)
+
         return True
     except Exception as e:
+        logger.error(f"Error sending verification email: {e}")
         print(f"Error sending verification email: {e}")
+        return False
+
+
+def send_contact_notification(contact_message, user=None):
+    """Send notification email when contact form is submitted"""
+    admin_emails = get_admin_emails()
+
+    user_info = ""
+    if user:
+        user_info = f"Utilisateur: {user.username} ({user.email})"
+    else:
+        user_info = "Utilisateur: Visiteur anonyme"
+
+    subject = '[Collection Samathey] Nouveau message de contact'
+
+    plain_message = f"""
+Nouveau message de contact sur Collection Samathey:
+
+{contact_message.message}
+
+---
+{user_info}
+IP: {contact_message.ip_address or 'Non disponible'}
+Date: {contact_message.created_at.strftime('%d/%m/%Y à %H:%M')}
+
+---
+Ce message a été envoyé depuis le formulaire de contact du site Collection Samathey.
+    """
+
+    html_message = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Georgia, serif; background-color: #f5f0e8; padding: 20px; }}
+        .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }}
+        .header {{ text-align: center; border-bottom: 2px solid #b5600b; padding-bottom: 20px; margin-bottom: 20px; }}
+        .header h1 {{ color: #b5600b; margin: 0; }}
+        .message-box {{ background: #f8f4ef; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #b5600b; }}
+        .message-box p {{ color: #333; line-height: 1.8; margin: 0; white-space: pre-wrap; }}
+        .info {{ color: #666; font-size: 14px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }}
+        .info p {{ margin: 5px 0; }}
+        .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✉️ Nouveau Message de Contact</h1>
+        </div>
+        <div class="message-box">
+            <p>{contact_message.message}</p>
+        </div>
+        <div class="info">
+            <p><strong>{user_info}</strong></p>
+            <p><strong>IP:</strong> {contact_message.ip_address or 'Non disponible'}</p>
+            <p><strong>Date:</strong> {contact_message.created_at.strftime('%d/%m/%Y à %H:%M')}</p>
+        </div>
+        <div class="footer">
+            Message envoyé depuis le formulaire de contact de Collection Samathey
+        </div>
+    </div>
+</body>
+</html>
+    """
+
+    try:
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=admin_emails,
+        )
+        email.attach_alternative(html_message, "text/html")
+        email.send(fail_silently=False)
+
+        logger.info(f"Contact notification sent to admins for message ID {contact_message.id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send contact notification: {e}")
+        print(f"Failed to send contact notification: {e}")
         return False
 
 
@@ -158,9 +340,7 @@ def normalize_for_search(text):
 def search_postcards(base_queryset, query):
     """
     Perform accent-insensitive search on postcards.
-    - For TITLE search: splits the query into words and matches if ALL words are found
-    - For KEYWORDS search: matches the exact phrase (as before)
-    - For NUMBER search: matches the exact phrase
+    Searches in title AND keywords fields (combined results).
     Returns a filtered queryset.
     """
     if not query:
@@ -174,10 +354,6 @@ def search_postcards(base_queryset, query):
     print(f"[SEARCH DEBUG] Original query: '{query}'")
     print(f"[SEARCH DEBUG] Normalized query: '{normalized_query}'")
     print(f"[SEARCH DEBUG] Clean query (no quotes): '{clean_query}'")
-
-    # Split query into individual words for title search
-    query_words = [w.strip() for w in clean_query.split() if w.strip()]
-    print(f"[SEARCH DEBUG] Query words for title search: {query_words}")
 
     # Collect matching IDs with source tracking
     title_matches = set()
@@ -205,40 +381,31 @@ def search_postcards(base_queryset, query):
         normalized_keywords = normalize_for_search(keywords)
         normalized_number = normalize_for_search(number)
 
-        # TITLE SEARCH: All query words must be present in the title
-        if query_words:
-            all_words_found = all(word in normalized_title for word in query_words)
-            if all_words_found:
-                title_matches.add(postcard_id)
-
-        # KEYWORDS SEARCH: Exact phrase match (as before)
+        # Check both the normalized query and clean query (without quotes)
         queries_to_check = [normalized_query]
         if clean_query != normalized_query:
             queries_to_check.append(clean_query)
 
         for q in queries_to_check:
-            if q and normalized_keywords and q in normalized_keywords:
+            if q in normalized_title:
+                title_matches.add(postcard_id)
+            if q in normalized_keywords:
                 keyword_matches.add(postcard_id)
-                break
-
-        # NUMBER SEARCH: Exact phrase match
-        for q in queries_to_check:
-            if q and q in normalized_number:
+            if q in normalized_number:
                 number_matches.add(postcard_id)
-                break
 
     # Debug output
-    print(f"[SEARCH DEBUG] Title matches (split words): {len(title_matches)}")
-    print(f"[SEARCH DEBUG] Keyword matches (exact phrase): {len(keyword_matches)}")
+    print(f"[SEARCH DEBUG] Title matches: {len(title_matches)}")
+    print(f"[SEARCH DEBUG] Keyword matches: {len(keyword_matches)}")
     print(f"[SEARCH DEBUG] Number matches: {len(number_matches)}")
 
-    # Show some title matches for debugging
-    if title_matches:
-        print(f"[SEARCH DEBUG] Sample title matches:")
-        for pid in list(title_matches)[:5]:
+    # Show some keyword matches for debugging
+    if keyword_matches:
+        print(f"[SEARCH DEBUG] Sample keyword matches:")
+        for pid in list(keyword_matches)[:5]:
             p = next((x for x in all_postcards if x['id'] == pid), None)
             if p:
-                print(f"  -> ID {pid}: title='{p.get('title', '')[:80]}...'")
+                print(f"  -> ID {pid}: keywords='{p.get('keywords', '')[:100]}...'")
 
     # Combine all matches
     all_matching_ids = title_matches | keyword_matches | number_matches
@@ -270,6 +437,7 @@ def register(request):
                 request.session['pending_verification_user_id'] = user.id
                 return redirect('verify_email')
             else:
+                # Even if email fails, still redirect but show a message
                 request.session['pending_verification_user_id'] = user.id
                 return redirect('verify_email')
     else:
@@ -945,22 +1113,12 @@ def browse(request):
     try:
         query = request.GET.get('keywords_input', '').strip()
 
-        # Get filter parameters
-        sort_by = request.GET.get('sort', 'number')  # number, title, likes, views, date
-        sort_order = request.GET.get('order', 'asc')  # asc, desc
-        rarity_filter = request.GET.get('rarity', '')  # common, rare, very_rare
-        has_animation = request.GET.get('animated', '')  # true, false
-
         # Start with all postcards that have images
         base_queryset = Postcard.objects.filter(has_images=True)
         themes = Theme.objects.all()[:20]
 
-        # Apply rarity filter
-        if rarity_filter and rarity_filter in ['common', 'rare', 'very_rare']:
-            base_queryset = base_queryset.filter(rarity=rarity_filter)
-
         if query:
-            # Use the search function that searches title (split words), keywords (exact), AND number
+            # Use the search function that searches title, keywords, AND number
             postcards = search_postcards(base_queryset, query)
 
             # Log the search with actual result count
@@ -975,36 +1133,11 @@ def browse(request):
         else:
             postcards = base_queryset
 
-        # Apply sorting
-        order_prefix = '-' if sort_order == 'desc' else ''
+        # Order results by number
+        postcards = postcards.order_by('number')
 
-        if sort_by == 'number':
-            # Sort by number - need to handle string numbers properly
-            postcards = sorted(postcards, key=lambda p: int(''.join(filter(str.isdigit, str(p.number))) or 0),
-                               reverse=(sort_order == 'desc'))
-        elif sort_by == 'title':
-            postcards = postcards.order_by(f'{order_prefix}title')
-        elif sort_by == 'likes':
-            postcards = postcards.order_by(f'{order_prefix}likes_count')
-        elif sort_by == 'views':
-            postcards = postcards.order_by(f'{order_prefix}views_count')
-        elif sort_by == 'date':
-            postcards = postcards.order_by(f'{order_prefix}created_at')
-        else:
-            # Default: sort by number ascending
-            postcards = sorted(postcards, key=lambda p: int(''.join(filter(str.isdigit, str(p.number))) or 0))
-
-        # Convert to list if not already
-        if not isinstance(postcards, list):
-            postcards_list = list(postcards)
-        else:
-            postcards_list = postcards
-
-        # Filter by animation if requested (done after sorting since it requires method call)
-        if has_animation == 'true':
-            postcards_list = [p for p in postcards_list if p.has_animation()]
-        elif has_animation == 'false':
-            postcards_list = [p for p in postcards_list if not p.has_animation()]
+        # Convert to list for template
+        postcards_list = list(postcards)
 
         # Get user likes
         user_likes = set()
@@ -1031,11 +1164,6 @@ def browse(request):
             'displayed_count': len(postcards_list),
             'user': request.user,
             'user_likes': user_likes,
-            # Filter state
-            'current_sort': sort_by,
-            'current_order': sort_order,
-            'current_rarity': rarity_filter,
-            'current_animated': has_animation,
         }
 
         return render(request, 'browse.html', context)
@@ -1159,33 +1287,16 @@ def contact(request):
             message.ip_address = get_client_ip(request)
             message.save()
 
-            try:
-                user_info = ""
-                if request.user.is_authenticated:
-                    user_info = f"\n\nUtilisateur: {request.user.username} ({request.user.email})"
-                else:
-                    user_info = "\n\nUtilisateur: Anonyme"
+            # Send email notification to admins
+            email_sent = send_contact_notification(
+                message,
+                request.user if request.user.is_authenticated else None
+            )
 
-                email_body = f"""Nouveau message de contact sur Le Postier:
-
-{message.message}
-{user_info}
-IP: {message.ip_address}
-Date: {message.created_at.strftime('%d/%m/%Y %H:%M')}
-
----
-Ce message a été envoyé depuis le formulaire de contact du site Le Postier.
-"""
-
-                send_mail(
-                    subject='[Le Postier] Nouveau message de contact',
-                    message=email_body,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=['sam@samathey.com'],
-                    fail_silently=True,
-                )
-            except Exception as e:
-                print(f"Email sending failed: {e}")
+            if email_sent:
+                logger.info(f"Contact form submitted and email sent - Message ID: {message.id}")
+            else:
+                logger.warning(f"Contact form submitted but email failed - Message ID: {message.id}")
 
             return render(request, 'contact.html', {'form': ContactForm(), 'success': True})
     else:
@@ -2987,5 +3098,51 @@ def debug_search(request):
         output.append(f"Database icontains search found: {found_in_any.count()}")
         for p in found_in_any:
             output.append(f"  - {p.number}: {p.keywords[:100]}...")
+
+    return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")
+
+
+def debug_email(request):
+    """Debug endpoint to test email configuration"""
+    from django.core.mail import send_mail
+
+    output = []
+    output.append("=" * 60)
+    output.append("EMAIL DEBUG INFO")
+    output.append("=" * 60)
+    output.append("")
+    output.append(f"EMAIL_BACKEND: {settings.EMAIL_BACKEND}")
+    output.append(f"EMAIL_HOST: {settings.EMAIL_HOST}")
+    output.append(f"EMAIL_PORT: {settings.EMAIL_PORT}")
+    output.append(f"EMAIL_USE_SSL: {getattr(settings, 'EMAIL_USE_SSL', False)}")
+    output.append(f"EMAIL_USE_TLS: {getattr(settings, 'EMAIL_USE_TLS', False)}")
+    output.append(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
+    output.append(
+        f"EMAIL_HOST_PASSWORD: {'*' * len(settings.EMAIL_HOST_PASSWORD) if settings.EMAIL_HOST_PASSWORD else 'NOT SET'}")
+    output.append(f"DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+    output.append(f"ADMIN_EMAILS: {get_admin_emails()}")
+    output.append("")
+
+    # Only allow testing for admins
+    if request.user.is_authenticated and request.user.is_staff:
+        if request.GET.get('send_test') == '1':
+            try:
+                send_mail(
+                    subject='[TEST] Email Configuration Test - Collection Samathey',
+                    message='This is a test email from Collection Samathey to verify email configuration is working correctly.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=get_admin_emails(),
+                    fail_silently=False,
+                )
+                output.append("✅ TEST EMAIL SENT SUCCESSFULLY!")
+                output.append(f"Sent to: {', '.join(get_admin_emails())}")
+            except Exception as e:
+                output.append(f"❌ TEST EMAIL FAILED: {e}")
+                import traceback
+                output.append(traceback.format_exc())
+        else:
+            output.append("Add ?send_test=1 to send a test email (admin only)")
+    else:
+        output.append("Login as admin to send test emails")
 
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")
