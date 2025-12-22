@@ -158,7 +158,9 @@ def normalize_for_search(text):
 def search_postcards(base_queryset, query):
     """
     Perform accent-insensitive search on postcards.
-    Searches in title AND keywords fields (combined results).
+    - For TITLE search: splits the query into words and matches if ALL words are found
+    - For KEYWORDS search: matches the exact phrase (as before)
+    - For NUMBER search: matches the exact phrase
     Returns a filtered queryset.
     """
     if not query:
@@ -172,6 +174,10 @@ def search_postcards(base_queryset, query):
     print(f"[SEARCH DEBUG] Original query: '{query}'")
     print(f"[SEARCH DEBUG] Normalized query: '{normalized_query}'")
     print(f"[SEARCH DEBUG] Clean query (no quotes): '{clean_query}'")
+
+    # Split query into individual words for title search
+    query_words = [w.strip() for w in clean_query.split() if w.strip()]
+    print(f"[SEARCH DEBUG] Query words for title search: {query_words}")
 
     # Collect matching IDs with source tracking
     title_matches = set()
@@ -199,31 +205,40 @@ def search_postcards(base_queryset, query):
         normalized_keywords = normalize_for_search(keywords)
         normalized_number = normalize_for_search(number)
 
-        # Check both the normalized query and clean query (without quotes)
+        # TITLE SEARCH: All query words must be present in the title
+        if query_words:
+            all_words_found = all(word in normalized_title for word in query_words)
+            if all_words_found:
+                title_matches.add(postcard_id)
+
+        # KEYWORDS SEARCH: Exact phrase match (as before)
         queries_to_check = [normalized_query]
         if clean_query != normalized_query:
             queries_to_check.append(clean_query)
 
         for q in queries_to_check:
-            if q in normalized_title:
-                title_matches.add(postcard_id)
-            if q in normalized_keywords:
+            if q and normalized_keywords and q in normalized_keywords:
                 keyword_matches.add(postcard_id)
-            if q in normalized_number:
+                break
+
+        # NUMBER SEARCH: Exact phrase match
+        for q in queries_to_check:
+            if q and q in normalized_number:
                 number_matches.add(postcard_id)
+                break
 
     # Debug output
-    print(f"[SEARCH DEBUG] Title matches: {len(title_matches)}")
-    print(f"[SEARCH DEBUG] Keyword matches: {len(keyword_matches)}")
+    print(f"[SEARCH DEBUG] Title matches (split words): {len(title_matches)}")
+    print(f"[SEARCH DEBUG] Keyword matches (exact phrase): {len(keyword_matches)}")
     print(f"[SEARCH DEBUG] Number matches: {len(number_matches)}")
 
-    # Show some keyword matches for debugging
-    if keyword_matches:
-        print(f"[SEARCH DEBUG] Sample keyword matches:")
-        for pid in list(keyword_matches)[:5]:
+    # Show some title matches for debugging
+    if title_matches:
+        print(f"[SEARCH DEBUG] Sample title matches:")
+        for pid in list(title_matches)[:5]:
             p = next((x for x in all_postcards if x['id'] == pid), None)
             if p:
-                print(f"  -> ID {pid}: keywords='{p.get('keywords', '')[:100]}...'")
+                print(f"  -> ID {pid}: title='{p.get('title', '')[:80]}...'")
 
     # Combine all matches
     all_matching_ids = title_matches | keyword_matches | number_matches
@@ -930,12 +945,22 @@ def browse(request):
     try:
         query = request.GET.get('keywords_input', '').strip()
 
+        # Get filter parameters
+        sort_by = request.GET.get('sort', 'number')  # number, title, likes, views, date
+        sort_order = request.GET.get('order', 'asc')  # asc, desc
+        rarity_filter = request.GET.get('rarity', '')  # common, rare, very_rare
+        has_animation = request.GET.get('animated', '')  # true, false
+
         # Start with all postcards that have images
         base_queryset = Postcard.objects.filter(has_images=True)
         themes = Theme.objects.all()[:20]
 
+        # Apply rarity filter
+        if rarity_filter and rarity_filter in ['common', 'rare', 'very_rare']:
+            base_queryset = base_queryset.filter(rarity=rarity_filter)
+
         if query:
-            # Use the search function that searches title, keywords, AND number
+            # Use the search function that searches title (split words), keywords (exact), AND number
             postcards = search_postcards(base_queryset, query)
 
             # Log the search with actual result count
@@ -950,11 +975,36 @@ def browse(request):
         else:
             postcards = base_queryset
 
-        # Order results by number
-        postcards = postcards.order_by('number')
+        # Apply sorting
+        order_prefix = '-' if sort_order == 'desc' else ''
 
-        # Convert to list for template
-        postcards_list = list(postcards)
+        if sort_by == 'number':
+            # Sort by number - need to handle string numbers properly
+            postcards = sorted(postcards, key=lambda p: int(''.join(filter(str.isdigit, str(p.number))) or 0),
+                               reverse=(sort_order == 'desc'))
+        elif sort_by == 'title':
+            postcards = postcards.order_by(f'{order_prefix}title')
+        elif sort_by == 'likes':
+            postcards = postcards.order_by(f'{order_prefix}likes_count')
+        elif sort_by == 'views':
+            postcards = postcards.order_by(f'{order_prefix}views_count')
+        elif sort_by == 'date':
+            postcards = postcards.order_by(f'{order_prefix}created_at')
+        else:
+            # Default: sort by number ascending
+            postcards = sorted(postcards, key=lambda p: int(''.join(filter(str.isdigit, str(p.number))) or 0))
+
+        # Convert to list if not already
+        if not isinstance(postcards, list):
+            postcards_list = list(postcards)
+        else:
+            postcards_list = postcards
+
+        # Filter by animation if requested (done after sorting since it requires method call)
+        if has_animation == 'true':
+            postcards_list = [p for p in postcards_list if p.has_animation()]
+        elif has_animation == 'false':
+            postcards_list = [p for p in postcards_list if not p.has_animation()]
 
         # Get user likes
         user_likes = set()
@@ -981,6 +1031,11 @@ def browse(request):
             'displayed_count': len(postcards_list),
             'user': request.user,
             'user_likes': user_likes,
+            # Filter state
+            'current_sort': sort_by,
+            'current_order': sort_order,
+            'current_rarity': rarity_filter,
+            'current_animated': has_animation,
         }
 
         return render(request, 'browse.html', context)
