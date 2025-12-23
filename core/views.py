@@ -337,42 +337,100 @@ def normalize_for_search(text):
     return remove_accents(str(text).lower().strip())
 
 
+def tokenize_query(query):
+    """
+    Split a query into individual words for partial matching.
+    Removes common French stop words and very short words.
+    """
+    stop_words = {
+        'le', 'la', 'les', 'de', 'du', 'des', 'un', 'une', 'et', 'ou', 'en',
+        'au', 'aux', 'ce', 'ces', 'son', 'sa', 'ses', 'sur', 'dans', 'pour',
+        'par', 'avec', 'que', 'qui', 'dont', 'the', 'a', 'an', 'of', 'to'
+    }
+
+    # Normalize and split
+    normalized = normalize_for_search(query)
+    # Remove quotes and special characters
+    cleaned = normalized.replace('"', '').replace("'", '').replace('-', ' ')
+
+    # Split into words
+    words = cleaned.split()
+
+    # Filter out stop words and very short words (less than 2 chars)
+    tokens = [w for w in words if len(w) >= 2 and w not in stop_words]
+
+    return tokens
+
+
+def calculate_title_relevance(title, query_tokens, full_query):
+    """
+    Calculate relevance score for a title based on query tokens.
+    Returns a score from 0 to 100.
+    """
+    if not title or not query_tokens:
+        return 0
+
+    normalized_title = normalize_for_search(title)
+    score = 0
+
+    # Check for exact full query match (highest priority)
+    if full_query in normalized_title:
+        score += 50
+
+    # Check for each token
+    matched_tokens = 0
+    for token in query_tokens:
+        if token in normalized_title:
+            matched_tokens += 1
+            # Bonus for word boundary match
+            words_in_title = normalized_title.split()
+            for word in words_in_title:
+                if word == token:
+                    score += 10  # Exact word match
+                elif word.startswith(token):
+                    score += 5  # Prefix match
+                elif token in word:
+                    score += 3  # Substring match
+
+    # Calculate percentage of tokens matched
+    if query_tokens:
+        token_match_ratio = matched_tokens / len(query_tokens)
+        score += int(token_match_ratio * 30)
+
+    return min(score, 100)
+
+
 def search_postcards(base_queryset, query):
     """
     Perform accent-insensitive search on postcards.
-    Searches in title AND keywords fields (combined results).
-    Returns a filtered queryset.
+    - Title search: splits query into words and checks for individual word matches
+    - Keywords search: checks for full query match (as before)
+    Returns a filtered queryset ordered by relevance.
     """
     if not query:
         return base_queryset
 
-    # Normalize the search query - remove quotes and extra spaces
+    # Normalize the search query
     normalized_query = normalize_for_search(query)
-    # Also try without quotes in case user typed them
     clean_query = normalized_query.replace('"', '').replace("'", '').strip()
+
+    # Tokenize query for title search
+    query_tokens = tokenize_query(query)
 
     print(f"[SEARCH DEBUG] Original query: '{query}'")
     print(f"[SEARCH DEBUG] Normalized query: '{normalized_query}'")
-    print(f"[SEARCH DEBUG] Clean query (no quotes): '{clean_query}'")
+    print(f"[SEARCH DEBUG] Query tokens: {query_tokens}")
 
-    # Collect matching IDs with source tracking
-    title_matches = set()
-    keyword_matches = set()
-    number_matches = set()
+    # Collect matching IDs with scores
+    results = {}  # {postcard_id: {'score': int, 'match_type': str}}
 
     # Get all postcards from the base queryset
     all_postcards = list(base_queryset.values('id', 'title', 'keywords', 'number'))
 
     print(f"[SEARCH DEBUG] Searching through {len(all_postcards)} postcards")
 
-    # Count how many have keywords
-    postcards_with_keywords = sum(1 for p in all_postcards if p.get('keywords') and p['keywords'].strip())
-    print(f"[SEARCH DEBUG] Postcards with keywords: {postcards_with_keywords}")
-
     for postcard in all_postcards:
         postcard_id = postcard['id']
-
-        # Get and normalize each field
         title = postcard.get('title') or ''
         keywords = postcard.get('keywords') or ''
         number = postcard.get('number') or ''
@@ -381,40 +439,69 @@ def search_postcards(base_queryset, query):
         normalized_keywords = normalize_for_search(keywords)
         normalized_number = normalize_for_search(number)
 
-        # Check both the normalized query and clean query (without quotes)
-        queries_to_check = [normalized_query]
-        if clean_query != normalized_query:
-            queries_to_check.append(clean_query)
+        score = 0
+        match_types = []
 
+        # === TITLE SEARCH (Word-based matching) ===
+        if query_tokens:
+            title_score = calculate_title_relevance(title, query_tokens, clean_query)
+            if title_score > 0:
+                score += title_score
+                match_types.append('title')
+
+        # === KEYWORDS SEARCH (Full query matching - unchanged) ===
+        queries_to_check = [normalized_query, clean_query]
         for q in queries_to_check:
-            if q in normalized_title:
-                title_matches.add(postcard_id)
-            if q in normalized_keywords:
-                keyword_matches.add(postcard_id)
-            if q in normalized_number:
-                number_matches.add(postcard_id)
+            if q and normalized_keywords and q in normalized_keywords:
+                score += 40  # Keyword match is valuable
+                if 'keywords' not in match_types:
+                    match_types.append('keywords')
+                break
+
+        # === NUMBER SEARCH ===
+        for q in [normalized_query, clean_query]:
+            if q and q in normalized_number:
+                score += 60  # Number match is very precise
+                if 'number' not in match_types:
+                    match_types.append('number')
+                break
+
+        # Store result if any match found
+        if score > 0:
+            results[postcard_id] = {
+                'score': score,
+                'match_types': match_types
+            }
 
     # Debug output
-    print(f"[SEARCH DEBUG] Title matches: {len(title_matches)}")
-    print(f"[SEARCH DEBUG] Keyword matches: {len(keyword_matches)}")
-    print(f"[SEARCH DEBUG] Number matches: {len(number_matches)}")
+    title_matches = sum(1 for r in results.values() if 'title' in r['match_types'])
+    keyword_matches = sum(1 for r in results.values() if 'keywords' in r['match_types'])
+    number_matches = sum(1 for r in results.values() if 'number' in r['match_types'])
 
-    # Show some keyword matches for debugging
-    if keyword_matches:
-        print(f"[SEARCH DEBUG] Sample keyword matches:")
-        for pid in list(keyword_matches)[:5]:
+    print(f"[SEARCH DEBUG] Title matches: {title_matches}")
+    print(f"[SEARCH DEBUG] Keyword matches: {keyword_matches}")
+    print(f"[SEARCH DEBUG] Number matches: {number_matches}")
+    print(f"[SEARCH DEBUG] Total unique matches: {len(results)}")
+
+    # Show top results for debugging
+    if results:
+        sorted_results = sorted(results.items(), key=lambda x: x[1]['score'], reverse=True)[:5]
+        print(f"[SEARCH DEBUG] Top 5 results:")
+        for pid, data in sorted_results:
             p = next((x for x in all_postcards if x['id'] == pid), None)
             if p:
-                print(f"  -> ID {pid}: keywords='{p.get('keywords', '')[:100]}...'")
+                print(f"  -> ID {pid} (score: {data['score']}): {p.get('title', '')[:50]}...")
 
-    # Combine all matches
-    all_matching_ids = title_matches | keyword_matches | number_matches
+    # Return filtered queryset ordered by score
+    if results:
+        # Sort by score descending
+        sorted_ids = [pid for pid, _ in sorted(results.items(), key=lambda x: x[1]['score'], reverse=True)]
 
-    print(f"[SEARCH DEBUG] Total unique matches: {len(all_matching_ids)}")
+        # Use Case/When to preserve order
+        from django.db.models import Case, When
+        preserved_order = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(sorted_ids)])
 
-    # Return filtered queryset
-    if all_matching_ids:
-        return base_queryset.filter(id__in=all_matching_ids)
+        return base_queryset.filter(id__in=sorted_ids).order_by(preserved_order)
     else:
         return base_queryset.none()
 

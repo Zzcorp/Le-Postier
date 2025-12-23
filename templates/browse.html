@@ -754,7 +754,6 @@ function applyFilters() {
 
 /**
  * Remove accents from a string for accent-insensitive comparison
- * This normalizes characters like é, è, ê, ë to e
  */
 function removeAccents(str) {
     if (!str) return '';
@@ -767,6 +766,116 @@ function removeAccents(str) {
 function normalizeForSearch(str) {
     if (!str) return '';
     return removeAccents(str.toLowerCase().trim());
+}
+
+/**
+ * Tokenize a query into individual words
+ */
+function tokenizeQuery(query) {
+    const stopWords = new Set([
+        'le', 'la', 'les', 'de', 'du', 'des', 'un', 'une', 'et', 'ou', 'en',
+        'au', 'aux', 'ce', 'ces', 'son', 'sa', 'ses', 'sur', 'dans', 'pour',
+        'par', 'avec', 'que', 'qui', 'dont', 'the', 'a', 'an', 'of', 'to'
+    ]);
+    
+    const normalized = normalizeForSearch(query);
+    const cleaned = normalized.replace(/['""-]/g, ' ');
+    const words = cleaned.split(/\s+/);
+    
+    return words.filter(w => w.length >= 2 && !stopWords.has(w));
+}
+
+/**
+ * Calculate title relevance score
+ */
+function calculateTitleRelevance(title, queryTokens, fullQuery) {
+    if (!title || !queryTokens.length) return 0;
+    
+    const normalizedTitle = normalizeForSearch(title);
+    let score = 0;
+    
+    // Exact full query match
+    if (normalizedTitle.includes(fullQuery)) {
+        score += 50;
+    }
+    
+    // Check each token
+    let matchedTokens = 0;
+    const titleWords = normalizedTitle.split(/\s+/);
+    
+    queryTokens.forEach(token => {
+        if (normalizedTitle.includes(token)) {
+            matchedTokens++;
+            titleWords.forEach(word => {
+                if (word === token) {
+                    score += 10;
+                } else if (word.startsWith(token)) {
+                    score += 5;
+                } else if (word.includes(token)) {
+                    score += 3;
+                }
+            });
+        }
+    });
+    
+    // Token match ratio
+    if (queryTokens.length > 0) {
+        score += Math.floor((matchedTokens / queryTokens.length) * 30);
+    }
+    
+    return Math.min(score, 100);
+}
+
+/**
+ * Client-side search function (for live filtering if needed)
+ */
+function searchPostcardsClient(postcards, query) {
+    if (!query || !query.trim()) {
+        return postcards;
+    }
+    
+    const normalizedQuery = normalizeForSearch(query);
+    const cleanQuery = normalizedQuery.replace(/['"]/g, '').trim();
+    const queryTokens = tokenizeQuery(query);
+    
+    const results = postcards.map(postcard => {
+        let score = 0;
+        const matchTypes = [];
+        
+        // Title search (word-based)
+        if (queryTokens.length > 0) {
+            const titleScore = calculateTitleRelevance(postcard.title, queryTokens, cleanQuery);
+            if (titleScore > 0) {
+                score += titleScore;
+                matchTypes.push('title');
+            }
+        }
+        
+        // Keywords search (full query)
+        const normalizedKeywords = normalizeForSearch(postcard.keywords);
+        if (normalizedKeywords && (normalizedKeywords.includes(normalizedQuery) || normalizedKeywords.includes(cleanQuery))) {
+            score += 40;
+            matchTypes.push('keywords');
+        }
+        
+        // Number search
+        const normalizedNumber = normalizeForSearch(postcard.number);
+        if (normalizedNumber && (normalizedNumber.includes(normalizedQuery) || normalizedNumber.includes(cleanQuery))) {
+            score += 60;
+            matchTypes.push('number');
+        }
+        
+        return {
+            ...postcard,
+            searchScore: score,
+            matchTypes
+        };
+    });
+    
+    // Filter and sort by score
+    return results
+        .filter(r => r.searchScore > 0)
+        .sort((a, b) => b.searchScore - a.searchScore);
 }
 
 // =============================================
