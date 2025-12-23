@@ -3233,3 +3233,484 @@ def debug_email(request):
         output.append("Login as admin to send test emails")
 
     return HttpResponse("<pre>" + "\n".join(output) + "</pre>", content_type="text/plain")
+
+
+@user_passes_test(is_admin)
+@require_http_methods(["POST"])
+def admin_add_postcard(request):
+    """Admin endpoint to manually add a postcard"""
+    try:
+        data = json.loads(request.body)
+
+        number = data.get('number', '').strip()
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        keywords = data.get('keywords', '').strip()
+        rarity = data.get('rarity', 'common')
+
+        if not number:
+            return JsonResponse({'error': 'Le numéro est requis'}, status=400)
+
+        if not title:
+            return JsonResponse({'error': 'Le titre est requis'}, status=400)
+
+        # Check if number already exists
+        if Postcard.objects.filter(number=number).exists():
+            return JsonResponse({'error': f'Une carte avec le numéro {number} existe déjà'}, status=400)
+
+        # Create the postcard
+        postcard = Postcard.objects.create(
+            number=number,
+            title=title,
+            description=description,
+            keywords=keywords,
+            rarity=rarity,
+            created_by=request.user,
+        )
+
+        # Check if images exist
+        postcard.update_image_flags()
+
+        return JsonResponse({
+            'success': True,
+            'postcard': {
+                'id': postcard.id,
+                'number': postcard.number,
+                'title': postcard.title,
+                'has_images': postcard.has_images,
+            },
+            'message': f'Carte N°{number} créée avec succès!'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Format JSON invalide'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@user_passes_test(is_admin)
+def admin_detailed_stats_api(request):
+    """API endpoint for detailed statistics"""
+    try:
+        today = timezone.now().date()
+        now = timezone.now()
+        week_ago = today - timedelta(days=7)
+        month_ago = today - timedelta(days=30)
+        yesterday = today - timedelta(days=1)
+
+        # Session duration stats - FIXED
+        sessions_with_duration = VisitorSession.objects.filter(
+            first_visit__date__gte=week_ago,
+            total_time_spent__gt=0
+        )
+
+        avg_duration = sessions_with_duration.aggregate(
+            avg=Avg('total_time_spent'),
+            max=Max('total_time_spent'),
+            min=Min('total_time_spent'),
+            total=Sum('total_time_spent')
+        )
+
+        # Calculate from session_start and session_end for accuracy
+        accurate_durations = []
+        for session in VisitorSession.objects.filter(
+                first_visit__date__gte=week_ago,
+                session_start__isnull=False
+        )[:1000]:
+            duration = session.calculate_duration()
+            if duration > 0 and duration < 86400:  # Less than 24 hours
+                accurate_durations.append(duration)
+
+        if accurate_durations:
+            avg_session_duration = sum(accurate_durations) / len(accurate_durations)
+            max_session_duration = max(accurate_durations)
+            min_session_duration = min(accurate_durations)
+            median_duration = sorted(accurate_durations)[len(accurate_durations) // 2]
+        else:
+            avg_session_duration = avg_duration.get('avg') or 0
+            max_session_duration = avg_duration.get('max') or 0
+            min_session_duration = avg_duration.get('min') or 0
+            median_duration = 0
+
+        # User engagement metrics
+        users_with_likes = CustomUser.objects.annotate(
+            like_count=Count('postcardlike')
+        ).filter(like_count__gt=0).count()
+
+        users_with_searches = SearchLog.objects.filter(
+            user__isnull=False
+        ).values('user').distinct().count()
+
+        # Content metrics
+        postcards_never_viewed = Postcard.objects.filter(views_count=0).count()
+        postcards_most_viewed = Postcard.objects.order_by('-views_count')[:10]
+        postcards_never_liked = Postcard.objects.filter(likes_count=0, has_images=True).count()
+
+        # Conversion metrics
+        total_visitors = VisitorSession.objects.count()
+        visitors_who_liked = VisitorSession.objects.filter(likes_count__gt=0).count()
+        visitors_who_searched = VisitorSession.objects.filter(searches_count__gt=0).count()
+
+        like_conversion = (visitors_who_liked / total_visitors * 100) if total_visitors > 0 else 0
+        search_conversion = (visitors_who_searched / total_visitors * 100) if total_visitors > 0 else 0
+
+        # Geographic depth
+        countries_count = VisitorSession.objects.exclude(country='').values('country').distinct().count()
+        cities_count = VisitorSession.objects.exclude(city='').values('city').distinct().count()
+
+        # Time-based patterns
+        hourly_pattern = list(
+            PageView.objects.filter(timestamp__date=today)
+            .annotate(hour=TruncHour('timestamp'))
+            .values('hour')
+            .annotate(count=Count('id'))
+            .order_by('hour')
+        )
+
+        # Weekly pattern
+        weekly_pattern = list(
+            PageView.objects.filter(timestamp__date__gte=week_ago)
+            .extra(select={'weekday': "EXTRACT(DOW FROM timestamp)"})
+            .values('weekday')
+            .annotate(count=Count('id'))
+            .order_by('weekday')
+        )
+
+        # ISP/Network stats
+        top_isps = list(
+            VisitorSession.objects.exclude(isp='').exclude(isp__icontains='unknown')
+            .values('isp')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:15]
+        )
+
+        # VPN/Proxy detection
+        vpn_count = VisitorSession.objects.filter(
+            Q(isp__icontains='vpn') | Q(isp__icontains='proxy') |
+            Q(isp__icontains='hosting') | Q(isp__icontains='datacenter')
+        ).count()
+
+        return JsonResponse({
+            'session_stats': {
+                'avg_duration': int(avg_session_duration),
+                'avg_duration_formatted': format_duration(int(avg_session_duration)),
+                'max_duration': int(max_session_duration),
+                'max_duration_formatted': format_duration(int(max_session_duration)),
+                'min_duration': int(min_session_duration),
+                'min_duration_formatted': format_duration(int(min_session_duration)),
+                'median_duration': int(median_duration),
+                'median_duration_formatted': format_duration(int(median_duration)),
+                'total_sessions_analyzed': len(accurate_durations),
+            },
+            'engagement': {
+                'users_with_likes': users_with_likes,
+                'users_with_searches': users_with_searches,
+                'like_conversion_rate': round(like_conversion, 2),
+                'search_conversion_rate': round(search_conversion, 2),
+            },
+            'content': {
+                'postcards_never_viewed': postcards_never_viewed,
+                'postcards_never_liked': postcards_never_liked,
+            },
+            'geographic': {
+                'countries_count': countries_count,
+                'cities_count': cities_count,
+            },
+            'network': {
+                'top_isps': top_isps,
+                'vpn_proxy_count': vpn_count,
+            },
+        })
+
+    except Exception as e:
+        import traceback
+        return JsonResponse({'error': str(e), 'trace': traceback.format_exc()}, status=500)
+
+
+@user_passes_test(is_admin)
+def admin_user_analytics_api(request, user_id):
+    """Detailed analytics for a specific user"""
+    try:
+        user = CustomUser.objects.get(id=user_id)
+
+        # Activity summary
+        likes = PostcardLike.objects.filter(user=user)
+        searches = SearchLog.objects.filter(user=user)
+        page_views = PageView.objects.filter(user=user)
+        activities = UserActivity.objects.filter(user=user)
+
+        # Favorite postcards
+        favorite_postcards = list(
+            likes.values('postcard__number', 'postcard__title', 'postcard__id')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+
+        # Search history
+        recent_searches = list(
+            searches.order_by('-created_at')[:20]
+            .values('keyword', 'results_count', 'created_at')
+        )
+
+        # Session history
+        sessions = VisitorSession.objects.filter(user=user).order_by('-first_visit')[:20]
+        sessions_data = [{
+            'first_visit': s.first_visit.strftime('%d/%m/%Y %H:%M'),
+            'last_activity': s.last_activity.strftime('%d/%m/%Y %H:%M') if s.last_activity else '',
+            'duration': format_duration(s.calculate_duration()),
+            'page_views': s.page_views,
+            'ip_address': s.ip_address,
+            'country': s.country,
+            'city': s.city,
+            'device': s.device_type,
+            'browser': s.browser,
+        } for s in sessions]
+
+        # Activity timeline
+        activity_by_day = list(
+            activities.annotate(date=TruncDate('timestamp'))
+            .values('date')
+            .annotate(count=Count('id'))
+            .order_by('-date')[:30]
+        )
+
+        return JsonResponse({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'category': user.category,
+                'date_joined': user.date_joined.strftime('%d/%m/%Y %H:%M'),
+                'last_login': user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else 'Jamais',
+            },
+            'stats': {
+                'total_likes': likes.count(),
+                'total_searches': searches.count(),
+                'total_page_views': page_views.count(),
+                'total_activities': activities.count(),
+            },
+            'favorite_postcards': favorite_postcards,
+            'recent_searches': [{
+                **s,
+                'created_at': s['created_at'].strftime('%d/%m/%Y %H:%M')
+            } for s in recent_searches],
+            'sessions': sessions_data,
+            'activity_by_day': [{
+                'date': a['date'].strftime('%d/%m/%Y'),
+                'count': a['count']
+            } for a in activity_by_day],
+        })
+
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'error': 'Utilisateur non trouvé'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@user_passes_test(is_admin)
+def admin_country_analytics_api(request, country):
+    """Detailed analytics for a specific country"""
+    try:
+        from urllib.parse import unquote
+        country = unquote(country)
+
+        sessions = VisitorSession.objects.filter(country__iexact=country)
+        page_views = PageView.objects.filter(country__iexact=country)
+        likes = PostcardLike.objects.filter(country__iexact=country)
+
+        # Cities breakdown
+        cities = list(
+            sessions.exclude(city='').values('city')
+            .annotate(
+                session_count=Count('id'),
+                total_page_views=Sum('page_views')
+            )
+            .order_by('-session_count')[:20]
+        )
+
+        # Device breakdown
+        devices = list(
+            sessions.exclude(device_type='').values('device_type')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+
+        # Browser breakdown
+        browsers = list(
+            sessions.exclude(browser='').values('browser')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+
+        # ISPs in this country
+        isps = list(
+            sessions.exclude(isp='').values('isp')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+
+        # Popular postcards in this country
+        popular_postcards = list(
+            likes.values('postcard__number', 'postcard__title', 'postcard__id')
+            .annotate(like_count=Count('id'))
+            .order_by('-like_count')[:10]
+        )
+
+        # Activity over time
+        daily_activity = list(
+            page_views.annotate(date=TruncDate('timestamp'))
+            .values('date')
+            .annotate(count=Count('id'))
+            .order_by('-date')[:30]
+        )
+
+        # Average session duration for this country
+        durations = []
+        for session in sessions.filter(session_start__isnull=False)[:500]:
+            d = session.calculate_duration()
+            if d > 0 and d < 86400:
+                durations.append(d)
+
+        avg_duration = sum(durations) / len(durations) if durations else 0
+
+        return JsonResponse({
+            'country': country,
+            'stats': {
+                'total_sessions': sessions.count(),
+                'total_page_views': page_views.count(),
+                'total_likes': likes.count(),
+                'unique_visitors': sessions.values('ip_address').distinct().count(),
+                'avg_session_duration': int(avg_duration),
+                'avg_session_duration_formatted': format_duration(int(avg_duration)),
+            },
+            'cities': cities,
+            'devices': devices,
+            'browsers': browsers,
+            'isps': isps,
+            'popular_postcards': popular_postcards,
+            'daily_activity': [{
+                'date': a['date'].strftime('%d/%m/%Y'),
+                'count': a['count']
+            } for a in daily_activity],
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@user_passes_test(is_admin)
+def admin_export_analytics(request):
+    """Export analytics data as CSV"""
+    export_type = request.GET.get('type', 'sessions')
+    period = request.GET.get('period', '30')
+
+    try:
+        days = int(period)
+    except:
+        days = 30
+
+    start_date = timezone.now().date() - timedelta(days=days)
+
+    response = HttpResponse(content_type='text/csv')
+    response[
+        'Content-Disposition'] = f'attachment; filename="analytics_{export_type}_{timezone.now().strftime("%Y%m%d")}.csv"'
+
+    writer = csv.writer(response)
+
+    if export_type == 'sessions':
+        writer.writerow([
+            'Date', 'IP', 'Pays', 'Ville', 'Appareil', 'Navigateur',
+            'OS', 'Pages vues', 'Durée (s)', 'FAI', 'Utilisateur'
+        ])
+
+        for session in VisitorSession.objects.filter(first_visit__date__gte=start_date).order_by('-first_visit'):
+            writer.writerow([
+                session.first_visit.strftime('%Y-%m-%d %H:%M'),
+                session.ip_address,
+                session.country,
+                session.city,
+                session.device_type,
+                session.browser,
+                session.os,
+                session.page_views,
+                session.calculate_duration(),
+                session.isp,
+                session.user.username if session.user else '',
+            ])
+
+    elif export_type == 'pageviews':
+        writer.writerow([
+            'Date', 'Page', 'URL', 'IP', 'Pays', 'Ville',
+            'Appareil', 'Navigateur', 'Utilisateur'
+        ])
+
+        for pv in PageView.objects.filter(timestamp__date__gte=start_date).order_by('-timestamp'):
+            writer.writerow([
+                pv.timestamp.strftime('%Y-%m-%d %H:%M'),
+                pv.page_name,
+                pv.page_url,
+                pv.ip_address,
+                pv.country,
+                pv.city,
+                pv.device_type,
+                pv.browser,
+                pv.user.username if pv.user else '',
+            ])
+
+    elif export_type == 'likes':
+        writer.writerow([
+            'Date', 'Carte N°', 'Titre', 'Utilisateur', 'IP',
+            'Pays', 'Ville', 'Appareil', 'Type'
+        ])
+
+        for like in PostcardLike.objects.filter(created_at__date__gte=start_date).select_related('postcard',
+                                                                                                 'user').order_by(
+                '-created_at'):
+            writer.writerow([
+                like.created_at.strftime('%Y-%m-%d %H:%M'),
+                like.postcard.number if like.postcard else '',
+                like.postcard.title if like.postcard else '',
+                like.user.username if like.user else 'Anonyme',
+                like.ip_address,
+                like.country,
+                like.city,
+                like.device_type,
+                'Animation' if like.is_animated_like else 'Image',
+            ])
+
+    elif export_type == 'searches':
+        writer.writerow([
+            'Date', 'Mot-clé', 'Résultats', 'Utilisateur', 'IP'
+        ])
+
+        for search in SearchLog.objects.filter(created_at__date__gte=start_date).order_by('-created_at'):
+            writer.writerow([
+                search.created_at.strftime('%Y-%m-%d %H:%M'),
+                search.keyword,
+                search.results_count,
+                search.user.username if search.user else 'Anonyme',
+                search.ip_address,
+            ])
+
+    elif export_type == 'users':
+        writer.writerow([
+            'Utilisateur', 'Email', 'Catégorie', 'Vérifié', 'Staff',
+            'Date inscription', 'Dernière connexion', 'IP inscription',
+            'Pays', 'Ville'
+        ])
+
+        for user in CustomUser.objects.all().order_by('-date_joined'):
+            writer.writerow([
+                user.username,
+                user.email,
+                user.get_category_display(),
+                'Oui' if user.email_verified else 'Non',
+                'Oui' if user.is_staff else 'Non',
+                user.date_joined.strftime('%Y-%m-%d %H:%M'),
+                user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '',
+                user.registration_ip or '',
+                user.country,
+                user.city,
+            ])
+
+    return response

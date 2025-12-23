@@ -635,6 +635,7 @@ class VisitorSession(models.Model):
     referrer = models.CharField(max_length=500, blank=True)
     referrer_domain = models.CharField(max_length=200, blank=True)
     landing_page = models.CharField(max_length=500, blank=True)
+    exit_page = models.CharField(max_length=500, blank=True)
     utm_source = models.CharField(max_length=100, blank=True)
     utm_medium = models.CharField(max_length=100, blank=True)
     utm_campaign = models.CharField(max_length=100, blank=True)
@@ -643,11 +644,35 @@ class VisitorSession(models.Model):
     page_views = models.IntegerField(default=0)
     total_time_spent = models.IntegerField(default=0, verbose_name="Temps passé (secondes)")
     is_bot = models.BooleanField(default=False)
+    is_returning = models.BooleanField(default=False, verbose_name="Visiteur récurrent")
+
+    # New fields for better tracking
+    session_start = models.DateTimeField(null=True, blank=True)
+    session_end = models.DateTimeField(null=True, blank=True)
+    actions_count = models.IntegerField(default=0, verbose_name="Nombre d'actions")
+    searches_count = models.IntegerField(default=0, verbose_name="Nombre de recherches")
+    likes_count = models.IntegerField(default=0, verbose_name="Nombre de likes")
 
     class Meta:
         ordering = ['-last_activity']
         verbose_name = "Session visiteur"
         verbose_name_plural = "Sessions visiteurs"
+
+    def calculate_duration(self):
+        """Calculate actual session duration"""
+        if self.session_start and self.session_end:
+            delta = self.session_end - self.session_start
+            return int(delta.total_seconds())
+        elif self.session_start and self.last_activity:
+            delta = self.last_activity - self.session_start
+            return int(delta.total_seconds())
+        return self.total_time_spent
+
+    def save(self, *args, **kwargs):
+        # Auto-set session_start on first save
+        if not self.session_start:
+            self.session_start = self.first_visit or timezone.now()
+        super().save(*args, **kwargs)
 
 
 class PostcardInteraction(models.Model):

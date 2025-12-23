@@ -10,33 +10,86 @@
     <header class="dashboard-header">
         <div class="header-content">
             <div class="header-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
                 </svg>
             </div>
             <div class="header-text">
-                <h1>Tableau de Bord Administrateur</h1>
+                <h1>Tableau de Bord</h1>
                 <p>Bienvenue, <strong>{{ user.username }}</strong> • {{ "now"|date:"l d F Y, H:i" }}</p>
             </div>
         </div>
         <div class="header-actions">
-            <button class="refresh-btn" onclick="location.reload()">
+            <button class="header-btn" onclick="openAddPostcardModal()" title="Ajouter une carte">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 4 23 10 17 10"/>
-                    <polyline points="1 20 1 14 7 14"/>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M12 8v8M8 12h8"/>
                 </svg>
-                Actualiser
+                <span>Nouvelle Carte</span>
             </button>
-            <a href="/admin/" class="admin-link-btn">
+            <div class="export-dropdown">
+                <button class="header-btn" onclick="toggleExportMenu()" title="Exporter">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Exporter</span>
+                </button>
+                <div class="export-menu" id="exportMenu">
+                    <a href="/api/admin/export/?type=sessions&period=30" class="export-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        Sessions (30j)
+                    </a>
+                    <a href="/api/admin/export/?type=pageviews&period=30" class="export-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Pages vues (30j)
+                    </a>
+                    <a href="/api/admin/export/?type=likes&period=30" class="export-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                        Likes (30j)
+                    </a>
+                    <a href="/api/admin/export/?type=searches&period=30" class="export-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        Recherches (30j)
+                    </a>
+                    <a href="/api/admin/export/?type=users&period=9999" class="export-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="8.5" cy="7" r="4"/>
+                            <line x1="20" y1="8" x2="20" y2="14"/>
+                            <line x1="23" y1="11" x2="17" y2="11"/>
+                        </svg>
+                        Utilisateurs
+                    </a>
+                </div>
+            </div>
+            <button class="header-btn" onclick="location.reload()" title="Actualiser">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 2v6h-6"/>
+                    <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+                    <path d="M3 22v-6h6"/>
+                    <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                </svg>
+            </button>
+            <a href="/admin/" class="header-btn" title="Django Admin">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
-                Django Admin
             </a>
         </div>
     </header>
@@ -44,31 +97,45 @@
     <!-- Real-Time Section -->
     <section class="realtime-section">
         <div class="realtime-card">
-            <div class="realtime-indicator">
-                <span class="pulse-dot"></span>
-                <span>EN DIRECT</span>
+            <div class="realtime-header">
+                <div class="realtime-indicator">
+                    <span class="pulse-dot"></span>
+                    <span>EN DIRECT</span>
+                </div>
+                <span class="realtime-time" id="currentTime"></span>
             </div>
-            <div class="realtime-stats">
-                <div class="realtime-stat">
+            <div class="realtime-content">
+                <div class="realtime-main-stat">
                     <span class="realtime-number" id="activeVisitorCount">{{ active_visitor_count }}</span>
-                    <span class="realtime-label">Visiteurs actifs</span>
+                    <span class="realtime-label">visiteurs actifs</span>
                 </div>
                 <div class="realtime-visitors-list" id="activeVisitorsList">
                     {% for visitor in active_visitors_list %}
                     <div class="active-visitor" onclick="lookupIP('{{ visitor.ip_address }}')">
-                        <span class="visitor-flag">{{ visitor.flag|default:"🌍" }}</span>
-                        <span class="visitor-country">{{ visitor.country|default:"Inconnu" }}</span>
-                        <span class="visitor-city">{{ visitor.city|default:"" }}</span>
-                        <span class="visitor-page" title="{{ visitor.current_page }}">{{ visitor.page_title|truncatechars:25 }}</span>
-                        <span class="visitor-device">{{ visitor.device_type }}</span>
-                        <span class="visitor-browser">{{ visitor.browser }}</span>
+                        <div class="visitor-location">
+                            <span class="visitor-flag">{{ visitor.flag|default:"🌍" }}</span>
+                            <div class="visitor-geo">
+                                <span class="visitor-country">{{ visitor.country|default:"Inconnu" }}</span>
+                                <span class="visitor-city">{{ visitor.city|default:"" }}</span>
+                            </div>
+                        </div>
+                        <div class="visitor-page" title="{{ visitor.current_page }}">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            {{ visitor.page_title|truncatechars:20 }}
+                        </div>
+                        <div class="visitor-tech">
+                            <span class="visitor-device">{{ visitor.device_type }}</span>
+                            <span class="visitor-browser">{{ visitor.browser }}</span>
+                        </div>
                         {% if visitor.user__username %}
-                        <span class="visitor-user">👤 {{ visitor.user__username }}</span>
+                        <span class="visitor-user">{{ visitor.user__username }}</span>
                         {% endif %}
-                        <span class="visitor-ip">{{ visitor.ip_address }}</span>
                     </div>
                     {% empty %}
-                    <p class="no-visitors">Aucun visiteur actif en ce moment</p>
+                    <p class="no-visitors">Aucun visiteur actif</p>
                     {% endfor %}
                 </div>
             </div>
@@ -76,20 +143,20 @@
     </section>
 
     <!-- Quick Stats Grid -->
-    <section class="quick-stats-section">
+    <section class="stats-section">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="20" x2="18" y2="10"/>
-                <line x1="12" y1="20" x2="12" y2="4"/>
-                <line x1="6" y1="20" x2="6" y2="14"/>
+                <path d="M18 20V10"/>
+                <path d="M12 20V4"/>
+                <path d="M6 20v-6"/>
             </svg>
             Vue d'ensemble
         </h2>
-        <div class="quick-stats-grid">
-            <!-- Users Stats -->
-            <div class="stat-card stat-users">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="stats-grid">
+            <!-- Users -->
+            <div class="stat-card">
+                <div class="stat-icon users">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                         <circle cx="9" cy="7" r="4"/>
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
@@ -99,19 +166,18 @@
                 <div class="stat-content">
                     <span class="stat-value">{{ total_users }}</span>
                     <span class="stat-label">Utilisateurs</span>
-                    <div class="stat-details">
-                        <span class="stat-change {% if user_growth_percent >= 0 %}positive{% else %}negative{% endif %}">
-                            {% if user_growth_percent >= 0 %}+{% endif %}{{ user_growth_percent }}% vs hier
-                        </span>
-                        <span class="stat-sub">+{{ new_users_today }} aujourd'hui • +{{ new_users_week }} cette semaine</span>
+                    <div class="stat-change {% if user_growth_percent >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if user_growth_percent >= 0 %}+{% endif %}{{ user_growth_percent }}%
+                        <span class="vs-text">vs hier</span>
                     </div>
+                    <span class="stat-detail">+{{ new_users_today }} aujourd'hui</span>
                 </div>
             </div>
 
-            <!-- Page Views Stats -->
-            <div class="stat-card stat-views">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <!-- Page Views -->
+            <div class="stat-card">
+                <div class="stat-icon views">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                         <circle cx="12" cy="12" r="3"/>
                     </svg>
@@ -119,200 +185,202 @@
                 <div class="stat-content">
                     <span class="stat-value">{{ page_views_today }}</span>
                     <span class="stat-label">Vues aujourd'hui</span>
-                    <div class="stat-details">
-                        <span class="stat-change {% if views_growth_percent >= 0 %}positive{% else %}negative{% endif %}">
-                            {% if views_growth_percent >= 0 %}+{% endif %}{{ views_growth_percent }}% vs hier
-                        </span>
-                        <span class="stat-sub">{{ unique_visitors_today }} visiteurs uniques</span>
+                    <div class="stat-change {% if views_growth_percent >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if views_growth_percent >= 0 %}+{% endif %}{{ views_growth_percent }}%
+                        <span class="vs-text">vs hier</span>
                     </div>
+                    <span class="stat-detail">{{ unique_visitors_today }} visiteurs uniques</span>
                 </div>
             </div>
 
-            <!-- Sessions Stats -->
-            <div class="stat-card stat-sessions">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+            <!-- Sessions -->
+            <div class="stat-card">
+                <div class="stat-icon sessions">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
                     </svg>
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{{ sessions_today }}</span>
-                    <span class="stat-label">Sessions aujourd'hui</span>
-                    <div class="stat-details">
-                        <span class="stat-sub">{{ sessions_week }} cette semaine</span>
-                        <span class="stat-sub">{{ week_over_week_change }}% vs semaine dern.</span>
+                    <span class="stat-label">Sessions</span>
+                    <div class="stat-sub">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        {{ avg_session_duration_formatted }} moy.
                     </div>
+                    <span class="stat-detail">{{ sessions_week }} cette semaine</span>
                 </div>
             </div>
 
-            <!-- Likes Stats -->
-            <div class="stat-card stat-likes">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <!-- Likes -->
+            <div class="stat-card">
+                <div class="stat-icon likes">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{{ total_likes }}</span>
-                    <span class="stat-label">Likes Total</span>
-                    <div class="stat-details">
-                        <span class="stat-change {% if likes_growth_percent >= 0 %}positive{% else %}negative{% endif %}">
-                            {% if likes_growth_percent >= 0 %}+{% endif %}{{ likes_growth_percent }}% vs hier
-                        </span>
-                        <span class="stat-sub">+{{ likes_today }} aujourd'hui • +{{ likes_week }} cette semaine</span>
+                    <span class="stat-label">Likes total</span>
+                    <div class="stat-change {% if likes_growth_percent >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if likes_growth_percent >= 0 %}+{% endif %}{{ likes_growth_percent }}%
+                        <span class="vs-text">vs hier</span>
                     </div>
+                    <span class="stat-detail">+{{ likes_today }} aujourd'hui</span>
                 </div>
             </div>
 
-            <!-- Postcards Stats -->
-            <div class="stat-card stat-postcards">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <!-- Postcards -->
+            <div class="stat-card">
+                <div class="stat-icon postcards">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
                         <circle cx="8.5" cy="8.5" r="1.5"/>
-                        <polyline points="21 15 16 10 5 21"/>
+                        <path d="m21 15-5-5L5 21"/>
                     </svg>
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{{ total_postcards }}</span>
-                    <span class="stat-label">Cartes Postales</span>
-                    <div class="stat-details">
-                        <span class="stat-sub">{{ postcards_with_images }} avec images</span>
-                        <span class="stat-sub">{{ animated_postcards }} animées</span>
+                    <span class="stat-label">Cartes postales</span>
+                    <div class="stat-sub">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        {{ animated_postcards }} animées
                     </div>
+                    <span class="stat-detail">{{ postcards_with_images }} avec images</span>
                 </div>
             </div>
 
-            <!-- Searches Stats -->
-            <div class="stat-card stat-searches">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <!-- Searches -->
+            <div class="stat-card">
+                <div class="stat-icon searches">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        <path d="m21 21-4.35-4.35"/>
                     </svg>
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{{ searches_today }}</span>
-                    <span class="stat-label">Recherches aujourd'hui</span>
-                    <div class="stat-details">
-                        <span class="stat-sub">{{ searches_week }} cette semaine</span>
-                        <span class="stat-sub">{{ total_searches }} total</span>
-                    </div>
+                    <span class="stat-label">Recherches</span>
+                    <span class="stat-detail">{{ searches_week }} cette semaine</span>
+                    <span class="stat-detail">{{ total_searches }} total</span>
                 </div>
             </div>
 
-            <!-- Messages Stats -->
-            <div class="stat-card stat-messages {% if unread_messages > 0 %}has-alert{% endif %}">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <!-- Messages -->
+            <div class="stat-card {% if unread_messages > 0 %}has-alert{% endif %}">
+                <div class="stat-icon messages">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
                     </svg>
+                    {% if unread_messages > 0 %}
+                    <span class="alert-badge">{{ unread_messages }}</span>
+                    {% endif %}
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{{ total_messages }}</span>
                     <span class="stat-label">Messages</span>
-                    <div class="stat-details">
-                        {% if unread_messages > 0 %}
-                        <span class="stat-change alert">{{ unread_messages }} non lus</span>
-                        {% endif %}
-                        <span class="stat-sub">{{ messages_today }} aujourd'hui</span>
-                    </div>
+                    {% if unread_messages > 0 %}
+                    <div class="stat-alert">{{ unread_messages }} non lus</div>
+                    {% endif %}
+                    <span class="stat-detail">{{ messages_today }} aujourd'hui</span>
                 </div>
             </div>
 
-            <!-- Suggestions Stats -->
-            <div class="stat-card stat-suggestions {% if pending_suggestions > 0 %}has-alert{% endif %}">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 18h6"/>
-                        <path d="M10 22h4"/>
-                        <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+            <!-- Suggestions -->
+            <div class="stat-card {% if pending_suggestions > 0 %}has-alert{% endif %}">
+                <div class="stat-icon suggestions">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                     </svg>
+                    {% if pending_suggestions > 0 %}
+                    <span class="alert-badge">{{ pending_suggestions }}</span>
+                    {% endif %}
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{{ total_suggestions }}</span>
                     <span class="stat-label">Suggestions</span>
-                    <div class="stat-details">
-                        {% if pending_suggestions > 0 %}
-                        <span class="stat-change alert">{{ pending_suggestions }} en attente</span>
-                        {% endif %}
-                    </div>
+                    {% if pending_suggestions > 0 %}
+                    <div class="stat-alert">{{ pending_suggestions }} en attente</div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Performance Metrics -->
-    <section class="performance-section">
+    <section class="metrics-section">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
             </svg>
             Métriques de Performance
         </h2>
-        <div class="performance-grid">
-            <div class="performance-card">
-                <div class="performance-icon bounce-rate">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                        <polyline points="17 6 23 6 23 12"/>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                        <polyline points="16 7 22 7 22 13"/>
                     </svg>
+                    <span>Taux de rebond</span>
                 </div>
-                <div class="performance-info">
-                    <span class="performance-value">{{ bounce_rate }}%</span>
-                    <span class="performance-label">Taux de rebond</span>
-                    <span class="performance-desc">Sessions avec 1 seule page</span>
+                <div class="metric-value {% if bounce_rate > 70 %}high{% elif bounce_rate > 50 %}medium{% else %}low{% endif %}">
+                    {{ bounce_rate }}%
                 </div>
-                <div class="performance-bar">
-                    <div class="performance-fill" style="width: {{ bounce_rate }}%"></div>
+                <div class="metric-bar">
+                    <div class="metric-fill" style="width: {{ bounce_rate }}%"></div>
                 </div>
+                <p class="metric-desc">Sessions avec 1 seule page</p>
             </div>
 
-            <div class="performance-card">
-                <div class="performance-icon session-duration">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
+                    <span>Durée moyenne</span>
                 </div>
-                <div class="performance-info">
-                    <span class="performance-value">{{ avg_session_duration_formatted }}</span>
-                    <span class="performance-label">Durée moyenne session</span>
-                    <span class="performance-desc">{{ avg_session_duration }} secondes</span>
-                </div>
+                <div class="metric-value">{{ avg_session_duration_formatted }}</div>
+                <div class="metric-sub">{{ avg_session_duration }}s en moyenne</div>
+                <p class="metric-desc">Temps passé par session</p>
             </div>
 
-            <div class="performance-card">
-                <div class="performance-icon pages-session">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
                         <line x1="16" y1="13" x2="8" y2="13"/>
                         <line x1="16" y1="17" x2="8" y2="17"/>
                     </svg>
+                    <span>Pages/Session</span>
                 </div>
-                <div class="performance-info">
-                    <span class="performance-value">{{ pages_per_session }}</span>
-                    <span class="performance-label">Pages par session</span>
-                    <span class="performance-desc">Moyenne des vues</span>
-                </div>
+                <div class="metric-value">{{ pages_per_session }}</div>
+                <p class="metric-desc">Moyenne des pages vues</p>
             </div>
 
-            <div class="performance-card">
-                <div class="performance-icon week-change {% if week_over_week_change >= 0 %}positive{% else %}negative{% endif %}">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="{% if week_over_week_change >= 0 %}23 6 13.5 15.5 8.5 10.5 1 18{% else %}1 6 10.5 15.5 15.5 10.5 23 18{% endif %}"/>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="20" x2="12" y2="10"/>
+                        <line x1="18" y1="20" x2="18" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="16"/>
                     </svg>
+                    <span>Croissance hebdo</span>
                 </div>
-                <div class="performance-info">
-                    <span class="performance-value {% if week_over_week_change >= 0 %}positive{% else %}negative{% endif %}">
-                        {% if week_over_week_change >= 0 %}+{% endif %}{{ week_over_week_change }}%
-                    </span>
-                    <span class="performance-label">Croissance hebdo</span>
-                    <span class="performance-desc">vs semaine dernière</span>
+                <div class="metric-value {% if week_over_week_change >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if week_over_week_change >= 0 %}+{% endif %}{{ week_over_week_change }}%
                 </div>
+                <p class="metric-desc">vs semaine dernière</p>
             </div>
         </div>
     </section>
@@ -321,22 +389,20 @@
     <section class="charts-section">
         <div class="charts-grid">
             <!-- Activity Chart -->
-            <div class="chart-card chart-large">
+            <div class="chart-card chart-wide">
                 <div class="chart-header">
                     <h3>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="20" x2="18" y2="10"/>
-                            <line x1="12" y1="20" x2="12" y2="4"/>
-                            <line x1="6" y1="20" x2="6" y2="14"/>
+                            <path d="M18 20V10"/>
+                            <path d="M12 20V4"/>
+                            <path d="M6 20v-6"/>
                         </svg>
                         Activité des 30 derniers jours
                     </h3>
                     <div class="chart-legend">
                         <span class="legend-item legend-views">Vues</span>
                         <span class="legend-item legend-sessions">Sessions</span>
-                        <span class="legend-item legend-searches">Recherches</span>
                         <span class="legend-item legend-likes">Likes</span>
-                        <span class="legend-item legend-users">Nouveaux utilisateurs</span>
                     </div>
                 </div>
                 <div class="chart-container">
@@ -344,45 +410,41 @@
                 </div>
             </div>
 
-            <!-- Users Distribution Chart -->
+            <!-- User Distribution -->
             <div class="chart-card">
                 <div class="chart-header">
                     <h3>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
-                            <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
                         </svg>
-                        Répartition Utilisateurs
+                        Utilisateurs
                     </h3>
                 </div>
-                <div class="chart-container chart-small">
+                <div class="chart-container-small">
                     <canvas id="usersChart"></canvas>
                 </div>
                 <div class="chart-stats">
                     <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #6c757d;"></span>
-                        <span>Non vérifiés: {{ user_categories.unverified }}</span>
+                        <span class="dot" style="background: #6b7280;"></span>
+                        Non vérifiés: {{ user_categories.unverified }}
                     </div>
                     <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #28a745;"></span>
-                        <span>Vérifiés: {{ user_categories.verified }}</span>
+                        <span class="dot" style="background: #10b981;"></span>
+                        Vérifiés: {{ user_categories.verified }}
                     </div>
                     <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #b5600b;"></span>
-                        <span>Facteurs: {{ user_categories.postman }}</span>
+                        <span class="dot" style="background: #f59e0b;"></span>
+                        Facteurs: {{ user_categories.postman }}
                     </div>
                     <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #d1872c;"></span>
-                        <span>Visiteurs: {{ user_categories.viewer }}</span>
-                    </div>
-                    <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #ffc168;"></span>
-                        <span>Staff: {{ user_categories.staff }}</span>
+                        <span class="dot" style="background: #8b5cf6;"></span>
+                        Staff: {{ user_categories.staff }}
                     </div>
                 </div>
             </div>
 
-            <!-- Device Distribution Chart -->
+            <!-- Device Distribution -->
             <div class="chart-card">
                 <div class="chart-header">
                     <h3>
@@ -393,30 +455,26 @@
                         Appareils
                     </h3>
                 </div>
-                <div class="chart-container chart-small">
+                <div class="chart-container-small">
                     <canvas id="devicesChart"></canvas>
                 </div>
                 <div class="chart-stats">
                     <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #17a2b8;"></span>
-                        <span>📱 Mobile: {{ device_breakdown.mobile }}</span>
+                        <span class="dot" style="background: #3b82f6;"></span>
+                        Mobile: {{ device_breakdown.mobile }}
                     </div>
                     <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #28a745;"></span>
-                        <span>💻 Desktop: {{ device_breakdown.desktop }}</span>
+                        <span class="dot" style="background: #10b981;"></span>
+                        Desktop: {{ device_breakdown.desktop }}
                     </div>
                     <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #ffc107;"></span>
-                        <span>📲 Tablette: {{ device_breakdown.tablet }}</span>
-                    </div>
-                    <div class="chart-stat">
-                        <span class="chart-stat-color" style="background: #6c757d;"></span>
-                        <span>❓ Autre: {{ device_breakdown.other }}</span>
+                        <span class="dot" style="background: #f59e0b;"></span>
+                        Tablette: {{ device_breakdown.tablet }}
                     </div>
                 </div>
             </div>
 
-            <!-- Hourly Traffic Chart -->
+            <!-- Hourly Traffic -->
             <div class="chart-card">
                 <div class="chart-header">
                     <h3>
@@ -424,10 +482,10 @@
                             <circle cx="12" cy="12" r="10"/>
                             <polyline points="12 6 12 12 16 14"/>
                         </svg>
-                        Trafic par heure (aujourd'hui)
+                        Trafic horaire
                     </h3>
                     {% if peak_hours %}
-                    <span class="chart-subtitle">Pic: {{ peak_hours.0.hour }} ({{ peak_hours.0.count }} vues)</span>
+                    <span class="chart-sub">Pic: {{ peak_hours.0.hour }}</span>
                     {% endif %}
                 </div>
                 <div class="chart-container">
@@ -438,196 +496,147 @@
     </section>
 
     <!-- Geographic Section -->
-    <section class="geographic-section">
+    <section class="geo-section">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
             </svg>
-            Géographie des Visiteurs
+            Géographie
         </h2>
-        <div class="geographic-grid">
+        <div class="geo-grid">
             <!-- Top Countries -->
             <div class="geo-card">
-                <h3>🌍 Top Pays (Tout temps)</h3>
+                <h3>Pays</h3>
                 <div class="geo-list">
                     {% for country in top_countries %}
-                    <div class="geo-item">
+                    <div class="geo-item" onclick="showCountryAnalytics('{{ country.country }}')">
                         <span class="geo-flag">{{ country.flag }}</span>
                         <span class="geo-name">{{ country.country }}</span>
                         <span class="geo-count">{{ country.count }}</span>
                         <div class="geo-bar">
-                            <div class="geo-bar-fill" style="width: {% widthratio country.count top_countries.0.count 100 %}%"></div>
+                            <div class="geo-fill" style="width: {% widthratio country.count top_countries.0.count 100 %}%"></div>
                         </div>
                     </div>
                     {% empty %}
-                    <p class="no-data">Aucune donnée disponible</p>
+                    <p class="no-data">Aucune donnée</p>
                     {% endfor %}
                 </div>
             </div>
 
             <!-- Top Cities -->
             <div class="geo-card">
-                <h3>🏙️ Top Villes</h3>
+                <h3>Villes</h3>
                 <div class="geo-list">
                     {% for city in top_cities %}
                     <div class="geo-item">
-                        <span class="geo-name">{{ city.city }}, {{ city.country }}</span>
+                        <span class="geo-name">{{ city.city }}</span>
+                        <span class="geo-country">{{ city.country }}</span>
                         <span class="geo-count">{{ city.count }}</span>
-                        <div class="geo-bar">
-                            <div class="geo-bar-fill" style="width: {% widthratio city.count top_cities.0.count 100 %}%"></div>
-                        </div>
                     </div>
                     {% empty %}
-                    <p class="no-data">Aucune donnée disponible</p>
+                    <p class="no-data">Aucune donnée</p>
                     {% endfor %}
                 </div>
             </div>
 
-            <!-- Likes by Country -->
+            <!-- Network Info -->
             <div class="geo-card">
-                <h3>❤️ Likes par Pays</h3>
+                <h3>Réseaux (FAI)</h3>
                 <div class="geo-list">
-                    {% for item in likes_by_country %}
+                    {% for isp in top_isps|slice:":10" %}
                     <div class="geo-item">
-                        <span class="geo-name">{{ item.country }}</span>
-                        <span class="geo-count">{{ item.count }} likes</span>
+                        <span class="geo-name isp-name">{{ isp.isp|truncatechars:35 }}</span>
+                        <span class="geo-count">{{ isp.count }}</span>
                     </div>
                     {% empty %}
-                    <p class="no-data">Aucun like avec localisation</p>
+                    <p class="no-data">Aucune donnée</p>
                     {% endfor %}
                 </div>
+                {% if vpn_proxy_count > 0 %}
+                <div class="geo-warning">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    {{ vpn_proxy_count }} VPN/Proxy détectés
+                </div>
+                {% endif %}
             </div>
 
-            <!-- Countries Today -->
+            <!-- Traffic Sources -->
             <div class="geo-card">
-                <h3>📅 Pays aujourd'hui</h3>
+                <h3>Sources de trafic</h3>
+                <div class="traffic-summary">
+                    <div class="traffic-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        <span>Direct: {{ direct_traffic }}</span>
+                    </div>
+                    <div class="traffic-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                        <span>Référent: {{ referral_traffic }}</span>
+                    </div>
+                </div>
                 <div class="geo-list">
-                    {% for country in countries_today %}
-                    <div class="geo-item">
-                        <span class="geo-flag">{{ country.flag }}</span>
-                        <span class="geo-name">{{ country.country }}</span>
-                        <span class="geo-count">{{ country.count }}</span>
-                    </div>
-                    {% empty %}
-                    <p class="no-data">Aucun visiteur aujourd'hui</p>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Traffic Sources & Browsers Section -->
-    <section class="traffic-section">
-        <h2 class="section-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
-            Sources de Trafic & Technologie
-        </h2>
-        <div class="traffic-grid">
-            <!-- Traffic Type -->
-            <div class="traffic-card">
-                <h3>📊 Type de Trafic</h3>
-                <div class="traffic-stats">
-                    <div class="traffic-stat">
-                        <span class="traffic-label">Direct</span>
-                        <span class="traffic-value">{{ direct_traffic }}</span>
-                    </div>
-                    <div class="traffic-stat">
-                        <span class="traffic-label">Référent</span>
-                        <span class="traffic-value">{{ referral_traffic }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Referrers -->
-            <div class="traffic-card traffic-card-large">
-                <h3>🔗 Top Référents</h3>
-                <div class="referrers-list">
                     {% for ref in top_referrers %}
-                    <div class="referrer-item">
-                        <span class="referrer-domain">{{ ref.referrer_domain }}</span>
-                        <span class="referrer-count">{{ ref.count }} visites</span>
+                    <div class="geo-item">
+                        <span class="geo-name">{{ ref.referrer_domain }}</span>
+                        <span class="geo-count">{{ ref.count }}</span>
                     </div>
                     {% empty %}
-                    <p class="no-data">Aucun référent externe</p>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Top Browsers -->
-            <div class="traffic-card">
-                <h3>🌐 Navigateurs</h3>
-                <div class="browsers-list">
-                    {% for browser in top_browsers %}
-                    <div class="browser-item">
-                        <span class="browser-name">{{ browser.browser }}</span>
-                        <span class="browser-count">{{ browser.count }}</span>
-                    </div>
-                    {% empty %}
-                    <p class="no-data">Aucune donnée</p>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Top OS -->
-            <div class="traffic-card">
-                <h3>💻 Systèmes d'exploitation</h3>
-                <div class="os-list">
-                    {% for os in top_os %}
-                    <div class="os-item">
-                        <span class="os-name">{{ os.os }}</span>
-                        <span class="os-count">{{ os.count }}</span>
-                    </div>
-                    {% empty %}
-                    <p class="no-data">Aucune donnée</p>
+                    <p class="no-data">Aucun référent</p>
                     {% endfor %}
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Search Analytics Section -->
+    <!-- Search Analytics -->
     <section class="search-section">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <path d="m21 21-4.35-4.35"/>
             </svg>
-            Analytique des Recherches
+            Recherches
         </h2>
         <div class="search-grid">
-            <!-- Top Searches All Time -->
+            <!-- Top Searches -->
             <div class="search-card">
-                <h3>🔝 Top Recherches (Tout temps)</h3>
+                <h3>Top recherches</h3>
                 <div class="search-list">
                     {% for search in top_searches_all %}
                     <div class="search-item">
                         <span class="search-keyword">{{ search.keyword }}</span>
-                        <div class="search-stats">
-                            <span class="search-count">{{ search.count }}x</span>
-                            <span class="search-avg">~{{ search.avg_results|floatformat:0 }} résultats</span>
+                        <div class="search-meta">
+                            <span class="search-count">{{ search.count }}×</span>
+                            <span class="search-results">~{{ search.avg_results|floatformat:0 }} rés.</span>
                         </div>
                     </div>
                     {% empty %}
-                    <p class="no-data">Aucune recherche enregistrée</p>
+                    <p class="no-data">Aucune recherche</p>
                     {% endfor %}
                 </div>
             </div>
 
-            <!-- Top Searches Today -->
+            <!-- Today's Searches -->
             <div class="search-card">
-                <h3>📅 Recherches du jour</h3>
+                <h3>Aujourd'hui</h3>
                 <div class="search-list">
                     {% for search in top_searches_today %}
                     <div class="search-item">
                         <span class="search-keyword">{{ search.keyword }}</span>
-                        <div class="search-stats">
-                            <span class="search-count">{{ search.count }}x</span>
-                            <span class="search-avg">~{{ search.avg_results|floatformat:0 }} rés.</span>
+                        <div class="search-meta">
+                            <span class="search-count">{{ search.count }}×</span>
                         </div>
                     </div>
                     {% empty %}
@@ -636,185 +645,168 @@
                 </div>
             </div>
 
-            <!-- Zero Result Searches -->
-            <div class="search-card search-card-alert">
+            <!-- Zero Results -->
+            <div class="search-card search-alert">
                 <h3>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="8" x2="12" y2="12"/>
                         <line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
-                    Recherches sans résultat
+                    Sans résultat
                 </h3>
                 <div class="search-list">
                     {% for search in zero_result_searches %}
-                    <div class="search-item search-item-alert">
+                    <div class="search-item zero">
                         <span class="search-keyword">{{ search.keyword }}</span>
-                        <span class="search-count">{{ search.count }}x</span>
+                        <span class="search-count">{{ search.count }}×</span>
                     </div>
                     {% empty %}
-                    <p class="no-data success">Aucune recherche sans résultat! 🎉</p>
+                    <p class="no-data success">Aucune recherche sans résultat 🎉</p>
                     {% endfor %}
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Content Tabs Section -->
+    <!-- Tabs Section -->
     <section class="tabs-section">
-        <div class="tabs-header">
-            <button class="tab-btn active" onclick="showTab('likes')">
+        <div class="tabs-nav">
+            <button class="tab-btn active" data-tab="likes">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
-                Likes Détaillés
+                Likes
                 <span class="tab-badge">{{ likes_today }}</span>
             </button>
-            <button class="tab-btn" onclick="showTab('users')">
+            <button class="tab-btn" data-tab="users">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                     <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
                 Utilisateurs
             </button>
-            <button class="tab-btn" onclick="showTab('postcards')">
+            <button class="tab-btn" data-tab="postcards">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
                     <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
+                    <path d="m21 15-5-5L5 21"/>
                 </svg>
-                Cartes Postales
+                Cartes
             </button>
-            <button class="tab-btn" onclick="showTab('suggestions')">
+            <button class="tab-btn" data-tab="messages">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 18h6"/>
-                    <path d="M10 22h4"/>
-                    <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
-                </svg>
-                Suggestions
-                {% if pending_suggestions > 0 %}
-                <span class="tab-badge">{{ pending_suggestions }}</span>
-                {% endif %}
-            </button>
-            <button class="tab-btn" onclick="showTab('messages')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
                 </svg>
                 Messages
                 {% if unread_messages > 0 %}
                 <span class="tab-badge alert">{{ unread_messages }}</span>
                 {% endif %}
             </button>
-            <button class="tab-btn" onclick="showTab('ips')">
+            <button class="tab-btn" data-tab="suggestions">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+                Suggestions
+                {% if pending_suggestions > 0 %}
+                <span class="tab-badge">{{ pending_suggestions }}</span>
+                {% endif %}
+            </button>
+            <button class="tab-btn" data-tab="ips">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                     <circle cx="12" cy="10" r="3"/>
                 </svg>
-                Adresses IP
+                IPs
             </button>
         </div>
 
-        <!-- Likes Tab (Default) -->
-        <div class="tab-content active" id="likes-tab">
-            <div class="tab-header-bar">
-                <h3>❤️ Likes avec détails complets</h3>
-                <span class="tab-count">{{ total_likes }} total • {{ likes_today }} aujourd'hui</span>
+        <!-- Likes Tab -->
+        <div class="tab-content active" id="tab-likes">
+            <div class="tab-header">
+                <h3>Likes récents</h3>
+                <span class="tab-count">{{ total_likes }} total</span>
             </div>
-            <div class="table-container">
-                <table class="admin-table likes-table">
+            <div class="table-wrapper">
+                <table class="data-table">
                     <thead>
                         <tr>
                             <th>Carte</th>
                             <th>Type</th>
                             <th>Utilisateur</th>
-                            <th>IP</th>
                             <th>Localisation</th>
                             <th>Appareil</th>
-                            <th>Navigateur</th>
                             <th>Date</th>
-                            <th>Actions</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for like in recent_likes %}
                         <tr>
                             <td>
-                                <a href="#" onclick="showPostcardAnalytics({{ like.postcard_id }}); return false;" class="postcard-link">
-                                    N° {{ like.postcard_number }}
+                                <a href="#" onclick="showPostcardAnalytics({{ like.postcard_id }}); return false;" class="link">
+                                    N°{{ like.postcard_number }}
                                 </a>
                             </td>
                             <td>
-                                <span class="like-type-badge {% if like.is_animated %}animated{% else %}static{% endif %}">
-                                    {% if like.is_animated %}🎬 Animé{% else %}🖼️ Image{% endif %}
+                                <span class="badge {% if like.is_animated %}animated{% else %}static{% endif %}">
+                                    {% if like.is_animated %}Animé{% else %}Image{% endif %}
                                 </span>
                             </td>
                             <td>
                                 {% if like.user != 'Anonyme' %}
-                                <span class="user-badge">👤 {{ like.user }}</span>
+                                <span class="user-link" onclick="showUserAnalytics({{ like.user_id|default:'null' }})">{{ like.user }}</span>
                                 {% else %}
-                                <span class="anonymous-badge">🕵️ Anonyme</span>
+                                <span class="anonymous">Anonyme</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="#" onclick="lookupIP('{{ like.ip_address }}'); return false;" class="ip-link">
-                                    {{ like.ip_address }}
-                                </a>
-                            </td>
-                            <td>
-                                <span class="location-badge">
-                                    {{ like.flag }} {{ like.city }}, {{ like.country }}
+                                <span class="location">
+                                    {{ like.flag }} {{ like.city|default:"" }}{% if like.city and like.country %}, {% endif %}{{ like.country }}
                                 </span>
                             </td>
                             <td>{{ like.device_type }}</td>
-                            <td>{{ like.browser }}</td>
                             <td>{{ like.created_at }}</td>
                             <td>
-                                <button class="btn-icon" onclick="lookupIP('{{ like.ip_address }}')" title="Détails IP">
+                                <button class="icon-btn" onclick="lookupIP('{{ like.ip_address }}')" title="Voir IP">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <circle cx="11" cy="11" r="8"/>
-                                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                        <path d="m21 21-4.35-4.35"/>
                                     </svg>
                                 </button>
                             </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="9" class="no-data">Aucun like enregistré</td>
-                        </tr>
+                        <tr><td colspan="7" class="no-data">Aucun like</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <button class="btn-primary" onclick="loadMoreLikes()">Charger plus de likes</button>
         </div>
 
         <!-- Users Tab -->
-        <div class="tab-content" id="users-tab">
-            <div class="tab-header-bar">
-                <h3>👥 Gestion des Utilisateurs</h3>
-                <div class="user-category-badges">
-                    <span class="badge badge-unverified">Non vérifiés: {{ user_categories.unverified }}</span>
-                    <span class="badge badge-verified">Vérifiés: {{ user_categories.verified }}</span>
-                    <span class="badge badge-postman">Facteurs: {{ user_categories.postman }}</span>
-                    <span class="badge badge-viewer">Visiteurs: {{ user_categories.viewer }}</span>
-                    <span class="badge badge-staff">Staff: {{ user_categories.staff }}</span>
+        <div class="tab-content" id="tab-users">
+            <div class="tab-header">
+                <h3>Utilisateurs</h3>
+                <div class="user-badges">
+                    <span class="badge unverified">{{ user_categories.unverified }} non vérifiés</span>
+                    <span class="badge verified">{{ user_categories.verified }} vérifiés</span>
+                    <span class="badge postman">{{ user_categories.postman }} facteurs</span>
+                    <span class="badge staff">{{ user_categories.staff }} staff</span>
                 </div>
             </div>
-            <div class="table-container">
-                <table class="admin-table">
+            <div class="table-wrapper">
+                <table class="data-table">
                     <thead>
                         <tr>
                             <th>Utilisateur</th>
                             <th>Email</th>
                             <th>Catégorie</th>
                             <th>Vérifié</th>
-                            <th>Staff</th>
-                            <th>IP Inscription</th>
-                            <th>Localisation</th>
                             <th>Inscrit le</th>
-                            <th>Actions</th>
+                            <th>Localisation</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -822,7 +814,7 @@
                         <tr data-user-id="{{ u.id }}">
                             <td>
                                 <div class="user-cell">
-                                    <div class="user-avatar">{{ u.username|slice:":1"|upper }}</div>
+                                    <div class="avatar">{{ u.username|slice:":1"|upper }}</div>
                                     <span>{{ u.username }}</span>
                                 </div>
                             </td>
@@ -835,30 +827,22 @@
                                 </select>
                             </td>
                             <td>
-                                <span class="badge {% if u.email_verified %}badge-success{% else %}badge-muted{% endif %}">
+                                <span class="status {% if u.email_verified %}verified{% else %}pending{% endif %}">
                                     {{ u.email_verified|yesno:"✓,✗" }}
                                 </span>
                             </td>
-                            <td>
-                                <span class="badge {% if u.is_staff %}badge-success{% else %}badge-muted{% endif %}">
-                                    {{ u.is_staff|yesno:"✓,✗" }}
-                                </span>
-                            </td>
-                            <td>
-                                {% if u.registration_ip != 'N/A' %}
-                                <a href="#" onclick="lookupIP('{{ u.registration_ip }}'); return false;" class="ip-link">
-                                    {{ u.registration_ip }}
-                                </a>
-                                {% else %}
-                                N/A
-                                {% endif %}
-                            </td>
+                            <td>{{ u.date_joined|date:"d/m/Y" }}</td>
                             <td>{{ u.city }}{% if u.city and u.country %}, {% endif %}{{ u.country }}</td>
-                            <td>{{ u.date_joined|date:"d/m/Y H:i" }}</td>
                             <td>
+                                <button class="icon-btn" onclick="showUserAnalytics({{ u.id }})" title="Détails">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
                                 {% if not u.is_superuser %}
-                                <button class="btn-icon btn-danger" onclick="deleteUser({{ u.id }}, '{{ u.username }}')" title="Supprimer">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <button class="icon-btn danger" onclick="deleteUser({{ u.id }}, '{{ u.username }}')" title="Supprimer">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="3 6 5 6 21 6"/>
                                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                     </svg>
@@ -870,153 +854,126 @@
                     </tbody>
                 </table>
             </div>
-            <button class="btn-primary" onclick="loadAllUsers()">Charger tous les utilisateurs</button>
         </div>
 
         <!-- Postcards Tab -->
-        <div class="tab-content" id="postcards-tab">
-            <div class="tab-header-bar">
-                <h3>🖼️ Gestion des Cartes Postales</h3>
-                <div class="postcards-summary">
-                    <span>{{ total_postcards }} cartes • {{ postcards_with_images }} avec images • {{ animated_postcards }} animées</span>
-                </div>
+        <div class="tab-content" id="tab-postcards">
+            <div class="tab-header">
+                <h3>Cartes Postales</h3>
+                <span class="tab-count">{{ total_postcards }} cartes</span>
             </div>
             
-            <!-- Top Postcards Display -->
             <div class="postcards-preview">
-                <h4>🏆 Top 15 - Plus vues</h4>
-                <div class="postcards-scroll">
+                <h4>Top vues</h4>
+                <div class="postcards-row">
                     {% for p in top_viewed_postcards %}
                     <div class="postcard-mini" onclick="showPostcardAnalytics({{ p.id }})">
-                        <span class="postcard-rank">#{{ forloop.counter }}</span>
-                        <span class="postcard-number">N° {{ p.number }}</span>
-                        <span class="postcard-views">👁️ {{ p.views_count }}</span>
-                        <span class="postcard-likes">❤️ {{ p.likes_count }}</span>
+                        <span class="rank">#{{ forloop.counter }}</span>
+                        <span class="number">N°{{ p.number }}</span>
+                        <span class="views">{{ p.views_count }} vues</span>
                     </div>
                     {% endfor %}
                 </div>
             </div>
-            
+
             <div class="postcards-preview">
-                <h4>❤️ Top 15 - Plus aimées</h4>
-                <div class="postcards-scroll">
+                <h4>Top likes</h4>
+                <div class="postcards-row">
                     {% for p in top_liked_postcards %}
                     <div class="postcard-mini" onclick="showPostcardAnalytics({{ p.id }})">
-                        <span class="postcard-rank">#{{ forloop.counter }}</span>
-                        <span class="postcard-number">N° {{ p.number }}</span>
-                        <span class="postcard-likes">❤️ {{ p.likes_count }}</span>
-                        <span class="postcard-views">👁️ {{ p.views_count }}</span>
+                        <span class="rank">#{{ forloop.counter }}</span>
+                        <span class="number">N°{{ p.number }}</span>
+                        <span class="likes">{{ p.likes_count }} ❤️</span>
                     </div>
                     {% endfor %}
                 </div>
             </div>
 
-            <!-- Rarity Stats -->
-            <div class="rarity-stats">
-                <h4>📊 Statistiques par rareté</h4>
-                <div class="rarity-grid">
-                    <div class="rarity-card rarity-common">
-                        <span class="rarity-label">Communes</span>
-                        <span class="rarity-count">{{ rarity_stats.common.count }} cartes</span>
-                        <span class="rarity-views">👁️ {{ rarity_stats.common.total_views }} vues</span>
-                        <span class="rarity-likes">❤️ {{ rarity_stats.common.total_likes }} likes</span>
-                    </div>
-                    <div class="rarity-card rarity-rare">
-                        <span class="rarity-label">Rares</span>
-                        <span class="rarity-count">{{ rarity_stats.rare.count }} cartes</span>
-                        <span class="rarity-views">👁️ {{ rarity_stats.rare.total_views }} vues</span>
-                        <span class="rarity-likes">❤️ {{ rarity_stats.rare.total_likes }} likes</span>
-                    </div>
-                    <div class="rarity-card rarity-very-rare">
-                        <span class="rarity-label">Très Rares</span>
-                        <span class="rarity-count">{{ rarity_stats.very_rare.count }} cartes</span>
-                        <span class="rarity-views">👁️ {{ rarity_stats.very_rare.total_views }} vues</span>
-                        <span class="rarity-likes">❤️ {{ rarity_stats.very_rare.total_likes }} likes</span>
-                    </div>
+            <div class="rarity-grid">
+                <div class="rarity-card common">
+                    <span class="rarity-label">Communes</span>
+                    <span class="rarity-count">{{ rarity_stats.common.count }}</span>
+                    <span class="rarity-stat">{{ rarity_stats.common.total_views }} vues</span>
                 </div>
-            </div>
-            
-            <div class="table-container" id="postcards-table-container">
-                <p class="load-prompt">Cliquez sur "Charger les cartes" pour afficher la liste complète</p>
-            </div>
-            <button class="btn-primary" onclick="loadPostcards()">Charger les cartes postales</button>
-        </div>
-
-        <!-- Suggestions Tab -->
-        <div class="tab-content" id="suggestions-tab">
-            <div class="tab-header-bar">
-                <h3>💡 Suggestions d'Animation</h3>
-                <span class="tab-count">{{ total_suggestions }} total • {{ pending_suggestions }} en attente</span>
-            </div>
-            <div class="suggestions-list">
-                {% for s in recent_suggestions %}
-                <div class="suggestion-item {% if s.status == 'pending' %}pending{% elif s.status == 'approved' %}approved{% elif s.status == 'rejected' %}rejected{% endif %}" data-id="{{ s.id }}">
-                    <div class="suggestion-header">
-                        <span class="suggestion-postcard">
-                            🖼️ N° {{ s.postcard.number }}
-                        </span>
-                        <span class="suggestion-user">
-                            {% if s.user %}👤 {{ s.user.username }}{% else %}🕵️ Anonyme{% endif %}
-                        </span>
-                        <span class="suggestion-date">{{ s.created_at|date:"d/m/Y H:i" }}</span>
-                        <span class="suggestion-status status-{{ s.status }}">{{ s.get_status_display }}</span>
-                    </div>
-                    <p class="suggestion-description">{{ s.description }}</p>
-                    <div class="suggestion-actions">
-                        <select class="status-select" onchange="updateSuggestionStatus({{ s.id }}, this.value)">
-                            <option value="pending" {% if s.status == 'pending' %}selected{% endif %}>En attente</option>
-                            <option value="reviewed" {% if s.status == 'reviewed' %}selected{% endif %}>Examiné</option>
-                            <option value="approved" {% if s.status == 'approved' %}selected{% endif %}>Approuvé</option>
-                            <option value="rejected" {% if s.status == 'rejected' %}selected{% endif %}>Rejeté</option>
-                        </select>
-                    </div>
+                <div class="rarity-card rare">
+                    <span class="rarity-label">Rares</span>
+                    <span class="rarity-count">{{ rarity_stats.rare.count }}</span>
+                    <span class="rarity-stat">{{ rarity_stats.rare.total_views }} vues</span>
                 </div>
-                {% empty %}
-                <p class="no-data">Aucune suggestion pour le moment.</p>
-                {% endfor %}
+                <div class="rarity-card very-rare">
+                    <span class="rarity-label">Très Rares</span>
+                    <span class="rarity-count">{{ rarity_stats.very_rare.count }}</span>
+                    <span class="rarity-stat">{{ rarity_stats.very_rare.total_views }} vues</span>
+                </div>
             </div>
         </div>
 
         <!-- Messages Tab -->
-        <div class="tab-content" id="messages-tab">
-            <div class="tab-header-bar">
-                <h3>📬 Messages de Contact</h3>
-                <span class="tab-count">{{ total_messages }} total • {{ unread_messages }} non lus</span>
+        <div class="tab-content" id="tab-messages">
+            <div class="tab-header">
+                <h3>Messages de contact</h3>
+                <span class="tab-count">{{ total_messages }} messages</span>
             </div>
             <div class="messages-list">
                 {% for msg in recent_messages %}
                 <div class="message-item {% if not msg.is_read %}unread{% endif %}">
                     <div class="message-header">
                         <span class="message-user">
-                            {% if msg.user %}👤 {{ msg.user.username }}{% else %}🕵️ Anonyme{% endif %}
+                            {% if msg.user %}{{ msg.user.username }}{% else %}Anonyme{% endif %}
                         </span>
                         <span class="message-date">{{ msg.created_at|date:"d/m/Y H:i" }}</span>
-                        {% if not msg.is_read %}
-                        <span class="new-badge">Nouveau</span>
-                        {% endif %}
+                        {% if not msg.is_read %}<span class="new-badge">Nouveau</span>{% endif %}
                     </div>
                     <p class="message-content">{{ msg.message }}</p>
-                    <div class="message-footer">
-                        <span class="message-ip">IP: {{ msg.ip_address|default:"N/A" }}</span>
-                    </div>
+                    <span class="message-ip">IP: {{ msg.ip_address|default:"N/A" }}</span>
                 </div>
                 {% empty %}
-                <p class="no-data">Aucun message reçu.</p>
+                <p class="no-data">Aucun message</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Suggestions Tab -->
+        <div class="tab-content" id="tab-suggestions">
+            <div class="tab-header">
+                <h3>Suggestions d'animation</h3>
+                <span class="tab-count">{{ pending_suggestions }} en attente</span>
+            </div>
+            <div class="suggestions-list">
+                {% for s in recent_suggestions %}
+                <div class="suggestion-item {{ s.status }}" data-id="{{ s.id }}">
+                    <div class="suggestion-header">
+                        <span class="suggestion-card">N°{{ s.postcard.number }}</span>
+                        <span class="suggestion-user">
+                            {% if s.user %}{{ s.user.username }}{% else %}Anonyme{% endif %}
+                        </span>
+                        <span class="suggestion-date">{{ s.created_at|date:"d/m/Y" }}</span>
+                        <span class="suggestion-status">{{ s.get_status_display }}</span>
+                    </div>
+                    <p class="suggestion-desc">{{ s.description }}</p>
+                    <select class="status-select" onchange="updateSuggestionStatus({{ s.id }}, this.value)">
+                        <option value="pending" {% if s.status == 'pending' %}selected{% endif %}>En attente</option>
+                        <option value="reviewed" {% if s.status == 'reviewed' %}selected{% endif %}>Examiné</option>
+                        <option value="approved" {% if s.status == 'approved' %}selected{% endif %}>Approuvé</option>
+                        <option value="rejected" {% if s.status == 'rejected' %}selected{% endif %}>Rejeté</option>
+                    </select>
+                </div>
+                {% empty %}
+                <p class="no-data">Aucune suggestion</p>
                 {% endfor %}
             </div>
         </div>
 
         <!-- IPs Tab -->
-        <div class="tab-content" id="ips-tab">
-            <div class="tab-header-bar">
-                <h3>🌐 Analyse des Adresses IP</h3>
-                <span class="tab-count">{{ vpn_proxy_count }} VPN/Proxy détectés</span>
+        <div class="tab-content" id="tab-ips">
+            <div class="tab-header">
+                <h3>Adresses IP</h3>
             </div>
             
             <div class="ips-section">
-                <h4>📊 IPs les plus actives</h4>
-                <div class="table-container">
-                    <table class="admin-table">
+                <h4>IPs les plus actives</h4>
+                <div class="table-wrapper">
+                    <table class="data-table">
                         <thead>
                             <tr>
                                 <th>IP</th>
@@ -1024,79 +981,80 @@
                                 <th>Ville</th>
                                 <th>FAI</th>
                                 <th>Sessions</th>
-                                <th>Pages vues</th>
-                                <th>Actions</th>
+                                <th>Pages</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for ip in most_active_ips %}
                             <tr>
-                                <td>
-                                    <a href="#" onclick="lookupIP('{{ ip.ip_address }}'); return false;" class="ip-link">
-                                        {{ ip.ip_address }}
-                                    </a>
-                                </td>
-                                <td>{{ ip.country|default:"Unknown" }}</td>
-                                <td>{{ ip.city|default:"Unknown" }}</td>
-                                <td>{{ ip.isp|truncatechars:30 }}</td>
+                                <td><code>{{ ip.ip_address }}</code></td>
+                                <td>{{ ip.country|default:"N/A" }}</td>
+                                <td>{{ ip.city|default:"N/A" }}</td>
+                                <td class="truncate">{{ ip.isp|truncatechars:25 }}</td>
                                 <td>{{ ip.session_count }}</td>
                                 <td>{{ ip.total_page_views|default:0 }}</td>
                                 <td>
-                                    <button class="btn-icon" onclick="lookupIP('{{ ip.ip_address }}')" title="Détails">
+                                    <button class="icon-btn" onclick="lookupIP('{{ ip.ip_address }}')" title="Détails">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="11" cy="11" r="8"/>
-                                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                            <path d="m21 21-4.35-4.35"/>
                                         </svg>
                                     </button>
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr>
-                                <td colspan="7" class="no-data">Aucune donnée IP disponible</td>
-                            </tr>
+                            <tr><td colspan="7" class="no-data">Aucune donnée</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div class="ips-section">
-                <h4>⚠️ IPs suspectes (nombreuses sessions)</h4>
+            {% if suspicious_ips %}
+            <div class="ips-section warning">
+                <h4>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    IPs suspectes
+                </h4>
                 <div class="ips-list">
                     {% for ip in suspicious_ips %}
                     <div class="ip-item suspicious" onclick="lookupIP('{{ ip.ip_address }}')">
-                        <div class="ip-main">
-                            <span class="ip-address">{{ ip.ip_address }}</span>
-                            <span class="ip-location">{{ ip.country }}</span>
-                        </div>
-                        <div class="ip-stats">
-                            <span class="ip-sessions warning">{{ ip.count }} sessions</span>
-                        </div>
+                        <code>{{ ip.ip_address }}</code>
+                        <span>{{ ip.country }}</span>
+                        <span class="sessions-warning">{{ ip.count }} sessions</span>
                     </div>
-                    {% empty %}
-                    <p class="no-data success">Aucune IP suspecte détectée 🎉</p>
                     {% endfor %}
                 </div>
             </div>
+            {% endif %}
         </div>
     </section>
 
-    <!-- System Health Section -->
+    <!-- System Health -->
     <section class="system-section">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
             </svg>
-            Santé du Système
+            Système
         </h2>
         <div class="system-grid">
-            <div class="system-card {% if media_stats.exists %}healthy{% else %}warning{% endif %}">
-                <h4>📁 Stockage Média</h4>
-                <div class="system-stat">
-                    <span class="system-value {% if media_stats.exists %}success{% else %}error{% endif %}">
-                        {% if media_stats.exists %}✓ Actif{% else %}✗ Non disponible{% endif %}
-                    </span>
+            <div class="system-card {% if media_stats.exists %}healthy{% else %}error{% endif %}">
+                <div class="system-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </div>
+                <div class="system-info">
+                    <span class="system-label">Stockage média</span>
+                    <span class="system-value">{% if media_stats.exists %}Actif{% else %}Erreur{% endif %}</span>
                 </div>
                 <div class="system-details">
                     <span>Vignettes: {{ media_stats.vignette_count }}</span>
@@ -1104,26 +1062,106 @@
                     <span>Animées: {{ media_stats.animated_count }}</span>
                 </div>
             </div>
-            
-            <div class="system-card">
-                <h4>🗃️ Base de données</h4>
+
+            <div class="system-card healthy">
+                <div class="system-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                </div>
+                <div class="system-info">
+                    <span class="system-label">Base de données</span>
+                    <span class="system-value">Active</span>
+                </div>
                 <div class="system-details">
-                    <span>{{ total_postcards }} cartes postales</span>
+                    <span>{{ total_postcards }} cartes</span>
                     <span>{{ total_users }} utilisateurs</span>
-                    <span>{{ total_page_views }} pages vues</span>
-                    <span>{{ total_likes }} likes</span>
+                    <span>{{ total_page_views }} vues</span>
                 </div>
             </div>
-            
-            <div class="system-card">
-                <h4>📊 Thèmes</h4>
-                <div class="system-stat">
+
+            <div class="system-card healthy">
+                <div class="system-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v4"/>
+                        <path d="m16.2 7.8 2.9-2.9"/>
+                        <path d="M18 12h4"/>
+                        <path d="m16.2 16.2 2.9 2.9"/>
+                        <path d="M12 18v4"/>
+                        <path d="m4.9 19.1 2.9-2.9"/>
+                        <path d="M2 12h4"/>
+                        <path d="m4.9 4.9 2.9 2.9"/>
+                    </svg>
+                </div>
+                <div class="system-info">
+                    <span class="system-label">Thèmes</span>
                     <span class="system-value">{{ total_themes }}</span>
-                    <span class="system-label">thèmes configurés</span>
                 </div>
             </div>
         </div>
     </section>
+</div>
+
+<!-- Add Postcard Modal -->
+<div class="modal-overlay" id="addPostcardModal">
+    <div class="modal-backdrop" onclick="closeAddPostcardModal()"></div>
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeAddPostcardModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        <h2>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M12 8v8"/>
+                <path d="M8 12h8"/>
+            </svg>
+            Ajouter une carte postale
+        </h2>
+        <form id="addPostcardForm" onsubmit="submitAddPostcard(event)">
+            <div class="form-group">
+                <label for="postcardNumber">Numéro *</label>
+                <input type="text" id="postcardNumber" name="number" placeholder="Ex: 000123" required>
+                <span class="form-hint">Format: 6 chiffres recommandé</span>
+            </div>
+            <div class="form-group">
+                <label for="postcardTitle">Titre *</label>
+                <input type="text" id="postcardTitle" name="title" placeholder="Titre de la carte postale" required>
+            </div>
+            <div class="form-group">
+                <label for="postcardDescription">Description</label>
+                <textarea id="postcardDescription" name="description" rows="3" placeholder="Description optionnelle..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="postcardKeywords">Mots-clés</label>
+                <input type="text" id="postcardKeywords" name="keywords" placeholder="mot1, mot2, mot3...">
+                <span class="form-hint">Séparés par des virgules</span>
+            </div>
+            <div class="form-group">
+                <label for="postcardRarity">Rareté</label>
+                <select id="postcardRarity" name="rarity">
+                    <option value="common">Commune</option>
+                    <option value="rare">Rare</option>
+                    <option value="very_rare">Très Rare</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeAddPostcardModal()">Annuler</button>
+                <button type="submit" class="btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Créer
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- IP Lookup Modal -->
@@ -1131,13 +1169,66 @@
     <div class="modal-backdrop" onclick="closeIPModal()"></div>
     <div class="modal-content modal-large">
         <button class="modal-close" onclick="closeIPModal()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
         </button>
-        <h2>🌐 Détails IP</h2>
+        <h2>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Détails IP
+        </h2>
         <div id="ipModalContent">
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+</div>
+
+<!-- User Analytics Modal -->
+<div class="modal-overlay" id="userModal">
+    <div class="modal-backdrop" onclick="closeUserModal()"></div>
+    <div class="modal-content modal-large">
+        <button class="modal-close" onclick="closeUserModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        <h2>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Analytique Utilisateur
+        </h2>
+        <div id="userModalContent">
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Country Analytics Modal -->
+<div class="modal-overlay" id="countryModal">
+    <div class="modal-backdrop" onclick="closeCountryModal()"></div>
+    <div class="modal-content modal-large">
+        <button class="modal-close" onclick="closeCountryModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        <h2>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            Analytique Pays
+        </h2>
+        <div id="countryModalContent">
             <div class="loading-spinner"></div>
         </div>
     </div>
@@ -1148,12 +1239,19 @@
     <div class="modal-backdrop" onclick="closePostcardModal()"></div>
     <div class="modal-content modal-large">
         <button class="modal-close" onclick="closePostcardModal()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
         </button>
-        <h2>📊 Analytique Carte Postale</h2>
+        <h2>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="m21 15-5-5L5 21"/>
+            </svg>
+            Analytique Carte
+        </h2>
         <div id="postcardModalContent">
             <div class="loading-spinner"></div>
         </div>
@@ -1168,17 +1266,85 @@ const csrfToken = '{{ csrf_token }}';
 const dailyStats = {{ daily_stats|safe }};
 const hourlyTraffic = {{ hourly_traffic|safe }};
 
+// Update current time
+function updateCurrentTime() {
+    const el = document.getElementById('currentTime');
+    if (el) {
+        el.textContent = new Date().toLocaleTimeString('fr-FR');
+    }
+}
+setInterval(updateCurrentTime, 1000);
+updateCurrentTime();
+
 // Tab functionality
-function showTab(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        btn.classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
     });
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
+});
+
+// Export menu toggle
+function toggleExportMenu() {
+    document.getElementById('exportMenu').classList.toggle('show');
+}
+
+// Close export menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.export-dropdown')) {
+        document.getElementById('exportMenu')?.classList.remove('show');
+    }
+});
+
+// Add Postcard Modal
+function openAddPostcardModal() {
+    document.getElementById('addPostcardModal').classList.add('active');
+    document.getElementById('postcardNumber').focus();
+}
+
+function closeAddPostcardModal() {
+    document.getElementById('addPostcardModal').classList.remove('active');
+    document.getElementById('addPostcardForm').reset();
+}
+
+async function submitAddPostcard(e) {
+    e.preventDefault();
     
-    event.target.closest('.tab-btn').classList.add('active');
-    document.getElementById(tabName + '-tab').classList.add('active');
+    const form = document.getElementById('addPostcardForm');
+    const data = {
+        number: form.number.value.trim(),
+        title: form.title.value.trim(),
+        description: form.description.value.trim(),
+        keywords: form.keywords.value.trim(),
+        rarity: form.rarity.value,
+    };
+    
+    try {
+        const response = await fetch('/api/admin/add-postcard/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(result.message, 'success');
+            closeAddPostcardModal();
+        } else {
+            showNotification(result.error || 'Erreur lors de la création', 'error');
+        }
+    } catch (error) {
+        showNotification('Erreur de connexion', 'error');
+    }
 }
 
 // User management
@@ -1196,7 +1362,7 @@ async function updateUserCategory(userId, category) {
         if (response.ok) {
             showNotification('Catégorie mise à jour', 'success');
         } else {
-            showNotification('Erreur lors de la mise à jour', 'error');
+            showNotification('Erreur', 'error');
         }
     } catch (error) {
         showNotification('Erreur de connexion', 'error');
@@ -1204,9 +1370,7 @@ async function updateUserCategory(userId, category) {
 }
 
 async function deleteUser(userId, username) {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${username}" ?`)) {
-        return;
-    }
+    if (!confirm(`Supprimer l'utilisateur "${username}" ?`)) return;
     
     try {
         const response = await fetch(`/api/admin/user/${userId}/`, {
@@ -1215,23 +1379,13 @@ async function deleteUser(userId, username) {
         });
         
         if (response.ok) {
-            document.querySelector(`tr[data-user-id="${userId}"]`).remove();
+            document.querySelector(`tr[data-user-id="${userId}"]`)?.remove();
             showNotification('Utilisateur supprimé', 'success');
         } else {
-            showNotification('Erreur lors de la suppression', 'error');
+            showNotification('Erreur', 'error');
         }
     } catch (error) {
         showNotification('Erreur de connexion', 'error');
-    }
-}
-
-async function loadAllUsers() {
-    try {
-        const response = await fetch('/api/admin/users/');
-        const data = await response.json();
-        showNotification(`${data.users.length} utilisateurs chargés`, 'success');
-    } catch (error) {
-        showNotification('Erreur lors du chargement', 'error');
     }
 }
 
@@ -1249,7 +1403,9 @@ async function updateSuggestionStatus(suggestionId, status) {
         
         if (response.ok) {
             const item = document.querySelector(`.suggestion-item[data-id="${suggestionId}"]`);
-            item.className = `suggestion-item ${status}`;
+            if (item) {
+                item.className = `suggestion-item ${status}`;
+            }
             showNotification('Statut mis à jour', 'success');
         }
     } catch (error) {
@@ -1257,94 +1413,7 @@ async function updateSuggestionStatus(suggestionId, status) {
     }
 }
 
-// Postcards management
-async function loadPostcards() {
-    try {
-        const response = await fetch('/api/admin/postcards/');
-        const data = await response.json();
-        
-        const container = document.getElementById('postcards-table-container');
-        container.innerHTML = `
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Numéro</th>
-                        <th>Titre</th>
-                        <th>Rareté</th>
-                        <th>Vues</th>
-                        <th>Zooms</th>
-                        <th>Likes</th>
-                        <th>Images</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.postcards.map(p => `
-                        <tr>
-                            <td>${p.number}</td>
-                            <td>${p.title}</td>
-                            <td><span class="rarity-badge rarity-${p.rarity}">${p.rarity}</span></td>
-                            <td>${p.views_count}</td>
-                            <td>${p.zoom_count || 0}</td>
-                            <td>${p.likes_count}</td>
-                            <td>${p.has_vignette ? '✓' : '✗'}</td>
-                            <td>
-                                <button class="btn-icon" onclick="showPostcardAnalytics(${p.id})" title="Analytique">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="18" y1="20" x2="18" y2="10"/>
-                                        <line x1="12" y1="20" x2="12" y2="4"/>
-                                        <line x1="6" y1="20" x2="6" y2="14"/>
-                                    </svg>
-                                </button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            <p class="table-info">${data.total} cartes postales au total</p>
-        `;
-        
-        showNotification('Cartes chargées', 'success');
-    } catch (error) {
-        showNotification('Erreur lors du chargement', 'error');
-    }
-}
-
-// Load more likes
-let likesPage = 1;
-async function loadMoreLikes() {
-    try {
-        likesPage++;
-        const response = await fetch(`/api/admin/likes/?page=${likesPage}`);
-        const data = await response.json();
-        
-        if (data.likes.length > 0) {
-            const tbody = document.querySelector('.likes-table tbody');
-            data.likes.forEach(like => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td><a href="#" onclick="showPostcardAnalytics(${like.postcard_id}); return false;" class="postcard-link">N° ${like.postcard_number}</a></td>
-                    <td><span class="like-type-badge ${like.is_animated ? 'animated' : 'static'}">${like.is_animated ? '🎬 Animé' : '🖼️ Image'}</span></td>
-                    <td>${like.user !== 'Anonyme' ? `<span class="user-badge">👤 ${like.user}</span>` : '<span class="anonymous-badge">🕵️ Anonyme</span>'}</td>
-                    <td><a href="#" onclick="lookupIP('${like.ip_address}'); return false;" class="ip-link">${like.ip_address}</a></td>
-                    <td><span class="location-badge">${like.flag} ${like.city}, ${like.country}</span></td>
-                    <td>${like.device_type}</td>
-                    <td>${like.browser}</td>
-                    <td>${like.created_at}</td>
-                    <td><button class="btn-icon" onclick="lookupIP('${like.ip_address}')" title="Détails IP">🔍</button></td>
-                `;
-                tbody.appendChild(row);
-            });
-            showNotification(`${data.likes.length} likes supplémentaires chargés`, 'success');
-        } else {
-            showNotification('Tous les likes ont été chargés', 'info');
-        }
-    } catch (error) {
-        showNotification('Erreur lors du chargement', 'error');
-    }
-}
-
-// IP Lookup Modal
+// IP Modal
 async function lookupIP(ipAddress) {
     document.getElementById('ipModal').classList.add('active');
     document.getElementById('ipModalContent').innerHTML = '<div class="loading-spinner"></div>';
@@ -1355,85 +1424,77 @@ async function lookupIP(ipAddress) {
         
         document.getElementById('ipModalContent').innerHTML = `
             <div class="ip-details">
-                <div class="ip-detail-section">
-                    <h4>📍 Localisation</h4>
-                    <div class="ip-detail-grid">
-                        <p><strong>IP:</strong> ${data.ip_address}</p>
-                        <p><strong>Pays:</strong> ${data.location.flag} ${data.location.country} (${data.location.country_code})</p>
-                        <p><strong>Ville:</strong> ${data.location.city}</p>
-                        <p><strong>Région:</strong> ${data.location.region}</p>
-                        <p><strong>FAI:</strong> ${data.location.isp}</p>
-                        <p><strong>Fuseau:</strong> ${data.location.timezone}</p>
-                    </div>
-                    ${data.location.is_vpn ? '<p class="warning">⚠️ VPN/Hosting détecté</p>' : ''}
-                    ${data.location.is_proxy ? '<p class="warning">⚠️ Proxy détecté</p>' : ''}
-                </div>
-                
-                <div class="ip-detail-section">
-                    <h4>📊 Statistiques</h4>
-                    <div class="ip-stats-grid">
-                        <div class="ip-stat-item">
-                            <span class="ip-stat-value">${data.total_sessions}</span>
-                            <span class="ip-stat-label">Sessions</span>
+                <div class="detail-section">
+                    <h4>Localisation</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="label">IP</span>
+                            <code>${data.ip_address}</code>
                         </div>
-                        <div class="ip-stat-item">
-                            <span class="ip-stat-value">${data.total_page_views}</span>
-                            <span class="ip-stat-label">Pages vues</span>
+                        <div class="detail-item">
+                            <span class="label">Pays</span>
+                            <span>${data.location.flag} ${data.location.country}</span>
                         </div>
-                        <div class="ip-stat-item">
-                            <span class="ip-stat-value">${data.total_likes}</span>
-                            <span class="ip-stat-label">Likes</span>
+                        <div class="detail-item">
+                            <span class="label">Ville</span>
+                            <span>${data.location.city}</span>
                         </div>
-                        <div class="ip-stat-item">
-                            <span class="ip-stat-value">${data.total_searches}</span>
-                            <span class="ip-stat-label">Recherches</span>
+                        <div class="detail-item">
+                            <span class="label">Région</span>
+                            <span>${data.location.region || 'N/A'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">FAI</span>
+                            <span>${data.location.isp || 'N/A'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Fuseau</span>
+                            <span>${data.location.timezone || 'N/A'}</span>
                         </div>
                     </div>
+                    ${data.location.is_vpn ? '<div class="warning-tag">⚠️ VPN/Hosting détecté</div>' : ''}
+                    ${data.location.is_proxy ? '<div class="warning-tag">⚠️ Proxy détecté</div>' : ''}
                 </div>
                 
-                <div class="ip-detail-section">
-                    <h4>💻 Sessions récentes</h4>
+                <div class="detail-section">
+                    <h4>Statistiques</h4>
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <span class="stat-num">${data.total_sessions}</span>
+                            <span class="stat-label">Sessions</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-num">${data.total_page_views}</span>
+                            <span class="stat-label">Pages</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-num">${data.total_likes}</span>
+                            <span class="stat-label">Likes</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-num">${data.total_searches}</span>
+                            <span class="stat-label">Recherches</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Sessions récentes</h4>
                     <div class="sessions-list">
                         ${data.sessions.map(s => `
-                            <div class="session-item">
-                                <span class="session-date">${s.first_visit}</span>
-                                <span class="session-device">${s.device_type} - ${s.browser}</span>
-                                <span class="session-pages">${s.page_views} pages</span>
-                                ${s.username ? `<span class="session-user">👤 ${s.username}</span>` : ''}
+                            <div class="session-row">
+                                <span>${s.first_visit}</span>
+                                <span>${s.device_type} - ${s.browser}</span>
+                                <span>${s.page_views} pages</span>
+                                <span>${s.username ? '👤 ' + s.username : ''}</span>
                             </div>
                         `).join('') || '<p class="no-data">Aucune session</p>'}
-                    </div>
-                </div>
-                
-                <div class="ip-detail-section">
-                    <h4>❤️ Likes récents</h4>
-                    <div class="likes-list-mini">
-                        ${data.likes.map(l => `
-                            <div class="like-item-mini">
-                                <span>N° ${l.postcard_number}</span>
-                                <span>${l.is_animated ? '🎬' : '🖼️'}</span>
-                                <span>${l.created_at}</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucun like</p>'}
-                    </div>
-                </div>
-                
-                <div class="ip-detail-section">
-                    <h4>🔍 Recherches récentes</h4>
-                    <div class="searches-list-mini">
-                        ${data.searches.map(s => `
-                            <div class="search-item-mini">
-                                <span class="search-keyword">"${s.keyword}"</span>
-                                <span class="search-results">${s.results_count} résultats</span>
-                                <span class="search-date">${s.created_at}</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucune recherche</p>'}
                     </div>
                 </div>
             </div>
         `;
     } catch (error) {
-        document.getElementById('ipModalContent').innerHTML = '<p class="error">Erreur lors du chargement</p>';
+        document.getElementById('ipModalContent').innerHTML = '<p class="error">Erreur de chargement</p>';
     }
 }
 
@@ -1441,8 +1502,183 @@ function closeIPModal() {
     document.getElementById('ipModal').classList.remove('active');
 }
 
+// User Analytics Modal
+async function showUserAnalytics(userId) {
+    if (!userId) return;
+    
+    document.getElementById('userModal').classList.add('active');
+    document.getElementById('userModalContent').innerHTML = '<div class="loading-spinner"></div>';
+    
+    try {
+        const response = await fetch(`/api/admin/user-analytics/${userId}/`);
+        const data = await response.json();
+        
+        document.getElementById('userModalContent').innerHTML = `
+            <div class="user-details">
+                <div class="user-header">
+                    <div class="user-avatar-large">${data.user.username.charAt(0).toUpperCase()}</div>
+                    <div class="user-info">
+                        <h3>${data.user.username}</h3>
+                        <span class="user-email">${data.user.email}</span>
+                        <span class="user-category badge ${data.user.category}">${data.user.category}</span>
+                    </div>
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <span class="stat-num">${data.stats.total_likes}</span>
+                        <span class="stat-label">Likes</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-num">${data.stats.total_searches}</span>
+                        <span class="stat-label">Recherches</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-num">${data.stats.total_page_views}</span>
+                        <span class="stat-label">Pages vues</span>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Cartes favorites</h4>
+                    <div class="favorites-list">
+                        ${data.favorite_postcards.map(p => `
+                            <div class="favorite-item" onclick="showPostcardAnalytics(${p.postcard__id})">
+                                <span>N°${p.postcard__number}</span>
+                                <span class="favorite-title">${(p.postcard__title || '').substring(0, 30)}...</span>
+                            </div>
+                        `).join('') || '<p class="no-data">Aucun favori</p>'}
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Recherches récentes</h4>
+                    <div class="searches-list">
+                        ${data.recent_searches.map(s => `
+                            <div class="search-row">
+                                <span class="search-kw">"${s.keyword}"</span>
+                                <span>${s.results_count} rés.</span>
+                                <span>${s.created_at}</span>
+                            </div>
+                        `).join('') || '<p class="no-data">Aucune recherche</p>'}
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Sessions</h4>
+                    <div class="sessions-list">
+                        ${data.sessions.map(s => `
+                            <div class="session-row">
+                                <span>${s.first_visit}</span>
+                                <span>${s.duration}</span>
+                                <span>${s.page_views} pages</span>
+                                <span>${s.device} ${s.browser}</span>
+                                <span>${s.country}</span>
+                            </div>
+                        `).join('') || '<p class="no-data">Aucune session</p>'}
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        document.getElementById('userModalContent').innerHTML = '<p class="error">Erreur de chargement</p>';
+    }
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').classList.remove('active');
+}
+
+// Country Analytics Modal
+async function showCountryAnalytics(country) {
+    document.getElementById('countryModal').classList.add('active');
+    document.getElementById('countryModalContent').innerHTML = '<div class="loading-spinner"></div>';
+    
+    try {
+        const response = await fetch(`/api/admin/country-analytics/${encodeURIComponent(country)}/`);
+        const data = await response.json();
+        
+        document.getElementById('countryModalContent').innerHTML = `
+            <div class="country-details">
+                <div class="country-header">
+                    <h3>${data.country}</h3>
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <span class="stat-num">${data.stats.total_sessions}</span>
+                        <span class="stat-label">Sessions</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-num">${data.stats.unique_visitors}</span>
+                        <span class="stat-label">Visiteurs</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-num">${data.stats.total_page_views}</span>
+                        <span class="stat-label">Pages</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-num">${data.stats.total_likes}</span>
+                        <span class="stat-label">Likes</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-num">${data.stats.avg_session_duration_formatted}</span>
+                        <span class="stat-label">Durée moy.</span>
+                    </div>
+                </div>
+                
+                <div class="detail-grid-2">
+                    <div class="detail-section">
+                        <h4>Villes</h4>
+                        <div class="list-compact">
+                            ${data.cities.map(c => `
+                                <div class="list-item">
+                                    <span>${c.city}</span>
+                                    <span>${c.session_count}</span>
+                                </div>
+                            `).join('') || '<p class="no-data">Aucune ville</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h4>Appareils</h4>
+                        <div class="list-compact">
+                            ${data.devices.map(d => `
+                                <div class="list-item">
+                                    <span>${d.device_type}</span>
+                                    <span>${d.count}</span>
+                                </div>
+                            `).join('') || '<p class="no-data">Aucune donnée</p>'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Cartes populaires</h4>
+                    <div class="favorites-list">
+                        ${data.popular_postcards.map(p => `
+                            <div class="favorite-item" onclick="showPostcardAnalytics(${p.postcard__id})">
+                                <span>N°${p.postcard__number}</span>
+                                <span>${p.like_count} ❤️</span>
+                            </div>
+                        `).join('') || '<p class="no-data">Aucun like</p>'}
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        document.getElementById('countryModalContent').innerHTML = '<p class="error">Erreur de chargement</p>';
+    }
+}
+
+function closeCountryModal() {
+    document.getElementById('countryModal').classList.remove('active');
+}
+
 // Postcard Analytics Modal
 async function showPostcardAnalytics(postcardId) {
+    if (!postcardId) return;
+    
     document.getElementById('postcardModal').classList.add('active');
     document.getElementById('postcardModalContent').innerHTML = '<div class="loading-spinner"></div>';
     
@@ -1451,68 +1687,71 @@ async function showPostcardAnalytics(postcardId) {
         const data = await response.json();
         
         document.getElementById('postcardModalContent').innerHTML = `
-            <div class="postcard-analytics">
-                <div class="postcard-info-section">
+            <div class="postcard-details">
+                <div class="postcard-header">
                     <div class="postcard-preview">
-                        ${data.postcard.vignette_url ? `<img src="${data.postcard.vignette_url}" alt="Carte">` : '<div class="no-image">Pas d\'image</div>'}
+                        ${data.postcard.vignette_url ? 
+                            `<img src="${data.postcard.vignette_url}" alt="Carte">` : 
+                            '<div class="no-image">Pas d\'image</div>'}
                     </div>
-                    <div class="postcard-meta">
-                        <h3>N° ${data.postcard.number}</h3>
+                    <div class="postcard-info">
+                        <h3>N°${data.postcard.number}</h3>
                         <p>${data.postcard.title}</p>
-                        <span class="rarity-badge rarity-${data.postcard.rarity}">${data.postcard.rarity}</span>
-                        ${data.postcard.has_animation ? '<span class="animation-badge">🎬 Animée</span>' : ''}
+                        <span class="rarity-badge ${data.postcard.rarity}">${data.postcard.rarity}</span>
+                        ${data.postcard.has_animation ? '<span class="anim-badge">🎬 Animée</span>' : ''}
                     </div>
                 </div>
                 
-                <div class="analytics-stats-grid">
-                    <div class="analytics-stat">
-                        <span class="stat-value">${data.postcard.views_count}</span>
-                        <span class="stat-label">👁️ Vues</span>
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <span class="stat-num">${data.postcard.views_count}</span>
+                        <span class="stat-label">Vues</span>
                     </div>
-                    <div class="analytics-stat">
-                        <span class="stat-value">${data.postcard.zoom_count}</span>
-                        <span class="stat-label">🔍 Zooms</span>
+                    <div class="stat-box">
+                        <span class="stat-num">${data.postcard.zoom_count}</span>
+                        <span class="stat-label">Zooms</span>
                     </div>
-                    <div class="analytics-stat">
-                        <span class="stat-value">${data.likes_total}</span>
-                        <span class="stat-label">❤️ Likes</span>
-                    </div>
-                </div>
-                
-                <div class="analytics-section">
-                    <h4>❤️ Likes par Pays</h4>
-                    <div class="country-breakdown">
-                        ${data.likes_by_country.map(c => `
-                            <div class="country-item">
-                                <span>${c.flag} ${c.country}</span>
-                                <span>${c.count} likes</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucune donnée</p>'}
+                    <div class="stat-box">
+                        <span class="stat-num">${data.likes_total}</span>
+                        <span class="stat-label">Likes</span>
                     </div>
                 </div>
                 
-                <div class="analytics-section">
-                    <h4>📱 Likes par Appareil</h4>
-                    <div class="device-breakdown">
-                        ${data.likes_by_device.map(d => `
-                            <div class="device-item">
-                                <span>${d.device_type}</span>
-                                <span>${d.count} likes</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucune donnée</p>'}
+                <div class="detail-grid-2">
+                    <div class="detail-section">
+                        <h4>Likes par pays</h4>
+                        <div class="list-compact">
+                            ${data.likes_by_country.map(c => `
+                                <div class="list-item">
+                                    <span>${c.flag || ''} ${c.country}</span>
+                                    <span>${c.count}</span>
+                                </div>
+                            `).join('') || '<p class="no-data">Aucun like</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h4>Likes par appareil</h4>
+                        <div class="list-compact">
+                            ${data.likes_by_device.map(d => `
+                                <div class="list-item">
+                                    <span>${d.device_type}</span>
+                                    <span>${d.count}</span>
+                                </div>
+                            `).join('') || '<p class="no-data">Aucun like</p>'}
+                        </div>
                     </div>
                 </div>
                 
-                <div class="analytics-section">
-                    <h4>📅 Derniers likes</h4>
-                    <div class="likes-breakdown">
+                <div class="detail-section">
+                    <h4>Likes récents</h4>
+                    <div class="likes-list">
                         ${data.recent_likes.map(l => `
-                            <div class="like-item-detail">
-                                <span class="like-user">${l.user !== 'Anonyme' ? '👤 ' + l.user : '🕵️ Anonyme'}</span>
-                                <span class="like-location">${l.flag} ${l.city}, ${l.country}</span>
-                                <span class="like-device">${l.device_type}</span>
-                                <span class="like-date">${l.created_at}</span>
-                                ${l.is_animated ? '<span class="animation-like">🎬</span>' : ''}
+                            <div class="like-row">
+                                <span>${l.user !== 'Anonyme' ? '👤 ' + l.user : '🕵️ Anonyme'}</span>
+                                <span>${l.flag} ${l.city}, ${l.country}</span>
+                                <span>${l.device_type}</span>
+                                <span>${l.created_at}</span>
                             </div>
                         `).join('') || '<p class="no-data">Aucun like</p>'}
                     </div>
@@ -1520,7 +1759,7 @@ async function showPostcardAnalytics(postcardId) {
             </div>
         `;
     } catch (error) {
-        document.getElementById('postcardModalContent').innerHTML = '<p class="error">Erreur lors du chargement</p>';
+        document.getElementById('postcardModalContent').innerHTML = '<p class="error">Erreur de chargement</p>';
     }
 }
 
@@ -1539,24 +1778,34 @@ function updateRealTimeVisitors() {
             if (data.visitors.length > 0) {
                 list.innerHTML = data.visitors.map(v => `
                     <div class="active-visitor" onclick="lookupIP('${v.ip_address}')">
-                        <span class="visitor-flag">${v.flag || '🌍'}</span>
-                        <span class="visitor-country">${v.country || 'Inconnu'}</span>
-                        <span class="visitor-city">${v.city || ''}</span>
-                        <span class="visitor-page" title="${v.current_page}">${(v.page_title || '').substring(0, 25)}</span>
-                        <span class="visitor-device">${v.device_type || ''}</span>
-                        <span class="visitor-browser">${v.browser || ''}</span>
-                        ${v.username ? `<span class="visitor-user">👤 ${v.username}</span>` : ''}
-                        <span class="visitor-ip">${v.ip_address}</span>
+                        <div class="visitor-location">
+                            <span class="visitor-flag">${v.flag || '🌍'}</span>
+                            <div class="visitor-geo">
+                                <span class="visitor-country">${v.country || 'Inconnu'}</span>
+                                <span class="visitor-city">${v.city || ''}</span>
+                            </div>
+                        </div>
+                        <div class="visitor-page">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            ${(v.page_title || '').substring(0, 20)}
+                        </div>
+                        <div class="visitor-tech">
+                            <span class="visitor-device">${v.device_type || ''}</span>
+                            <span class="visitor-browser">${v.browser || ''}</span>
+                        </div>
+                        ${v.username ? `<span class="visitor-user">${v.username}</span>` : ''}
                     </div>
                 `).join('');
             } else {
-                list.innerHTML = '<p class="no-visitors">Aucun visiteur actif en ce moment</p>';
+                list.innerHTML = '<p class="no-visitors">Aucun visiteur actif</p>';
             }
         })
-        .catch(error => console.log('Realtime update error:', error));
+        .catch(error => console.log('Realtime error:', error));
 }
 
-// Update every 30 seconds
 setInterval(updateRealTimeVisitors, 30000);
 
 // Notifications
@@ -1564,12 +1813,25 @@ function showNotification(message, type) {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
-        <span>${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            ${type === 'success' ? '<path d="M20 6L9 17l-5-5"/>' : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+        </svg>
         ${message}
     `;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeIPModal();
+        closeUserModal();
+        closeCountryModal();
+        closePostcardModal();
+        closeAddPostcardModal();
+    }
+});
 
 // Initialize Charts
 document.addEventListener('DOMContentLoaded', () => {
@@ -1584,35 +1846,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     {
                         label: 'Vues',
                         data: dailyStats.map(d => d.views),
-                        borderColor: '#b5600b',
-                        backgroundColor: 'rgba(181, 96, 11, 0.1)',
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
                         tension: 0.4,
                         fill: true
                     },
                     {
                         label: 'Sessions',
                         data: dailyStats.map(d => d.sessions),
-                        borderColor: '#28a745',
-                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
                         tension: 0.4,
                         fill: true
                     },
                     {
-                        label: 'Recherches',
-                        data: dailyStats.map(d => d.searches),
-                        borderColor: '#17a2b8',
-                        tension: 0.4
-                    },
-                    {
                         label: 'Likes',
                         data: dailyStats.map(d => d.likes),
-                        borderColor: '#ff6b6b',
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Nouveaux utilisateurs',
-                        data: dailyStats.map(d => d.users),
-                        borderColor: '#ffc168',
+                        borderColor: '#ef4444',
                         tension: 0.4
                     }
                 ]
@@ -1620,18 +1870,16 @@ document.addEventListener('DOMContentLoaded', () => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                        ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: 'rgba(255, 255, 255, 0.6)' }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                        ticks: { color: 'rgba(255, 255, 255, 0.6)' }
                     }
                 }
             }
@@ -1644,23 +1892,22 @@ document.addEventListener('DOMContentLoaded', () => {
         new Chart(usersCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Non vérifiés', 'Vérifiés', 'Facteurs', 'Visiteurs', 'Staff'],
+                labels: ['Non vérifiés', 'Vérifiés', 'Facteurs', 'Staff'],
                 datasets: [{
                     data: [
                         {{ user_categories.unverified }},
                         {{ user_categories.verified }},
                         {{ user_categories.postman }},
-                        {{ user_categories.viewer }},
                         {{ user_categories.staff }}
                     ],
-                    backgroundColor: ['#6c757d', '#28a745', '#b5600b', '#d1872c', '#ffc168']
+                    backgroundColor: ['#6b7280', '#10b981', '#f59e0b', '#8b5cf6']
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                cutout: '60%'
+                cutout: '65%'
             }
         });
     }
@@ -1671,22 +1918,21 @@ document.addEventListener('DOMContentLoaded', () => {
         new Chart(devicesCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Mobile', 'Desktop', 'Tablette', 'Autre'],
+                labels: ['Mobile', 'Desktop', 'Tablette'],
                 datasets: [{
                     data: [
                         {{ device_breakdown.mobile }},
                         {{ device_breakdown.desktop }},
-                        {{ device_breakdown.tablet }},
-                        {{ device_breakdown.other }}
+                        {{ device_breakdown.tablet }}
                     ],
-                    backgroundColor: ['#17a2b8', '#28a745', '#ffc107', '#6c757d']
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b']
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                cutout: '60%'
+                cutout: '65%'
             }
         });
     }
@@ -1701,9 +1947,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 datasets: [{
                     label: 'Vues',
                     data: hourlyTraffic.map(h => h.count),
-                    backgroundColor: 'rgba(181, 96, 11, 0.7)',
-                    borderColor: '#b5600b',
-                    borderWidth: 1
+                    backgroundColor: 'rgba(245, 158, 11, 0.6)',
+                    borderColor: '#f59e0b',
+                    borderWidth: 1,
+                    borderRadius: 4
                 }]
             },
             options: {
@@ -1713,24 +1960,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                        ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: 'rgba(255, 255, 255, 0.6)' }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                        ticks: { color: 'rgba(255, 255, 255, 0.6)', maxRotation: 0 }
                     }
                 }
             }
         });
-    }
-});
-
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        closeIPModal();
-        closePostcardModal();
     }
 });
 </script>

@@ -75,6 +75,11 @@ urlpatterns = [
     path('api/admin/geographic/', views.admin_geographic_api, name='admin_geographic_api'),
     path('api/admin/ip/<str:ip_address>/', views.admin_ip_lookup, name='admin_ip_lookup'),
     path('api/admin/postcard-analytics/<int:postcard_id>/', views.admin_postcard_analytics, name='admin_postcard_analytics'),
+    path('api/admin/add-postcard/', views.admin_add_postcard, name='admin_add_postcard'),
+    path('api/admin/detailed-stats/', views.admin_detailed_stats_api, name='admin_detailed_stats_api'),
+    path('api/admin/user-analytics/<int:user_id>/', views.admin_user_analytics_api, name='admin_user_analytics_api'),
+    path('api/admin/country-analytics/<str:country>/', views.admin_country_analytics_api, name='admin_country_analytics_api'),
+    path('api/admin/export/', views.admin_export_analytics, name='admin_export_analytics'),
 
     # Debug
     path('debug/browse/', views.debug_browse, name='debug_browse'),
