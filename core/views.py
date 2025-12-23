@@ -362,40 +362,74 @@ def tokenize_query(query):
     return tokens
 
 
+def check_all_tokens_in_title(normalized_title, query_tokens):
+    """
+    Check if ALL query tokens are present in the title.
+    Returns True only if every token is found in the title.
+    """
+    if not query_tokens:
+        return False
+
+    title_words = normalized_title.split()
+
+    for token in query_tokens:
+        # Check if this token is found in the title (as substring of any word)
+        token_found = False
+        for word in title_words:
+            if token in word:
+                token_found = True
+                break
+
+        # Also check if token is anywhere in the full title string
+        if not token_found and token in normalized_title:
+            token_found = True
+
+        # If any token is not found, return False
+        if not token_found:
+            return False
+
+    return True
+
+
 def calculate_title_relevance(title, query_tokens, full_query):
     """
     Calculate relevance score for a title based on query tokens.
     Returns a score from 0 to 100.
+    ONLY returns a score > 0 if ALL tokens are present in the title.
     """
     if not title or not query_tokens:
         return 0
 
     normalized_title = normalize_for_search(title)
+
+    # First check: ALL tokens must be present
+    if not check_all_tokens_in_title(normalized_title, query_tokens):
+        return 0
+
+    # All tokens are present, now calculate relevance score
     score = 0
 
     # Check for exact full query match (highest priority)
     if full_query in normalized_title:
         score += 50
 
-    # Check for each token
-    matched_tokens = 0
-    for token in query_tokens:
-        if token in normalized_title:
-            matched_tokens += 1
-            # Bonus for word boundary match
-            words_in_title = normalized_title.split()
-            for word in words_in_title:
-                if word == token:
-                    score += 10  # Exact word match
-                elif word.startswith(token):
-                    score += 5  # Prefix match
-                elif token in word:
-                    score += 3  # Substring match
+    # Score based on how well each token matches
+    title_words = normalized_title.split()
 
-    # Calculate percentage of tokens matched
-    if query_tokens:
-        token_match_ratio = matched_tokens / len(query_tokens)
-        score += int(token_match_ratio * 30)
+    for token in query_tokens:
+        for word in title_words:
+            if word == token:
+                score += 15  # Exact word match
+                break
+            elif word.startswith(token):
+                score += 10  # Prefix match
+                break
+            elif token in word:
+                score += 5  # Substring match
+                break
+
+    # Bonus for having all tokens (already verified above)
+    score += 20
 
     return min(score, 100)
 
@@ -403,8 +437,9 @@ def calculate_title_relevance(title, query_tokens, full_query):
 def search_postcards(base_queryset, query):
     """
     Perform accent-insensitive search on postcards.
-    - Title search: splits query into words and checks for individual word matches
+    - Title search: ALL words from query must be present in title
     - Keywords search: checks for full query match (as before)
+    - Number search: checks for exact match
     Returns a filtered queryset ordered by relevance.
     """
     if not query:
@@ -419,7 +454,7 @@ def search_postcards(base_queryset, query):
 
     print(f"[SEARCH DEBUG] Original query: '{query}'")
     print(f"[SEARCH DEBUG] Normalized query: '{normalized_query}'")
-    print(f"[SEARCH DEBUG] Query tokens: {query_tokens}")
+    print(f"[SEARCH DEBUG] Query tokens (ALL must match): {query_tokens}")
 
     # Collect matching IDs with scores
     results = {}  # {postcard_id: {'score': int, 'match_type': str}}
@@ -442,7 +477,7 @@ def search_postcards(base_queryset, query):
         score = 0
         match_types = []
 
-        # === TITLE SEARCH (Word-based matching) ===
+        # === TITLE SEARCH (ALL tokens must match) ===
         if query_tokens:
             title_score = calculate_title_relevance(title, query_tokens, clean_query)
             if title_score > 0:
@@ -478,7 +513,7 @@ def search_postcards(base_queryset, query):
     keyword_matches = sum(1 for r in results.values() if 'keywords' in r['match_types'])
     number_matches = sum(1 for r in results.values() if 'number' in r['match_types'])
 
-    print(f"[SEARCH DEBUG] Title matches: {title_matches}")
+    print(f"[SEARCH DEBUG] Title matches (ALL tokens present): {title_matches}")
     print(f"[SEARCH DEBUG] Keyword matches: {keyword_matches}")
     print(f"[SEARCH DEBUG] Number matches: {number_matches}")
     print(f"[SEARCH DEBUG] Total unique matches: {len(results)}")
@@ -490,7 +525,8 @@ def search_postcards(base_queryset, query):
         for pid, data in sorted_results:
             p = next((x for x in all_postcards if x['id'] == pid), None)
             if p:
-                print(f"  -> ID {pid} (score: {data['score']}): {p.get('title', '')[:50]}...")
+                print(
+                    f"  -> ID {pid} (score: {data['score']}, types: {data['match_types']}): {p.get('title', '')[:50]}...")
 
     # Return filtered queryset ordered by score
     if results:
