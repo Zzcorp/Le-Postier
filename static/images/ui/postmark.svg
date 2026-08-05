@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 200 200" aria-hidden="true">
+  <!-- Cachet postal — Collection Samathey. currentColor throughout so CSS can tint it
+       (mask-image tinting, inline embedding, or <img> all work). -->
+  <defs>
+    <path id="pm-arc-haut" d="M 28,100 A 72,72 0 0 1 172,100"/>
+    <path id="pm-arc-bas" d="M 15,100 A 85,85 0 0 0 185,100"/>
+  </defs>
+
+  <!-- two concentric thin circles -->
+  <circle cx="100" cy="100" r="94" fill="none" stroke="currentColor" stroke-width="2.5"/>
+  <circle cx="100" cy="100" r="88" fill="none" stroke="currentColor" stroke-width="1"/>
+
+  <!-- circular text -->
+  <text font-family="Georgia, 'Times New Roman', serif" font-size="14" letter-spacing="2" fill="currentColor">
+    <textPath xlink:href="#pm-arc-haut" href="#pm-arc-haut" startOffset="50%" text-anchor="middle">COLLECTION SAMATHEY</textPath>
+  </text>
+  <text font-family="Georgia, 'Times New Roman', serif" font-size="12" letter-spacing="1.6" fill="currentColor">
+    <textPath xlink:href="#pm-arc-bas" href="#pm-arc-bas" startOffset="50%" text-anchor="middle">CARTES POSTALES ANCIENNES</textPath>
+  </text>
+
+  <!-- small side stars separating the two arcs -->
+  <g fill="currentColor">
+    <circle cx="22" cy="100" r="2"/>
+    <circle cx="178" cy="100" r="2"/>
+  </g>
+
+  <!-- centre: date lines -->
+  <g stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none">
+    <line x1="74" y1="87" x2="126" y2="87"/>
+    <line x1="64" y1="100" x2="136" y2="100"/>
+    <line x1="74" y1="113" x2="126" y2="113"/>
+  </g>
+</svg>

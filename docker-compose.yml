@@ -1,0 +1,85 @@
+# Le Postier — pile de production sur le VPS OVH.
+# Voir DEPLOY_OVH.md pour le mode d'emploi complet.
+#
+# Prérequis côté hôte :
+#   /srv/lepostier/app    → ce dépôt (docker compose s'exécute ici)
+#   /srv/lepostier/media  → les médias (postcards/, animated_cp/, signatures/, covers/)
+#   .env rempli à partir de .env.example (SECRET_KEY, POSTGRES_PASSWORD, etc.)
+
+services:
+  web:
+    build: .
+    env_file: .env
+    environment:
+      # Dans le conteneur, les médias vivent toujours ici (bind ci-dessous).
+      MEDIA_ROOT: /data/media
+    volumes:
+      - /srv/lepostier/media:/data/media
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # X-Forwarded-Proto évite la redirection HTTPS ; 127.0.0.1 doit figurer
+      # dans ALLOWED_HOSTS (voir .env.example).
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/robots.txt', headers={'X-Forwarded-Proto': 'https'}), timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lepostier}
+      POSTGRES_USER: ${POSTGRES_USER:-lepostier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir POSTGRES_PASSWORD dans .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot-webroot:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt:ro
+      - /srv/lepostier/media:/media:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+
+  # Renouvellement automatique des certificats Let's Encrypt (boucle 12 h).
+  # nginx est rechargé par cron pour prendre en compte les nouveaux
+  # certificats — voir DEPLOY_OVH.md §9.
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    entrypoint: >
+      /bin/sh -c 'trap exit TERM;
+      while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done'
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  certbot-webroot:
+  letsencrypt:

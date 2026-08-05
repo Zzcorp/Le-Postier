@@ -1,0 +1,35 @@
+# Never bake secrets, data or local artifacts into the image
+.env
+.env.*
+!.env.example
+
+.git/
+.gitignore
+.venv/
+venv/
+env/
+
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+data/
+*.zip
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+docs/
+README.md
+DEPLOY_OVH.md
+
+# Compose/nginx are mounted at runtime, not built into the image
+docker-compose.yml
+deploy/nginx.conf
+deploy/backup.sh
+
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,158 @@
+# robots.txt for Le Postier - Collection Samathey
+# https://collections.samathey.fr
+
+# =============================================================================
+# COPYRIGHT NOTICE
+# =============================================================================
+# All content on this website, including but not limited to:
+# - Postcard images and their digital reproductions
+# - Animated postcard videos
+# - Text descriptions and metadata
+# - Website design and structure
+# 
+# Is protected by copyright and owned by Collection Samathey / A Z DATA Production.
+# Unauthorized reproduction, distribution, or use is strictly prohibited.
+# =============================================================================
+
+# Block all web crawlers from accessing the site
+User-agent: *
+Disallow: /
+
+# Explicitly block common AI/ML crawlers
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: Omgili
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: cohere-ai
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: YouBot
+Disallow: /
+
+# Block image scrapers
+User-agent: Googlebot-Image
+Disallow: /
+
+User-agent: msnbot-media
+Disallow: /
+
+User-agent: Slurp
+Disallow: /
+
+# Block archive bots
+User-agent: ia_archiver
+Disallow: /
+
+User-agent: archive.org_bot
+Disallow: /
+
+# Block SEO tools and scrapers
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: DataForSeoBot
+Disallow: /
+
+User-agent: serpstatbot
+Disallow: /
+
+User-agent: MegaIndex
+Disallow: /
+
+User-agent: SEOkicks
+Disallow: /
+
+User-agent: Seekport
+Disallow: /
+
+# Allow only search engines to see the homepage for basic indexing
+# But block all media and content
+User-agent: Googlebot
+Allow: /$
+Disallow: /media/
+Disallow: /static/images/
+Disallow: /parcourir/
+Disallow: /cp-animes/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /profil/
+Disallow: /la-poste/
+
+User-agent: Bingbot
+Allow: /$
+Disallow: /media/
+Disallow: /static/images/
+Disallow: /parcourir/
+Disallow: /cp-animes/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /profil/
+Disallow: /la-poste/
+
+# Crawl-delay for any allowed bots (in seconds)
+Crawl-delay: 10
+
+# Sitemap location
+Sitemap: https://collections.samathey.fr/sitemap.xml
+
+# =============================================================================
+# LEGAL NOTICE
+# =============================================================================
+# By accessing this robots.txt file, you acknowledge that:
+# 
+# 1. All postcards and their images are part of a private collection
+# 2. No automated scraping, downloading, or reproduction is permitted
+# 3. The collection is protected under French and international copyright law
+# 4. Violation may result in legal action
+# 
+# =============================================================================

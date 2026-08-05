@@ -1,0 +1,407 @@
+<!-- templates/decouvrir.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}La Galerie{% endblock %}
+
+{% block content %}
+<div class="decouvrir-page">
+    <!-- Header -->
+    <header class="page-header animate-fade-in-down">
+        <h1>La Galerie</h1>
+        <p>Découvrez quelques tableaux animés</p>
+    </header>
+
+    <!-- Paintings Gallery -->
+    <section class="paintings-gallery">
+        <div class="paintings-grid">
+            {% for painting in paintings %}
+            <div class="painting-item animate-fade-in-up" 
+                data-video-id="{{ painting.video_id }}"
+                data-title="{{ painting.title }}"
+                onclick="openVideoModal(this)"
+                style="animation-delay: {{ forloop.counter }}00ms;">
+                <div class="painting-frame">
+                    <img class="painting-off" src="{{ painting.image_off }}" alt="{{ painting.title }}" loading="lazy" decoding="async">
+                    <img class="painting-on" src="{{ painting.image_on }}" alt="{{ painting.title }} - Hover" loading="lazy" decoding="async">
+                </div>
+                <div class="painting-info">
+                    <h3>{{ painting.title }}</h3>
+                    <span class="play-indicator">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Voir la vidéo
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Video Modal -->
+    <div class="video-modal" id="videoModal">
+        <div class="modal-backdrop" onclick="closeVideoModal()"></div>
+        <div class="modal-content animate-scale-in">
+            <button class="modal-close" onclick="closeVideoModal()" aria-label="Fermer">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+            <h2 id="modalTitle"></h2>
+            <div class="video-wrapper">
+                <div id="youtube-player"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+let player = null;
+let playerReady = false;
+
+// YouTube API ready callback
+function onYouTubeIframeAPIReady() {
+    playerReady = true;
+}
+
+function openVideoModal(element) {
+    const videoId = element.dataset.videoId;
+    const title = element.dataset.title;
+    
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('videoModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Create or update player
+    if (player) {
+        player.loadVideoById(videoId);
+    } else {
+        player = new YT.Player('youtube-player', {
+            height: '100%',
+            width: '100%',
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 1,
+                'rel': 0,
+                'modestbranding': 1,
+                'origin': window.location.origin
+            },
+            events: {
+                'onError': function(event) {
+                    console.log('YouTube Error:', event.data);
+                    // Show fallback link
+                    document.getElementById('youtube-player').innerHTML = `
+                        <div class="video-error">
+                            <p>Impossible de charger la vidéo ici.</p>
+                            <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="watch-on-youtube">
+                                Regarder sur YouTube
+                            </a>
+                        </div>
+                    `;
+                }
+            }
+        });
+    }
+}
+
+function closeVideoModal() {
+    if (player && typeof player.stopVideo === 'function') {
+        player.stopVideo();
+    }
+    document.getElementById('videoModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Close on escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeVideoModal();
+});
+</script>
+
+<style>
+.decouvrir-page {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #1a1208 0%, #2d1f0d 50%, #1a1208 100%);
+    padding-bottom: 60px;
+}
+
+.page-header {
+    text-align: center;
+    padding: 120px 20px 60px;
+}
+
+.page-header h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    color: white;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 20px rgba(0, 0, 0, 0.5);
+}
+
+.page-header p {
+    font-size: 1.2rem;
+    color: #d1872c;
+    font-style: italic;
+}
+
+.paintings-gallery {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.paintings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+}
+
+.painting-item {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.painting-item:hover {
+    transform: translateY(-15px) scale(1.02);
+    z-index: 10;
+}
+
+.painting-frame {
+    position: relative;
+    overflow: hidden;
+}
+
+.painting-item:hover .painting-frame {
+    filter: drop-shadow(0 10px 30px rgba(181, 96, 11, 0.4));
+}
+
+.painting-frame img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: all 0.2s ease;
+}
+
+.painting-off {
+    position: relative;
+    z-index: 1;
+}
+
+.painting-on {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    z-index: 2;
+}
+
+.painting-item:hover .painting-off {
+    opacity: 0;
+}
+
+.painting-item:hover .painting-on {
+    opacity: 1;
+}
+
+.painting-info {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.painting-item:hover .painting-info {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.painting-info h3 {
+    color: white;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    text-shadow: none;
+}
+
+.play-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffc168;
+    font-size: 0.95rem;
+}
+
+.play-indicator svg {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* Video Modal */
+.video-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-modal.active {
+    display: flex;
+}
+
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+}
+
+.modal-content {
+    position: relative;
+    width: 90%;
+    max-width: 1000px;
+    background: linear-gradient(165deg, #2d1f0d, #1a1208);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.modal-close {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.modal-close:hover {
+    transform: rotate(90deg) scale(1.1);
+}
+
+.modal-close:focus-visible,
+.watch-on-youtube:focus-visible {
+    outline: 2px solid #ffc168;
+    outline-offset: 3px;
+}
+
+.modal-content h2 {
+    color: white;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1.8rem;
+}
+
+.video-wrapper {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #000;
+}
+
+.video-wrapper iframe,
+.video-wrapper #youtube-player {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.video-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+}
+
+.video-error p {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+.watch-on-youtube {
+    display: inline-block;
+    padding: 15px 30px;
+    background: #ff0000;
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.watch-on-youtube:hover {
+    background: #cc0000;
+    transform: scale(1.05);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .paintings-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+    }
+}
+
+@media (max-width: 600px) {
+    .paintings-grid {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    
+    .page-header {
+        padding: 100px 20px 40px;
+    }
+    
+    .modal-content {
+        padding: 20px;
+    }
+    
+    .modal-content h2 {
+        font-size: 1.3rem;
+    }
+}
+
+/* Animations */
+.animate-fade-in-down { animation: fadeInDown 0.8s ease forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; }
+.animate-scale-in { animation: scaleIn 0.5s ease forwards; }
+[class*="animate-"] { opacity: 0; }
+
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+</style>
+{% endblock %}

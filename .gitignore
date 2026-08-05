@@ -1,0 +1,32 @@
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Secrets — jamais commités
+.env
+
+# Base de données locale
+db.sqlite3
+db.sqlite3-journal
+
+# Fichiers générés
+staticfiles/
+media/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Données personnelles (exports CSV de la collection)
+data/
+
+# Archives
+*.zip
+
+# IDE / OS
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

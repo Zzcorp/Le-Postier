@@ -1,0 +1,1611 @@
+<!-- templates/animated_gallery.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}CP Animées{% endblock %}
+
+{% block content %}
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-content">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+        </div>
+        <p class="loading-text">Chargement des animations...</p>
+        <div class="loading-progress">
+            <div class="loading-bar" id="loading-bar"></div>
+        </div>
+        <p class="loading-count" id="loading-count">0 / {{ total_count }}</p>
+    </div>
+</div>
+
+<div class="animated-gallery-page">
+    <!-- Header -->
+    <header class="gallery-header">
+        <div class="header-content">
+            <h1 class="animate-fade-in-down"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg> Cartes Postales Animées</h1>
+            <p class="animate-fade-in-up delay-1">Découvrez notre collection de cartes postales prenant vie</p>
+            <div class="header-stats animate-fade-in-up delay-2">
+                <span class="stat-item">
+                    <strong>{{ total_count }}</strong> animations disponibles
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Filter/Sort Options -->
+    <div class="gallery-controls animate-fade-in delay-3">
+        <div class="sort-options">
+            <button class="sort-btn active" data-sort="popular" onclick="sortGallery('popular')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                Plus aimées
+            </button>
+            <button class="sort-btn" data-sort="recent" onclick="sortGallery('recent')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Récentes
+            </button>
+            <button class="sort-btn" data-sort="number" onclick="sortGallery('number')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="8" y1="6" x2="21" y2="6"/>
+                    <line x1="8" y1="12" x2="21" y2="12"/>
+                    <line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="3" y1="6" x2="3.01" y2="6"/>
+                    <line x1="3" y1="12" x2="3.01" y2="12"/>
+                    <line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+                Par numéro
+            </button>
+        </div>
+    </div>
+
+    <!-- Gallery Grid -->
+    <div class="animated-grid" id="animated-grid">
+        {% for postcard in postcards %}
+        <div class="animated-card" 
+             data-id="{{ postcard.id }}"
+             data-number="{{ postcard.number }}"
+             data-likes="{{ postcard.likes_count }}"
+             data-title="{{ postcard.title }}"
+             data-vignette="{{ postcard.get_grande_url }}"
+             data-video-url="{{ postcard.get_first_video_url }}">
+            
+            <div class="card-video-container">
+                <!-- Poster/Thumbnail Image -->
+                <img class="card-poster"
+                     src="{{ postcard.get_vignette_url }}"
+                     alt="{{ postcard.title }}"
+                     loading="lazy" decoding="async">
+                
+                <!-- Video element - only loads on hover/interaction -->
+                <video class="card-video" 
+                       muted 
+                       loop 
+                       playsinline
+                       preload="none"
+                       data-src="{{ postcard.get_first_video_url }}">
+                </video>
+                
+                <!-- Loading indicator for video -->
+                <div class="video-loading-indicator">
+                    <div class="mini-spinner"></div>
+                </div>
+                
+                <!-- Play overlay -->
+                <div class="video-overlay">
+                    <button class="play-btn" aria-label="Voir l'animation" onclick="openAnimatedModal({{ postcard.id }})">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                {% if postcard.video_count > 1 %}
+                <div class="multi-video-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M23 7l-7 5 7 5V7z"/>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                    </svg>
+                    {{ postcard.video_count }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="card-info">
+                <span class="card-number">N° {{ postcard.number }}</span>
+                <h3 class="card-title">{{ postcard.title|truncatechars:40 }}</h3>
+                
+                <div class="card-actions">
+                    <button class="like-btn {% if postcard.id in user_likes %}liked{% endif %}"
+                            aria-label="J'aime"
+                            onclick="toggleLike(event, {{ postcard.id }}, true)"
+                            data-postcard-id="{{ postcard.id }}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="{% if postcard.id in user_likes %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                        <span class="like-count">{{ postcard.likes_count }}</span>
+                    </button>
+                    
+                    <button class="suggest-btn" onclick="openSuggestModal({{ postcard.id }}, '{{ postcard.number }}')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 18h6"/>
+                            <path d="M10 22h4"/>
+                            <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8a6 6 0 0 0-12 0c0 1.06.28 2.06.91 2.92.76.76 1.23 1.52 1.41 2.5"/>
+                        </svg>
+                        Suggérer
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-results">
+            <div class="no-results-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg></div>
+            <h3>Aucune animation disponible</h3>
+            <p>Les cartes postales animées seront bientôt disponibles.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Animated Postcard Modal -->
+<div class="animated-modal" id="animatedModal">
+    <div class="modal-backdrop" onclick="closeAnimatedModal()"></div>
+    <div class="modal-container">
+        <button class="modal-close" aria-label="Fermer" onclick="closeAnimatedModal()">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        
+        <!-- Scrollable Content -->
+        <div class="modal-scroll-content">
+            <div class="modal-video-section">
+                <!-- Loading state for modal video -->
+                <div class="modal-video-loading" id="modalVideoLoading">
+                    <div class="modal-spinner"></div>
+                    <p>Chargement de la vidéo...</p>
+                </div>
+                
+                <video id="modalVideo" controls autoplay loop playsinline>
+                    <source id="modalVideoSource" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                
+                <!-- Video selector for multiple videos -->
+                <div class="video-selector" id="videoSelector" style="display:none;">
+                    <span>Vidéos disponibles:</span>
+                    <div class="video-tabs" id="videoTabs"></div>
+                </div>
+            </div>
+            
+            <div class="modal-info-section">
+                <span class="modal-number" id="modalNumber"></span>
+                <h2 class="modal-title" id="modalTitle"></h2>
+                
+                <div class="modal-actions">
+                    <button class="modal-like-btn" id="modalLikeBtn" onclick="toggleModalLike()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                        <span class="like-text">J'aime</span>
+                        <span class="like-count" id="modalLikeCount">0</span>
+                    </button>
+                    
+                    <button class="modal-suggest-btn" onclick="showSuggestForm()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 18h6"/>
+                            <path d="M10 22h4"/>
+                            <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8a6 6 0 0 0-12 0c0 1.06.28 2.06.91 2.92.76.76 1.23 1.52 1.41 2.5"/>
+                        </svg>
+                        Suggérer une animation
+                    </button>
+                </div>
+                
+                <!-- Suggestion Form -->
+                <div class="suggest-form-container" id="suggestFormContainer" style="display:none;">
+                    <h4>Proposer une idée d'animation</h4>
+                    <textarea id="suggestionText" placeholder="Décrivez l'animation que vous imaginez pour cette carte postale..." maxlength="500"></textarea>
+                    <div class="form-actions">
+                        <button class="cancel-btn" onclick="hideSuggestForm()">Annuler</button>
+                        <button class="submit-btn" onclick="submitSuggestion()">Envoyer</button>
+                    </div>
+                    <p class="char-count"><span id="charCount">0</span>/500 caractères</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="success-modal" id="successModal">
+    <div class="success-content">
+        <div class="success-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <h3>Merci pour votre suggestion !</h3>
+        <p>Votre idée a été enregistrée et sera examinée par notre équipe.</p>
+        <button onclick="closeSuccessModal()">Fermer</button>
+    </div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+let currentPostcardId = null;
+let currentAnimatedUrls = [];
+let currentVideoIndex = 0;
+const totalCount = {{ total_count }};
+
+// ===========================================
+// VIDEO HOVER MANAGER - Handles hover to play
+// ===========================================
+class VideoHoverManager {
+    constructor() {
+        this.activeVideo = null;
+        this.loadingVideos = new Set();
+        this.loadedVideos = new Set();
+        this.hoverTimeout = null;
+        this.init();
+    }
+    
+    init() {
+        document.querySelectorAll('.animated-card').forEach(card => {
+            card.addEventListener('mouseenter', (e) => this.handleMouseEnter(card));
+            card.addEventListener('mouseleave', (e) => this.handleMouseLeave(card));
+            card.addEventListener('touchstart', (e) => this.handleTouchStart(card, e));
+        });
+    }
+    
+    handleMouseEnter(card) {
+        // Clear any pending timeout
+        if (this.hoverTimeout) {
+            clearTimeout(this.hoverTimeout);
+        }
+        
+        // Small delay to prevent accidental triggers
+        this.hoverTimeout = setTimeout(() => {
+            this.loadAndPlayVideo(card);
+        }, 150);
+    }
+    
+    handleMouseLeave(card) {
+        // Clear pending timeout
+        if (this.hoverTimeout) {
+            clearTimeout(this.hoverTimeout);
+            this.hoverTimeout = null;
+        }
+        
+        this.stopVideo(card);
+    }
+    
+    handleTouchStart(card, event) {
+        // For touch devices, toggle play/pause
+        const video = card.querySelector('.card-video');
+        if (video && video.src) {
+            if (video.paused) {
+                this.loadAndPlayVideo(card);
+            } else {
+                this.stopVideo(card);
+            }
+        } else {
+            this.loadAndPlayVideo(card);
+        }
+    }
+    
+    loadAndPlayVideo(card) {
+        const video = card.querySelector('.card-video');
+        const poster = card.querySelector('.card-poster');
+        const loadingIndicator = card.querySelector('.video-loading-indicator');
+        const videoSrc = video.dataset.src;
+        
+        if (!videoSrc) {
+            console.log('No video source for card');
+            return;
+        }
+        
+        // Show loading indicator
+        if (loadingIndicator) {
+            loadingIndicator.classList.add('visible');
+        }
+        
+        // If video not yet loaded, load it
+        if (!video.src || video.src === '') {
+            video.src = videoSrc;
+            
+            // Set up load handlers
+            video.onloadeddata = () => {
+                this.loadedVideos.add(videoSrc);
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('visible');
+                }
+                // Hide poster and show video
+                if (poster) poster.style.opacity = '0';
+                video.style.opacity = '1';
+                this.playVideo(video);
+            };
+            
+            video.onerror = (e) => {
+                console.error('Video load error:', videoSrc, e);
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('visible');
+                }
+                // Show poster on error
+                if (poster) poster.style.opacity = '1';
+                video.style.opacity = '0';
+            };
+            
+            video.load();
+        } else {
+            // Video already loaded, just play
+            if (loadingIndicator) {
+                loadingIndicator.classList.remove('visible');
+            }
+            if (poster) poster.style.opacity = '0';
+            video.style.opacity = '1';
+            this.playVideo(video);
+        }
+        
+        // Track active video
+        this.activeVideo = video;
+    }
+    
+    playVideo(video) {
+        if (video && video.readyState >= 2) {
+            video.currentTime = 0;
+            video.play().catch(err => {
+                console.log('Autoplay prevented:', err);
+            });
+        } else if (video) {
+            // Wait for enough data
+            video.oncanplay = () => {
+                video.play().catch(err => {
+                    console.log('Autoplay prevented:', err);
+                });
+            };
+        }
+    }
+    
+    stopVideo(card) {
+        const video = card.querySelector('.card-video');
+        const poster = card.querySelector('.card-poster');
+        const loadingIndicator = card.querySelector('.video-loading-indicator');
+        
+        if (video) {
+            video.pause();
+            video.currentTime = 0;
+            video.style.opacity = '0';
+        }
+        
+        if (poster) {
+            poster.style.opacity = '1';
+        }
+        
+        if (loadingIndicator) {
+            loadingIndicator.classList.remove('visible');
+        }
+        
+        if (this.activeVideo === video) {
+            this.activeVideo = null;
+        }
+    }
+}
+
+// ===========================================
+// LOADING MANAGER
+// ===========================================
+class LoadingManager {
+    constructor() {
+        this.overlay = document.getElementById('loading-overlay');
+        this.bar = document.getElementById('loading-bar');
+        this.countEl = document.getElementById('loading-count');
+        this.startTime = Date.now();
+        this.minDisplayTime = 800; // Minimum time to show loading
+    }
+    
+    start() {
+        let progress = 0;
+        const tick = () => {
+            progress += (100 - progress) * 0.08;
+            this.bar.style.width = progress + '%';
+            if (progress < 95) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+    
+    updateCount(loaded, total) {
+        if (this.countEl) {
+            this.countEl.textContent = `${loaded} / ${total}`;
+        }
+        const progress = (loaded / total) * 100;
+        this.bar.style.width = Math.max(progress, parseFloat(this.bar.style.width) || 0) + '%';
+    }
+    
+    hide() {
+        const elapsed = Date.now() - this.startTime;
+        const remaining = Math.max(0, this.minDisplayTime - elapsed);
+        
+        setTimeout(() => {
+            this.bar.style.width = '100%';
+            setTimeout(() => {
+                this.overlay.classList.add('hidden');
+            }, 200);
+        }, remaining);
+    }
+}
+
+const loadingManager = new LoadingManager();
+loadingManager.start();
+
+// ===========================================
+// SORT GALLERY
+// ===========================================
+function sortGallery(sortBy) {
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sort === sortBy);
+    });
+    
+    const grid = document.getElementById('animated-grid');
+    const cards = Array.from(grid.querySelectorAll('.animated-card'));
+    
+    cards.sort((a, b) => {
+        if (sortBy === 'popular') {
+            return parseInt(b.dataset.likes) - parseInt(a.dataset.likes);
+        } else if (sortBy === 'number') {
+            return a.dataset.number.localeCompare(b.dataset.number);
+        }
+        return 0;
+    });
+    
+    cards.forEach(card => grid.appendChild(card));
+}
+
+// ===========================================
+// MODAL FUNCTIONS
+// ===========================================
+async function openAnimatedModal(postcardId) {
+    const card = document.querySelector(`[data-id="${postcardId}"]`);
+    if (!card) return;
+    
+    currentPostcardId = postcardId;
+    
+    // Stop any playing card video
+    const cardVideo = card.querySelector('.card-video');
+    if (cardVideo) {
+        cardVideo.pause();
+    }
+    
+    // Show modal
+    document.getElementById('animatedModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Show loading state
+    const modalLoading = document.getElementById('modalVideoLoading');
+    const modalVideo = document.getElementById('modalVideo');
+    const modalVideoSource = document.getElementById('modalVideoSource');
+    
+    modalLoading.style.display = 'flex';
+    modalVideo.style.display = 'none';
+    
+    // Set modal info
+    document.getElementById('modalNumber').textContent = 'N° ' + card.dataset.number;
+    document.getElementById('modalTitle').textContent = card.dataset.title;
+    
+    // Check if liked
+    const likeBtn = card.querySelector('.like-btn');
+    const likeCount = likeBtn ? likeBtn.querySelector('.like-count').textContent : '0';
+    document.getElementById('modalLikeCount').textContent = likeCount;
+    document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn && likeBtn.classList.contains('liked'));
+    
+    // Fetch full postcard data to get all video URLs
+    try {
+        const response = await fetch(`/api/postcard/${postcardId}/`);
+        const data = await response.json();
+        
+        currentAnimatedUrls = data.animated_urls || [];
+        currentVideoIndex = 0;
+        
+        // If no animated URLs from API, use the card's data
+        if (currentAnimatedUrls.length === 0 && card.dataset.videoUrl) {
+            currentAnimatedUrls = [card.dataset.videoUrl];
+        }
+        
+        // Set up video selector for multiple videos
+        const selector = document.getElementById('videoSelector');
+        const tabs = document.getElementById('videoTabs');
+        
+        if (currentAnimatedUrls.length > 1) {
+            selector.style.display = 'flex';
+            tabs.innerHTML = currentAnimatedUrls.map((url, i) => `
+                <button class="video-tab ${i === 0 ? 'active' : ''}" onclick="switchVideo(${i})">
+                    Vidéo ${i + 1}
+                </button>
+            `).join('');
+        } else {
+            selector.style.display = 'none';
+        }
+        
+        // Load and play the first video
+        if (currentAnimatedUrls.length > 0) {
+            loadModalVideo(currentAnimatedUrls[0]);
+        } else {
+            // No video available
+            modalLoading.innerHTML = '<p>Aucune vidéo disponible</p>';
+        }
+        
+    } catch (error) {
+        console.error('Error fetching postcard data:', error);
+        
+        // Fallback to card's video URL
+        const videoUrl = card.dataset.videoUrl;
+        if (videoUrl) {
+            currentAnimatedUrls = [videoUrl];
+            loadModalVideo(videoUrl);
+        } else {
+            modalLoading.innerHTML = '<p>Erreur lors du chargement</p>';
+        }
+    }
+}
+
+function loadModalVideo(videoUrl) {
+    const modalLoading = document.getElementById('modalVideoLoading');
+    const modalVideo = document.getElementById('modalVideo');
+    const modalVideoSource = document.getElementById('modalVideoSource');
+    
+    // Reset video
+    modalVideo.pause();
+    modalVideoSource.src = '';
+    
+    // Set new source
+    modalVideoSource.src = videoUrl;
+    modalVideo.load();
+    
+    // Handle video ready
+    modalVideo.oncanplay = function() {
+        modalLoading.style.display = 'none';
+        modalVideo.style.display = 'block';
+        modalVideo.play().catch(e => {
+            console.log('Modal autoplay prevented:', e);
+        });
+    };
+    
+    modalVideo.onloadeddata = function() {
+        modalLoading.style.display = 'none';
+        modalVideo.style.display = 'block';
+    };
+    
+    // Handle errors
+    modalVideo.onerror = function(e) {
+        console.error('Modal video error:', videoUrl, e);
+        modalLoading.innerHTML = `
+            <p>Impossible de charger la vidéo</p>
+            <a href="${videoUrl}" target="_blank" class="video-fallback-link">Ouvrir dans un nouvel onglet</a>
+        `;
+    };
+    
+    // Timeout fallback - if video doesn't load in 10 seconds
+    setTimeout(() => {
+        if (modalLoading.style.display !== 'none') {
+            modalLoading.innerHTML = `
+                <p>Chargement lent...</p>
+                <a href="${videoUrl}" target="_blank" class="video-fallback-link">Ouvrir dans un nouvel onglet</a>
+            `;
+        }
+    }, 10000);
+}
+
+function switchVideo(index) {
+    if (index >= 0 && index < currentAnimatedUrls.length) {
+        currentVideoIndex = index;
+        
+        // Update tab active state
+        document.querySelectorAll('.video-tab').forEach((tab, i) => {
+            tab.classList.toggle('active', i === index);
+        });
+        
+        // Show loading and load new video
+        const modalLoading = document.getElementById('modalVideoLoading');
+        const modalVideo = document.getElementById('modalVideo');
+        
+        modalLoading.style.display = 'flex';
+        modalLoading.innerHTML = '<div class="modal-spinner"></div><p>Chargement de la vidéo...</p>';
+        modalVideo.style.display = 'none';
+        
+        loadModalVideo(currentAnimatedUrls[index]);
+    }
+}
+
+function closeAnimatedModal() {
+    const modalVideo = document.getElementById('modalVideo');
+    modalVideo.pause();
+    modalVideo.currentTime = 0;
+    
+    document.getElementById('animatedModal').classList.remove('active');
+    document.body.style.overflow = '';
+    hideSuggestForm();
+    
+    // Reset loading state
+    const modalLoading = document.getElementById('modalVideoLoading');
+    modalLoading.innerHTML = '<div class="modal-spinner"></div><p>Chargement de la vidéo...</p>';
+}
+
+// ===========================================
+// LIKE FUNCTIONALITY
+// ===========================================
+async function toggleLike(event, postcardId, isAnimated = true) {
+    event.stopPropagation();
+    
+    try {
+        const formData = new FormData();
+        formData.append('is_animated', isAnimated);
+        
+        const response = await fetch(`/api/postcard/${postcardId}/like/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update card
+            const card = document.querySelector(`[data-id="${postcardId}"]`);
+            if (card) {
+                const likeBtn = card.querySelector('.like-btn');
+                const likeCount = likeBtn.querySelector('.like-count');
+                likeBtn.classList.toggle('liked', data.liked);
+                likeCount.textContent = data.likes_count;
+                card.dataset.likes = data.likes_count;
+                
+                // Update SVG fill
+                const svg = likeBtn.querySelector('svg');
+                svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
+            }
+            
+            // Update modal if open
+            if (currentPostcardId === postcardId) {
+                const modalBtn = document.getElementById('modalLikeBtn');
+                modalBtn.classList.toggle('liked', data.liked);
+                document.getElementById('modalLikeCount').textContent = data.likes_count;
+            }
+        }
+    } catch (error) {
+        console.error('Like error:', error);
+    }
+}
+
+function toggleModalLike() {
+    if (currentPostcardId) {
+        toggleLike({ stopPropagation: () => {} }, currentPostcardId, true);
+    }
+}
+
+// ===========================================
+// SUGGESTION FUNCTIONALITY
+// ===========================================
+function showSuggestForm() {
+    document.getElementById('suggestFormContainer').style.display = 'block';
+    document.getElementById('suggestionText').focus();
+    document.getElementById('suggestFormContainer').scrollIntoView({ behavior: 'smooth' });
+}
+
+function hideSuggestForm() {
+    document.getElementById('suggestFormContainer').style.display = 'none';
+    document.getElementById('suggestionText').value = '';
+    document.getElementById('charCount').textContent = '0';
+}
+
+document.getElementById('suggestionText').addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length;
+});
+
+async function submitSuggestion() {
+    const description = document.getElementById('suggestionText').value.trim();
+    
+    if (description.length < 10) {
+        alert('Veuillez entrer une description plus détaillée (minimum 10 caractères).');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('description', description);
+        
+        const response = await fetch(`/api/postcard/${currentPostcardId}/suggest/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            hideSuggestForm();
+            document.getElementById('successModal').classList.add('active');
+        } else {
+            alert(data.error || 'Une erreur est survenue.');
+        }
+    } catch (error) {
+        console.error('Suggestion error:', error);
+        alert('Une erreur est survenue.');
+    }
+}
+
+function openSuggestModal(postcardId, number) {
+    openAnimatedModal(postcardId);
+    setTimeout(showSuggestForm, 500);
+}
+
+function closeSuccessModal() {
+    document.getElementById('successModal').classList.remove('active');
+}
+
+// ===========================================
+// KEYBOARD NAVIGATION
+// ===========================================
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeAnimatedModal();
+        closeSuccessModal();
+    }
+});
+
+// ===========================================
+// CHECK FOR HIGHLIGHT PARAMETER
+// ===========================================
+function checkHighlight() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    
+    if (highlightId) {
+        setTimeout(() => {
+            openAnimatedModal(parseInt(highlightId));
+        }, 800);
+    }
+}
+
+// ===========================================
+// INITIALIZE
+// ===========================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize video hover manager
+    window.videoHoverManager = new VideoHoverManager();
+    
+    // Check for highlight
+    checkHighlight();
+    
+    // Count loaded images for progress
+    const images = document.querySelectorAll('.card-poster');
+    let loadedCount = 0;
+    
+    images.forEach(img => {
+        if (img.complete) {
+            loadedCount++;
+            loadingManager.updateCount(loadedCount, totalCount);
+        } else {
+            img.onload = () => {
+                loadedCount++;
+                loadingManager.updateCount(loadedCount, totalCount);
+            };
+            img.onerror = () => {
+                loadedCount++;
+                loadingManager.updateCount(loadedCount, totalCount);
+            };
+        }
+    });
+    
+    // Hide loading after a reasonable time
+    setTimeout(() => {
+        loadingManager.hide();
+    }, 1500);
+});
+
+window.addEventListener('load', () => {
+    loadingManager.hide();
+});
+</script>
+
+<style>
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: linear-gradient(135deg, #1a1208, #0d0906);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease;
+}
+
+.loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-spinner {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 30px;
+}
+
+.spinner-ring {
+    position: absolute;
+    inset: 0;
+    border: 3px solid transparent;
+    border-radius: 50%;
+}
+
+.spinner-ring:nth-child(1) {
+    border-top-color: #b5600b;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-ring:nth-child(2) {
+    inset: 8px;
+    border-right-color: #d1872c;
+    animation: spin 1.5s linear infinite reverse;
+}
+
+.spinner-ring:nth-child(3) {
+    inset: 16px;
+    border-bottom-color: #ffc168;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+.loading-progress {
+    width: 250px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.loading-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #b5600b, #ffc168);
+    transition: width 0.2s;
+}
+
+.loading-count {
+    color: #b5600b;
+    font-size: 0.9rem;
+    margin-top: 15px;
+}
+
+/* Main Page */
+.animated-gallery-page {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0d0906 0%, #1a1208 30%, #2d1f0d 70%, #1a1208 100%);
+    padding-bottom: 60px;
+}
+
+.gallery-header {
+    padding: 100px 20px 50px;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(181, 96, 11, 0.1) 0%, transparent 100%);
+}
+
+.header-content h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: white;
+    margin-bottom: 15px;
+}
+
+.header-content p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+.header-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.stat-item {
+    color: #d1872c;
+    font-size: 1rem;
+}
+
+.stat-item strong {
+    color: #ffc168;
+    font-size: 1.3rem;
+}
+
+/* Controls */
+.gallery-controls {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px 30px;
+}
+
+.sort-options {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.sort-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.sort-btn svg {
+    flex-shrink: 0;
+}
+
+.sort-btn:hover {
+    background: rgba(181, 96, 11, 0.3);
+    border-color: #b5600b;
+}
+
+.sort-btn.active {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border-color: #b5600b;
+}
+
+/* Grid */
+.animated-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Card */
+.animated-card {
+    background: linear-gradient(135deg, rgba(40, 30, 20, 0.9), rgba(30, 20, 15, 0.95));
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(181, 96, 11, 0.2);
+    transition: all 0.2s ease;
+}
+
+.animated-card:hover {
+    transform: translateY(-8px);
+    border-color: #b5600b;
+    box-shadow: 0 20px 50px rgba(181, 96, 11, 0.3);
+}
+
+.card-video-container {
+    position: relative;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    background: #000;
+}
+
+/* Poster image - always visible by default */
+.card-poster {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s ease;
+    z-index: 2;
+}
+
+/* Video - hidden by default */
+.card-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 3;
+}
+
+/* Video loading indicator */
+.video-loading-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.video-loading-indicator.visible {
+    opacity: 1;
+}
+
+.mini-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #b5600b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.video-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 5;
+}
+
+.animated-card:hover .video-overlay {
+    opacity: 1;
+}
+
+.play-btn {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.play-btn:hover {
+    transform: scale(1.1);
+}
+
+.multi-video-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(181, 96, 11, 0.9);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    z-index: 6;
+}
+
+.card-info {
+    padding: 20px;
+}
+
+.card-number {
+    color: #b5600b;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.card-title {
+    color: white;
+    font-size: 1rem;
+    margin: 8px 0 15px;
+    line-height: 1.4;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.like-btn, .suggest-btn {
+    flex: 1;
+    padding: 10px 15px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.like-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.like-btn:hover {
+    background: rgba(255, 100, 100, 0.2);
+    border-color: rgba(255, 100, 100, 0.5);
+}
+
+.like-btn.liked {
+    background: rgba(255, 100, 100, 0.3);
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+}
+
+.like-btn.liked svg path {
+    animation: heartBeat 0.6s ease;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+.suggest-btn {
+    background: rgba(181, 96, 11, 0.2);
+    color: #ffc168;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.suggest-btn:hover {
+    background: rgba(181, 96, 11, 0.4);
+}
+
+/* Modal */
+.animated-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.animated-modal.active {
+    display: flex;
+}
+
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.modal-container {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    background: linear-gradient(165deg, #1f1a15 0%, #0d0906 100%);
+    border-radius: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.modal-close:hover {
+    transform: rotate(90deg) scale(1.1);
+}
+
+.modal-scroll-content {
+    overflow-y: auto;
+    max-height: 90vh;
+    scroll-behavior: smooth;
+}
+
+.modal-video-section {
+    background: #000;
+    flex-shrink: 0;
+    position: relative;
+    min-height: 300px;
+}
+
+/* Modal video loading */
+.modal-video-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    color: white;
+    z-index: 10;
+}
+
+.modal-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #b5600b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 15px;
+}
+
+.modal-video-loading p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95rem;
+}
+
+.video-fallback-link {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+    text-decoration: none;
+    border-radius: 20px;
+    transition: transform 0.2s ease;
+}
+
+.video-fallback-link:hover {
+    transform: scale(1.05);
+}
+
+.modal-video-section video {
+    width: 100%;
+    max-height: 50vh;
+    display: block;
+    background: #000;
+}
+
+.video-selector {
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.video-selector span {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.video-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.video-tab {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.video-tab:hover {
+    background: rgba(181, 96, 11, 0.3);
+}
+
+.video-tab.active {
+    background: #b5600b;
+    border-color: #b5600b;
+}
+
+.modal-info-section {
+    padding: 25px;
+}
+
+.modal-number {
+    color: #b5600b;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.modal-title {
+    color: white;
+    font-size: 1.4rem;
+    margin: 10px 0 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.modal-like-btn, .modal-suggest-btn {
+    padding: 14px 25px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-like-btn {
+    background: rgba(255, 100, 100, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 100, 100, 0.3);
+}
+
+.modal-like-btn:hover {
+    background: rgba(255, 100, 100, 0.3);
+}
+
+.modal-like-btn.liked {
+    background: rgba(255, 100, 100, 0.4);
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+}
+
+.modal-suggest-btn {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+}
+
+.modal-suggest-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Suggest Form */
+.suggest-form-container {
+    margin-top: 25px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(181, 96, 11, 0.3);
+}
+
+.suggest-form-container h4 {
+    color: #ffc168;
+    margin-bottom: 15px;
+}
+
+.suggest-form-container textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    font-size: 1rem;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.suggest-form-container textarea:focus {
+    outline: none;
+    border-color: #b5600b;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.cancel-btn, .submit-btn {
+    padding: 12px 25px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.cancel-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    color: white;
+}
+
+.char-count {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
+
+/* Success Modal */
+.success-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.success-modal.active {
+    display: flex;
+}
+
+.success-content {
+    background: linear-gradient(165deg, #2d1f0d, #1a1208);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    border: 1px solid #b5600b;
+}
+
+.success-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    border-radius: 50%;
+}
+
+.success-icon svg {
+    stroke: white;
+}
+
+.success-content h3 {
+    color: #ffc168;
+    margin-bottom: 10px;
+}
+
+.success-content p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 25px;
+}
+
+.success-content button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #b5600b, #d1872c);
+    border: none;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+/* No Results */
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.no-results-icon {
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 20px;
+}
+
+.no-results h3 {
+    color: white;
+    margin-bottom: 10px;
+}
+
+.no-results p {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Animations */
+.animate-fade-in-down { animation: fadeInDown 0.8s ease forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; }
+.animate-fade-in { animation: fadeIn 0.8s ease forwards; }
+[class*="animate-"]:not(.loading-overlay) { opacity: 0; }
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Icon alignment in the header title */
+.header-content h1 svg {
+    vertical-align: -2px;
+}
+
+/* Visible keyboard focus */
+.sort-btn:focus-visible,
+.play-btn:focus-visible,
+.like-btn:focus-visible,
+.suggest-btn:focus-visible,
+.modal-close:focus-visible,
+.video-tab:focus-visible,
+.modal-like-btn:focus-visible,
+.modal-suggest-btn:focus-visible,
+.cancel-btn:focus-visible,
+.submit-btn:focus-visible,
+.video-fallback-link:focus-visible,
+.success-content button:focus-visible,
+.suggest-form-container textarea:focus-visible {
+    outline: 2px solid #d1872c;
+    outline-offset: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .animated-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    .modal-container {
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .modal-video-section video {
+        max-height: 40vh;
+    }
+}
+</style>
+{% endblock %}
