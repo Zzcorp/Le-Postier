@@ -360,7 +360,34 @@ sudo chown -R 1000:1000 /srv/lepostier/media
 cd /srv/lepostier/app && docker compose exec web python manage.py rebuild_media_index
 ```
 
-## 12. Notes et dépannage
+## 12. Ajouter le sous-domaine www
+
+Le vieux CNAME `www.collections` pointait vers Render — quiconque tape
+« www. » tombe dans le vide. Pour que `www.collections.samathey.fr`
+redirige proprement vers le site :
+
+1. **Chez le registrar** : supprimez le CNAME `www.collections` →
+   `*.onrender.com`, puis créez : `Type CNAME | Nom : www.collections |
+   Cible : collections.samathey.fr.` (ou un A vers l'IP du VPS).
+2. **Sur le VPS**, étendez le certificat aux deux noms puis relancez nginx
+   (attendez la propagation DNS de l'étape 1 — vérifiez avec
+   `nslookup www.collections.samathey.fr 1.1.1.1`) :
+
+   ```bash
+   cd /srv/lepostier/app
+   git pull                       # récupère le nginx.conf avec les blocs www
+   docker compose stop nginx
+   docker compose run --rm -p 80:80 --entrypoint certbot certbot \
+     certonly --standalone --expand \
+     -d collections.samathey.fr -d www.collections.samathey.fr \
+     --email sam@samathey.com --agree-tos --no-eff-email
+   docker compose start nginx
+   ```
+
+   nginx redirige ensuite tout `www.` (HTTP et HTTPS) vers
+   `https://collections.samathey.fr` — rien à changer dans `.env`.
+
+## 13. Notes et dépannage
 
 - **HSTS** : le site démarre avec `SECURE_HSTS_SECONDS=3600` (1 h). Après
   quelques semaines de HTTPS sans incident, passez à `31536000` (1 an) dans
