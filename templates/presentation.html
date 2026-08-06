@@ -26,9 +26,9 @@
         <div class="bg-pattern"></div>
     </div>
 
-    {# Ambiance aquatique — APRÈS .presentation-bg (fixe, z-index 0, opaque) pour
+    {% comment %} Ambiance aquatique — APRÈS .presentation-bg (fixe, z-index 0, opaque) pour
        que l'eau se peigne au-dessus du fond décoratif, et AVANT le conteneur
-       .amb-contenu (z-index 1) qui garde tout le contenu au-dessus de l'eau. #}
+       .amb-contenu (z-index 1) qui garde tout le contenu au-dessus de l'eau. {% endcomment %}
     {% include 'partials/ambiance.html' with ambiance_mode='riche' %}
 
     <div class="presentation-container amb-contenu">

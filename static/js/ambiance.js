@@ -84,11 +84,12 @@
        --------------------------------------------------------------------- */
 
     /* Poisson de rivière fuselé : corps effilé, nageoire dorsale discrète,
-       queue fourchue. Rempli en noir ; l'opacité et le flou (ombre dans
-       l'eau) sont appliqués sur l'élément porteur. */
+       queue fourchue. Teinte "verre d'eau" pâle : sur les fonds sombres du
+       site, une ombre noire serait invisible — une silhouette légèrement
+       lumineuse se lit comme un poisson en profondeur. */
     var SVG_POISSON = 'data:image/svg+xml,' + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 70">' +
-        '<path fill="#000" d="' +
+        '<path fill="#9fc4b8" d="' +
         'M6 36 C24 18 62 9 104 10 C136 11 162 20 180 32 ' +
         'L208 14 C200 26 200 44 208 58 L180 40 ' +
         'C162 51 136 59 104 59 C62 60 24 52 6 36 Z ' +
@@ -101,7 +102,7 @@
        deux bords => la tuile se répète sans couture (repeat-x). */
     var SVG_VAGUE = 'data:image/svg+xml,' + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 120" preserveAspectRatio="none">' +
-        '<path fill="#0d1614" d="M0 64 C100 24 200 24 300 64 C400 104 500 104 600 64 L600 120 L0 120 Z"/>' +
+        '<path fill="#2a4a42" d="M0 64 C100 24 200 24 300 64 C400 104 500 104 600 64 L600 120 L0 120 Z"/>' +
         '</svg>'
     );
 
@@ -119,7 +120,7 @@
         element('amb-rayon', rayons, {
             left: alea(8 + r * 30, 22 + r * 30) + 'vw',
             width: alea(7, 15) + 'vw',
-            opacity: alea(0.04, 0.08).toFixed(3),
+            opacity: alea(0.10, 0.18).toFixed(3),
             '--angle': alea(12, 22).toFixed(1) + 'deg',
             '--duree': alea(60, 90).toFixed(1) + 's'
         });
@@ -162,7 +163,7 @@
                     width: taille.toFixed(0) + 'px',
                     height: (taille * 70 / 220).toFixed(0) + 'px',
                     backgroundImage: 'url("' + SVG_POISSON + '")',
-                    opacity: (0.10 + proche * 0.06).toFixed(3),
+                    opacity: (0.16 + proche * 0.10).toFixed(3),
                     '--flou': (8 - proche * 3).toFixed(1) + 'px',
                     '--duree': duree.toFixed(1) + 's',
                     /* retard négatif : certains poissons sont déjà en traversée */
@@ -184,7 +185,7 @@
                 left: alea(2, 96) + 'vw',
                 width: diametre.toFixed(1) + 'px',
                 height: diametre.toFixed(1) + 'px',
-                '--op': alea(0.06, 0.14).toFixed(3),
+                '--op': alea(0.12, 0.22).toFixed(3),
                 '--sx': ondulation + 'vw',
                 '--sxn': '-' + ondulation + 'vw',
                 '--duree': dureeBulle.toFixed(1) + 's',
@@ -206,7 +207,7 @@
                 top: alea(15, 98) + 'vh',
                 width: grain.toFixed(1) + 'px',
                 height: grain.toFixed(1) + 'px',
-                '--op': alea(0.05, 0.10).toFixed(3),
+                '--op': alea(0.09, 0.16).toFixed(3),
                 '--dx': alea(3, 8).toFixed(1) + 'vw',
                 '--duree': dureeGrain.toFixed(1) + 's',
                 '--retard': (-alea(0, dureeGrain)).toFixed(1) + 's'

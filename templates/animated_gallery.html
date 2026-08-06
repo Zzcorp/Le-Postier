@@ -37,12 +37,12 @@
 </div>
 
 <div class="animated-gallery-page">
-    {# Ambiance aquatique ('douce' : les vidéos dominent, l'eau reste derrière) —
+    {% comment %} Ambiance aquatique ('douce' : les vidéos dominent, l'eau reste derrière) —
        premier enfant positionné : elle se peint au-dessus du dégradé opaque de
        .animated-gallery-page ; les sections de contenu portent .amb-contenu
        (z-index 1). Les modales (z-index 5000/6000) et le voile de chargement
-       (z-index 9999) flottent très au-dessus. #}
-    {% include 'partials/ambiance.html' with ambiance_mode='douce' %}
+       (z-index 9999) flottent très au-dessus. {% endcomment %}
+    {% include 'partials/ambiance.html' with ambiance_mode='riche' %}
 
     <!-- Header -->
     <header class="gallery-header amb-contenu">

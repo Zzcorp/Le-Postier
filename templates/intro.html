@@ -201,11 +201,11 @@
     </style>
 </head>
 <body>
-    {# Ambiance aquatique — placée en PREMIER dans le body : l'eau (fixe,
+    {% comment %} Ambiance aquatique — placée en PREMIER dans le body : l'eau (fixe,
        z-index 0) se peint sous les vagues et particules dorées existantes,
        qui gardent leur ordre et leur minutage inchangés. Le contenu de
        l'intro (z-index 10) reste très au-dessus. Mode 'calme' : rayons de
-       lumière + quelques bulles ; le grand poisson est ajouté plus bas. #}
+       lumière + quelques bulles ; le grand poisson est ajouté plus bas. {% endcomment %}
     {% include 'partials/ambiance.html' with ambiance_mode='calme' %}
 
     <div class="river-container">
