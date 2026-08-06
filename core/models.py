@@ -203,6 +203,7 @@ class Postcard(models.Model):
     grande_file = models.CharField(max_length=255, blank=True, default='')
     dos_file = models.CharField(max_length=255, blank=True, default='')
     zoom_file = models.CharField(max_length=255, blank=True, default='')
+    vignette_webp = models.CharField(max_length=255, blank=True, default='')
     animation_files = models.JSONField(default=list, blank=True)
     has_animation = models.BooleanField(default=False, db_index=True, verbose_name="Animation présente")
     media_synced_at = models.DateTimeField(null=True, blank=True)
@@ -260,6 +261,11 @@ class Postcard(models.Model):
     def get_vignette_url(self):
         if self.vignette_file:
             return f'{settings.MEDIA_URL}{self.vignette_file}'
+        return ''
+
+    def get_vignette_webp_url(self):
+        if self.vignette_webp:
+            return f'{settings.MEDIA_URL}{self.vignette_webp}'
         return ''
 
     def get_grande_url(self):

@@ -2,7 +2,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Cartes postales animées — Collection Samathey{% endblock %}
 {% block page_title %}CP Animées{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Les cartes animées de la collection Samathey : des cartes postales anciennes de France (1900-1930) qui prennent vie sous vos yeux.">
+<meta property="og:site_name" content="Collection Samathey">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Cartes postales animées — Collection Samathey">
+<meta property="og:description" content="Des cartes postales anciennes qui prennent vie sous vos yeux.">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/Samathey.png' %}">
+<meta property="og:locale" content="fr_FR">
+{% endblock %}
 
 {% block content %}
 <!-- Loading Overlay -->

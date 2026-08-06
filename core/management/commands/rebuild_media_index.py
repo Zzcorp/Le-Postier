@@ -26,7 +26,7 @@ VIDEO_SUFFIXES = {'.mp4', '.webm'}
 
 MEDIA_FIELDS = [
     'vignette_file', 'grande_file', 'dos_file', 'zoom_file',
-    'animation_files', 'has_animation', 'has_images',
+    'vignette_webp', 'animation_files', 'has_animation', 'has_images',
     'search_blob', 'media_synced_at',
 ]
 
@@ -127,14 +127,22 @@ class Command(BaseCommand):
             'Zoom': media_root / 'postcards' / 'Zoom',
         }
         animated_dir = media_root / 'animated_cp'
+        webp_dir = media_root / 'postcards' / 'VignetteWebP'
 
         # One listing per folder
         indexes = {name: self.build_image_index(path) for name, path in folders.items()}
         animation_index = self.build_animation_index(animated_dir)
+        webp_names = set()
+        if webp_dir.exists():
+            webp_names = {
+                f.name for f in webp_dir.iterdir()
+                if f.is_file() and f.suffix.lower() == '.webp'
+            }
 
         for name, index in indexes.items():
             self.stdout.write(f'  {name}: {len(index)} index entries')
         self.stdout.write(f'  animated_cp: {len(animation_index)} index entries')
+        self.stdout.write(f'  VignetteWebP: {len(webp_names)} files')
         self.stdout.write('')
 
         now = timezone.now()
@@ -144,6 +152,8 @@ class Command(BaseCommand):
         with_animation = 0
         matched_stems = {name: set() for name in folders}
         matched_animation_files = set()
+        webp_kept = 0
+        webp_cleared = 0
 
         for postcard in Postcard.objects.all().iterator(chunk_size=500):
             new_values = {}
@@ -164,6 +174,24 @@ class Command(BaseCommand):
                 new_values[field] = f'{rel_dir}/{filename}' if filename else ''
                 if filename:
                     matched_stems[name].add(Path(filename).stem.strip().lower())
+
+            # WebP derivative: keep the cached path only if the file is still
+            # on disk (one directory listing, no per-card probing), clear it
+            # if the file vanished. generate_webp repopulates it.
+            current_webp = postcard.vignette_webp
+            if current_webp:
+                if current_webp.startswith('postcards/VignetteWebP/'):
+                    webp_ok = Path(current_webp).name in webp_names
+                else:
+                    webp_ok = (media_root / current_webp).exists()
+                if webp_ok:
+                    new_values['vignette_webp'] = current_webp
+                    webp_kept += 1
+                else:
+                    new_values['vignette_webp'] = ''
+                    webp_cleared += 1
+            else:
+                new_values['vignette_webp'] = ''
 
             animation_names = self.lookup(animation_index, postcard) or []
             new_values['animation_files'] = [f'animated_cp/{n}' for n in animation_names]
@@ -229,6 +257,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Rows with changes:    {changed}')
         self.stdout.write(self.style.SUCCESS(f'With images:          {with_images}'))
         self.stdout.write(self.style.SUCCESS(f'With animation:       {with_animation}'))
+        self.stdout.write(f'WebP vignettes:       kept {webp_kept}, cleared {webp_cleared}')
         self.stdout.write(f'Orphan media files:   {len(orphans)}')
         if orphans:
             for orphan in orphans[:30]:

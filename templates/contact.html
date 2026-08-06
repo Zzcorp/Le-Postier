@@ -2,7 +2,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Contact — Collection Samathey{% endblock %}
 {% block page_title %}Contact{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Contactez la collection Samathey en écrivant votre message directement sur une carte postale ancienne : questions, suggestions ou simple bonjour, nous vous répondrons.">
+<meta property="og:site_name" content="Collection Samathey">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Contact — Collection Samathey">
+<meta property="og:description" content="Écrivez-nous votre message directement sur une carte postale ancienne.">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/Samathey.png' %}">
+<meta property="og:locale" content="fr_FR">
+{% endblock %}
 
 {% block content %}
 <div class="contact-page">

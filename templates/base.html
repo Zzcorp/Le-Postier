@@ -8,7 +8,15 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     {% block extra_css %}{% endblock %}
     <title>{% block title %}Collection Samathey{% endblock %}</title>
-    
+    {% block meta %}
+    <meta name="description" content="La collection Samathey : des centaines de cartes postales anciennes de France (1900-1930), à découvrir et à s'envoyer via La Poste.">
+    <meta property="og:site_name" content="Collection Samathey">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Collection Samathey">
+    <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/Samathey.png' %}">
+    <meta property="og:locale" content="fr_FR">
+    {% endblock %}
+
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-YZX5PNSJZG"></script>
     <script>

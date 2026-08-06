@@ -2,7 +2,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}La Poste — Collection Samathey{% endblock %}
 {% block page_title %}La Poste{% endblock %}
+
+{% block meta %}
+<meta name="description" content="La Poste de la collection Samathey : envoyez des cartes postales anciennes aux autres membres, échangez vos découvertes et retrouvez leur courrier dans votre boîte aux lettres.">
+<meta property="og:site_name" content="Collection Samathey">
+<meta property="og:type" content="website">
+<meta property="og:title" content="La Poste — Collection Samathey">
+<meta property="og:description" content="Envoyez des cartes postales anciennes aux autres membres et recevez les leurs.">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/Samathey.png' %}">
+<meta property="og:locale" content="fr_FR">
+{% endblock %}
 
 {% block content %}
 <div class="la-poste-page">

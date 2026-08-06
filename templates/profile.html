@@ -2,7 +2,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Mon profil — Collection Samathey{% endblock %}
 {% block page_title %}Mon Profil{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Votre espace membre de la collection Samathey : gérez votre profil, vos images et retrouvez vos cartes postales préférées.">
+<meta property="og:site_name" content="Collection Samathey">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mon profil — Collection Samathey">
+<meta property="og:description" content="L'espace membre de la collection Samathey.">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/Samathey.png' %}">
+<meta property="og:locale" content="fr_FR">
+{% endblock %}
 
 {% block content %}
 <div class="profile-page">

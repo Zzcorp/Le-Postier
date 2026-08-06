@@ -2,7 +2,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Présentation — Collection Samathey{% endblock %}
 {% block page_title %}Présentation{% endblock %}
+
+{% block meta %}
+<meta name="description" content="L'histoire de la collection Samathey et de l'âge d'or de la carte postale (1873-1914) : comment ces cartes anciennes ont voyagé à travers la France avant d'arriver jusqu'à nous.">
+<meta property="og:site_name" content="Collection Samathey">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Présentation — Collection Samathey">
+<meta property="og:description" content="L'histoire de la collection Samathey et de l'âge d'or de la carte postale, de 1873 à 1914.">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/Samathey.png' %}">
+<meta property="og:locale" content="fr_FR">
+{% endblock %}
 
 {% block content %}
 <div class="presentation-page">

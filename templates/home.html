@@ -2,8 +2,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Collection Samathey{% endblock %}
+{% block title %}Collection Samathey — Cartes postales anciennes{% endblock %}
 {% block page_title %}Collection Samathey{% endblock %}
+
+{% block meta %}
+<meta name="description" content="La collection Samathey rassemble des centaines de cartes postales anciennes de France (1900-1930) : parcourez la collection, admirez les cartes animées et envoyez vos préférées via La Poste.">
+<meta property="og:site_name" content="Collection Samathey">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Collection Samathey — Cartes postales anciennes">
+<meta property="og:description" content="Des centaines de cartes postales anciennes de France (1900-1930), à découvrir et à s'envoyer via La Poste.">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/Samathey.png' %}">
+<meta property="og:locale" content="fr_FR">
+{% endblock %}
 
 {% block content %}
 <div class="home-page">

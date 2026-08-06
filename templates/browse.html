@@ -3,7 +3,29 @@
 {% load static %}
  
 {% block page_title %}Rechercher{% endblock %}
- 
+
+{% block title %}{% if og_card %}Carte N° {{ og_card.number }} — {{ og_card.title }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+
+{% block meta %}
+{% if og_card %}
+{# Balises OG/meta de la carte partagée via ?carte= #}
+{% with og_desc=og_card.description|striptags|default:og_card.keywords|truncatechars:160|default:"Carte postale ancienne de la collection Samathey." %}
+<meta name="description" content="{{ og_desc }}">
+<meta property="og:site_name" content="Collection Samathey">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Carte N° {{ og_card.number }} — {{ og_card.title }}">
+<meta property="og:description" content="{{ og_desc }}">
+{% endwith %}
+{% if og_card.get_vignette_url %}
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ og_card.get_vignette_url }}">
+{% endif %}
+<meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'browse' %}?carte={{ og_card.id }}">
+<meta property="og:locale" content="fr_FR">
+{% else %}
+{{ block.super }}
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <!-- IMMEDIATE Loading Overlay - Shows instantly -->
 <div class="loading-overlay active" id="loading-overlay">
@@ -355,7 +377,7 @@
     <!-- Results Grid -->
     <div class="results-section" id="results-section">
         <div class="postcards-grid" id="postcards-grid">
-            {% for postcard in postcards %}
+            {% for postcard in postcards|slice:":50" %}{# 50 = ITEMS_PER_PAGE côté JS ; les pages suivantes sont rendues par renderCard() depuis cards_payload #}
             <div class="postcard-card"
                  data-id="{{ postcard.id }}"
                  data-number="{{ postcard.number }}"
@@ -372,11 +394,25 @@
                 <div class="card-image-wrapper">
                     {% with vignette_url=postcard.get_vignette_url %}
                     {% if vignette_url %}
+                    {% with vignette_webp_url=postcard.get_vignette_webp_url %}
+                    {% if vignette_webp_url %}
+                    {# data-srcset promu en srcset par le lazy-loading existant, pour ne rien charger avant l'intersection #}
+                    <picture>
+                        <source type="image/webp" data-srcset="{{ vignette_webp_url }}">
+                        <img class="card-image"
+                             data-src="{{ vignette_url }}"
+                             alt="{{ postcard.title }}"
+                             loading="lazy"
+                             decoding="async">
+                    </picture>
+                    {% else %}
                     <img class="card-image"
                          data-src="{{ vignette_url }}"
                          alt="{{ postcard.title }}"
                          loading="lazy"
                          decoding="async">
+                    {% endif %}
+                    {% endwith %}
                     <div class="card-placeholder">
                         <div class="placeholder-spinner"></div>
                     </div>
@@ -520,6 +556,17 @@
                 </svg>
             </a>
             
+            <button class="popup-img-action-btn popup-share-img-btn" id="popup-share-img-btn" onclick="copyCardLink()" title="Copier le lien" aria-label="Copier le lien">
+                <svg id="popup-share-icon-link" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                <svg id="popup-share-icon-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none;">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span class="popup-share-feedback" id="popup-share-feedback">Lien copié</span>
+            </button>
+
             <a class="popup-img-action-btn popup-video-img-btn" id="popup-video-img-btn" href="#" title="Voir l'animation" aria-label="Voir l'animation" style="display:none;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="5 3 19 12 5 21 5 3"/>
@@ -596,7 +643,9 @@
 
 <!-- Bubble Pop Effect Container -->
 <div class="bubble-pop-container" id="bubble-pop-container"></div>
- 
+
+{{ cards_payload|json_script:'cards-data' }}
+
 <script>
 // =============================================
 // IMMEDIATE LOADING - START INSTANTLY
@@ -619,23 +668,29 @@ let currentPage = 1;
 let loadingStartTime = Date.now();
 const MIN_LOADING_TIME = {% if query %}1800{% else %}2500{% endif %}; // 1.8s for search, 2.5s otherwise
  
-const allPostcardsData = [
-    {% for postcard in postcards %}
-    {
-        id: {{ postcard.id }},
-        number: "{{ postcard.number|escapejs }}",
-        title: "{{ postcard.title|escapejs }}",
-        keywords: "{{ postcard.keywords|escapejs|lower }}",
-        grande_url: "{{ postcard.get_grande_url }}",
-        dos_url: "{{ postcard.get_dos_url }}",
-        zoom_url: "{{ postcard.get_zoom_url }}",
-        vignette_url: "{{ postcard.get_vignette_url }}",
-        likes_count: {{ postcard.likes_count|default:0 }},
-        has_video: {% if postcard.get_animated_urls %}true{% else %}false{% endif %},
-        video_url: "{{ postcard.get_first_video_url|default:'' }}"
-    }{% if not forloop.last %},{% endif %}
-    {% endfor %}
-];
+// Catalogue émis une seule fois via json_script (id="cards-data"),
+// remappé vers le format historique utilisé par tout le JS de la page.
+const allPostcardsData = JSON.parse(document.getElementById('cards-data').textContent).map(function(c) {
+    return {
+        id: c.id,
+        number: c.number == null ? '' : String(c.number),
+        title: c.title || '',
+        keywords: (c.keywords || '').toLowerCase(),
+        grande_url: c.grande || '',
+        dos_url: c.dos || '',
+        zoom_url: c.zoom || '',
+        vignette_url: c.vignette || '',
+        vignette_webp: c.vignette_webp || '',
+        likes_count: c.likes || 0,
+        has_video: !!c.animated,
+        video_url: c.video || ''
+    };
+});
+
+// Likes de l'utilisateur courant (les cartes rendues côté serveur reçoivent
+// la classe "liked" via {% templatetag openblock %} if postcard.id in user_likes {% templatetag closeblock %} ;
+// ce Set fournit le même état aux cartes rendues par renderCard()).
+const userLikes = new Set([{% for pid in user_likes %}{{ pid }}{% if not forloop.last %},{% endif %}{% endfor %}]);
  
 // Expanded floating keywords
 const riverKeywords = [
@@ -1006,6 +1061,13 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Équivalent JS du filtre Django truncatechars:50 (troncature + « … » inclus dans la longueur)
+function truncateChars(text, num) {
+    text = text || '';
+    if (text.length <= num) return text;
+    return text.substring(0, num - 1) + '…';
+}
+
 function clearSearch() {
     window.location.href = '{% url "browse" %}';
 }
@@ -1041,7 +1103,7 @@ function renderCurrentPage() {
     
     // Render postcards
     pageItems.forEach(postcard => {
-        const card = createPostcardCard(postcard);
+        const card = renderCard(postcard);
         grid.appendChild(card);
     });
     
@@ -1060,7 +1122,10 @@ function renderCurrentPage() {
     }
 }
 
-function createPostcardCard(postcard) {
+// Rend une carte STRICTEMENT identique au markup serveur de la grille
+// (mêmes classes, attributs, data-*, aria-labels, lazy loading) pour les
+// pages au-delà du premier lot rendu côté serveur.
+function renderCard(postcard) {
     const card = document.createElement('div');
     card.className = 'postcard-card';
     card.dataset.id = postcard.id;
@@ -1074,14 +1139,18 @@ function createPostcardCard(postcard) {
     card.dataset.hasVideo = postcard.has_video;
     card.dataset.videoUrl = postcard.video_url;
     card.onclick = () => showDetail(postcard.id);
-    
-    const userLikes = new Set();
+
     const isLiked = userLikes.has(postcard.id);
-    
+
+    const vignetteImg = `<img class="card-image" data-src="${postcard.vignette_url}" alt="${escapeHtml(postcard.title)}" loading="lazy" decoding="async">`;
+    const vignetteMarkup = postcard.vignette_webp
+        ? `<picture><source type="image/webp" data-srcset="${postcard.vignette_webp}">${vignetteImg}</picture>`
+        : vignetteImg;
+
     card.innerHTML = `
         <div class="card-image-wrapper">
             ${postcard.vignette_url ? `
-                <img class="card-image" data-src="${postcard.vignette_url}" alt="${escapeHtml(postcard.title)}" loading="lazy">
+                ${vignetteMarkup}
                 <div class="card-placeholder">
                     <div class="placeholder-spinner"></div>
                 </div>
@@ -1104,36 +1173,36 @@ function createPostcardCard(postcard) {
         </div>
         <div class="card-overlay">
             <div class="card-actions">
-                <button class="action-btn view-btn" onclick="event.stopPropagation(); showDetail(${postcard.id})" title="Voir le détail">
+                <button class="action-btn view-btn" onclick="event.stopPropagation(); showDetail(${postcard.id})" title="Voir le détail" aria-label="Voir le détail">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                         <circle cx="12" cy="12" r="3"/>
                     </svg>
                 </button>
-                <button class="action-btn like-btn ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation(); toggleLike(event, ${postcard.id})" title="J'aime" data-id="${postcard.id}">
+                <button class="action-btn like-btn ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation(); toggleLike(event, ${postcard.id})" title="J'aime" aria-label="J'aime" data-id="${postcard.id}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
                 </button>
-                <button class="action-btn zoom-btn" onclick="event.stopPropagation(); showZoom(${postcard.id})" title="Agrandir">
+                <button class="action-btn zoom-btn" onclick="event.stopPropagation(); showZoom(${postcard.id})" title="Agrandir" aria-label="Agrandir">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35M11 8v6M8 11h6"/>
                     </svg>
                 </button>
                 ${postcard.has_video ? `
-                    <a href="/cp-animes/?highlight=${postcard.id}" class="action-btn action-video" onclick="event.stopPropagation();" title="Voir l'animation">
+                    <a href="/cp-animes/?highlight=${postcard.id}" class="action-btn action-video" onclick="event.stopPropagation();" title="Voir l'animation" aria-label="Voir l'animation">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="5 3 19 12 5 21 5 3"/>
                         </svg>
                     </a>
                 ` : ''}
             </div>
-            <p class="card-title">${escapeHtml(postcard.title.substring(0, 50))}${postcard.title.length > 50 ? '...' : ''}</p>
+            <p class="card-title">${escapeHtml(truncateChars(postcard.title, 50))}</p>
             <span class="card-number">N° ${postcard.number}</span>
         </div>
     `;
-    
+
     return card;
 }
 
@@ -1207,12 +1276,25 @@ function goToPage(page) {
     renderCurrentPage();
 }
 
+// Active la <source> WebP différée (data-srcset) juste avant le chargement lazy de l'img
+function activateWebpSource(img) {
+    const parent = img.parentElement;
+    if (parent && parent.tagName === 'PICTURE') {
+        const source = parent.querySelector('source[data-srcset]');
+        if (source) {
+            source.srcset = source.dataset.srcset;
+            source.removeAttribute('data-srcset');
+        }
+    }
+}
+
 function initLazyLoading() {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const img = entry.target;
                 if (img.dataset.src) {
+                    activateWebpSource(img);
                     img.src = img.dataset.src;
                     img.onload = () => {
                         img.classList.add('loaded');
@@ -2348,7 +2430,8 @@ function showDetail(id) {
    
     const cardLikeBtn = document.querySelector(`.like-btn[data-id="${id}"]`);
     const popupLikeBtn = document.getElementById('popup-like-img-btn');
-    popupLikeBtn.classList.toggle('liked', cardLikeBtn?.classList.contains('liked'));
+    // Si la carte n'est pas dans le DOM (page non rendue), l'état vient du Set userLikes
+    popupLikeBtn.classList.toggle('liked', cardLikeBtn ? cardLikeBtn.classList.contains('liked') : userLikes.has(id));
    
     document.getElementById('popup-overlay').classList.add('active');
     document.getElementById('popup-detail').classList.add('active');
@@ -2449,6 +2532,13 @@ async function toggleLike(event, postcardId) {
         const data = await response.json();
        
         if (data.success) {
+            // Garde le Set userLikes en phase pour les cartes re-rendues par renderCard()
+            if (data.liked) {
+                userLikes.add(postcardId);
+            } else {
+                userLikes.delete(postcardId);
+            }
+
             const cardBtn = document.querySelector(`.like-btn[data-id="${postcardId}"]`);
             if (cardBtn) {
                 cardBtn.classList.toggle('liked', data.liked);
@@ -2474,6 +2564,62 @@ function togglePopupLike() {
     if (currentPostcardId) {
         toggleLike({stopPropagation: () => {}}, currentPostcardId);
     }
+}
+
+// =============================================
+// PARTAGE — COPIER LE LIEN DE LA CARTE
+// =============================================
+let shareFeedbackTimeout = null;
+
+function copyCardLink() {
+    if (!currentPostcardId) return;
+
+    const link = location.origin + '/parcourir/?carte=' + currentPostcardId;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link)
+            .then(showShareFeedback)
+            .catch(() => copyCardLinkFallback(link));
+    } else {
+        copyCardLinkFallback(link);
+    }
+}
+
+function copyCardLinkFallback(link) {
+    const textarea = document.createElement('textarea');
+    textarea.value = link;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        if (document.execCommand('copy')) {
+            showShareFeedback();
+        }
+    } catch (e) {
+        console.error('Copy error:', e);
+    }
+    document.body.removeChild(textarea);
+}
+
+function showShareFeedback() {
+    const btn = document.getElementById('popup-share-img-btn');
+    const linkIcon = document.getElementById('popup-share-icon-link');
+    const checkIcon = document.getElementById('popup-share-icon-check');
+    if (!btn) return;
+
+    btn.classList.add('copied');
+    if (linkIcon) linkIcon.style.display = 'none';
+    if (checkIcon) checkIcon.style.display = 'block';
+
+    if (shareFeedbackTimeout) clearTimeout(shareFeedbackTimeout);
+    shareFeedbackTimeout = setTimeout(() => {
+        btn.classList.remove('copied');
+        if (linkIcon) linkIcon.style.display = 'block';
+        if (checkIcon) checkIcon.style.display = 'none';
+        shareFeedbackTimeout = null;
+    }, 1600);
 }
  
 // =============================================
@@ -2501,7 +2647,8 @@ class ImageLoader {
     loadImage(img) {
         const src = img.dataset.src;
         if (!src) return;
-       
+
+        activateWebpSource(img);
         img.src = src;
        
         img.onload = () => {
@@ -2656,9 +2803,27 @@ document.addEventListener('DOMContentLoaded', () => {
     window.silureManager = new SilureManager(); // Add silures
     window.lightParticles = new LightParticles();
     new ImageLoader();
-   
+
     if (document.getElementById('searchInput').value.trim()) {
         document.getElementById('river-keywords-section').classList.add('searching');
+    }
+
+    // Le serveur ne rend que la première page (50 cartes) : afficher les
+    // contrôles de pagination pour atteindre les suivantes (rendues par renderCard()).
+    renderPagination();
+
+    // Lien profond ?carte= / ?postcard= : ouvrir le popup de la carte puis nettoyer l'URL
+    const deepLinkParams = new URLSearchParams(window.location.search);
+    const deepLinkRaw = deepLinkParams.get('carte') || deepLinkParams.get('postcard');
+    if (deepLinkRaw !== null) {
+        const deepLinkId = parseInt(deepLinkRaw, 10);
+        if (!isNaN(deepLinkId) && allPostcardsData.some(p => p.id === deepLinkId)) {
+            showDetail(deepLinkId);
+        }
+        deepLinkParams.delete('carte');
+        deepLinkParams.delete('postcard');
+        const cleanedQuery = deepLinkParams.toString();
+        history.replaceState(null, '', window.location.pathname + (cleanedQuery ? '?' + cleanedQuery : ''));
     }
 });
 
@@ -3581,6 +3746,8 @@ setTimeout(() => {
 }
  
 .card-image-wrapper { position: relative; aspect-ratio: 4/3; overflow: hidden; background: #1a1208; }
+/* <picture> (variante WebP) transparent pour le layout : l'img se dimensionne comme avant */
+.card-image-wrapper picture { display: contents; }
 .card-image { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s; }
 .card-image.loaded { opacity: 1; }
 .card-placeholder {
@@ -3810,6 +3977,20 @@ setTimeout(() => {
 
 .popup-video-img-btn:hover {
     background: #b5600b;
+}
+
+/* Copier le lien — confirmation « Lien copié » */
+.popup-share-feedback {
+    display: none;
+}
+
+.popup-share-img-btn.copied {
+    background: rgba(181, 96, 11, 0.8);
+    border-color: #b5600b;
+}
+
+.popup-share-img-btn.copied .popup-share-feedback {
+    display: inline;
 }
  
 .popup-info {

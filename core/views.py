@@ -1275,8 +1275,47 @@ def browse(request):
                 ).values_list('postcard_id', flat=True)
             )
 
+        # Full payload for the client (built from the cached DB fields —
+        # pure string concatenation, zero disk I/O, no per-card queries).
+        media_url = settings.MEDIA_URL
+        rarity_map = dict(Postcard.RARITY_CHOICES)
+        cards_payload = []
+        for p in postcards_list:
+            vignette = f'{media_url}{p.vignette_file}' if p.vignette_file else ''
+            grande = f'{media_url}{p.grande_file}' if p.grande_file else vignette
+            videos = p.animation_files or []
+            cards_payload.append({
+                'id': p.id,
+                'number': p.number,
+                'title': p.title,
+                'rarity': p.rarity,
+                'rarity_display': rarity_map.get(p.rarity, p.rarity),
+                'views': p.views_count,
+                'likes': p.likes_count,
+                'vignette': vignette,
+                'vignette_webp': f'{media_url}{p.vignette_webp}' if p.vignette_webp else '',
+                'grande': grande,
+                'dos': f'{media_url}{p.dos_file}' if p.dos_file else '',
+                'zoom': f'{media_url}{p.zoom_file}' if p.zoom_file else grande,
+                'video': f'{media_url}{videos[0]}' if videos else '',
+                'video_count': len(videos),
+                'animated': bool(videos),
+                'keywords': p.keywords or '',
+            })
+
+        # Deep link (?carte=<id>, legacy ?postcard=<id>) for OG tags
+        og_card = None
+        card_param = request.GET.get('carte') or request.GET.get('postcard')
+        if card_param:
+            try:
+                og_card = Postcard.objects.filter(id=int(card_param)).first()
+            except (TypeError, ValueError):
+                og_card = None
+
         context = {
             'postcards': postcards_list,
+            'cards_payload': cards_payload,
+            'og_card': og_card,
             'themes': themes,
             'query': query,
             'total_count': Postcard.objects.count(),
