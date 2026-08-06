@@ -405,6 +405,77 @@ document.addEventListener('keydown', (e) => {
     }
 }
 
+/* — Responsive (round 2) — */
+@media (max-width: 1023px) and (hover: none) {
+    /* Écrans tactiles : pas de survol — le cartouche et l'invite
+       « Voir la vidéo » restent visibles en permanence */
+    .painting-info {
+        opacity: 1;
+        transform: translateY(0);
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        padding: 12px 15px;
+    }
+
+    .painting-info h3 {
+        font-size: 1.05rem;
+        margin-bottom: 6px;
+    }
+
+    .play-indicator svg { animation: none; }
+}
+
+@media (max-width: 1023px) {
+    /* La modale tient toujours dans le viewport : hauteur bornée,
+       défilement interne, bouton fermer ramené à l'intérieur du cadre
+       (sinon il serait rogné par le défilement) */
+    .video-modal { padding: 16px; }
+
+    .modal-content {
+        max-height: calc(100vh - 32px);
+        max-height: calc(100svh - 32px);
+        overflow-y: auto;
+    }
+
+    .modal-close {
+        top: 10px;
+        right: 10px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .modal-content h2 { padding: 0 48px; }
+}
+
+@media (max-width: 1023px) and (max-height: 540px) {
+    /* Paysage court : la largeur est bornée pour que la vidéo 16/9
+       reste entièrement visible sans défilement */
+    .modal-content {
+        max-width: calc((100vh - 150px) * 16 / 9);
+        max-width: calc((100svh - 150px) * 16 / 9);
+    }
+
+    .modal-content h2 { margin-bottom: 12px; }
+}
+
+@media (max-width: 480px) {
+    /* Quasi plein écran sur petit mobile */
+    .video-modal { padding: 10px; }
+
+    .modal-content {
+        width: 100%;
+        padding: 16px;
+        border-radius: 14px;
+    }
+
+    .modal-content h2 { margin-bottom: 18px; }
+
+    .paintings-gallery { padding: 0 15px; }
+
+    .page-header { padding: 90px 15px 35px; }
+}
+
 /* Animations */
 .animate-fade-in-down { animation: fadeInDown 0.8s ease forwards; }
 .animate-fade-in-up { animation: fadeInUp 0.8s ease forwards; }

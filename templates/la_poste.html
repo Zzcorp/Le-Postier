@@ -2981,5 +2981,160 @@ document.addEventListener('DOMContentLoaded', () => {
 .modal-content::-webkit-scrollbar-thumb:hover {
     background: rgba(181, 96, 11, 0.7);
 }
+
+/* — Responsive (round 2) — */
+@media (max-width: 1023px) {
+    /* Onglets : défilement horizontal dans leur propre conteneur */
+    .poste-tabs {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 8px 2px 10px;
+        scrollbar-width: thin;
+    }
+
+    /* Centrés tant qu'ils tiennent, défilables sinon */
+    .poste-tabs .tab-btn:first-child {
+        margin-left: auto;
+    }
+
+    .poste-tabs .tab-btn:last-child {
+        margin-right: auto;
+    }
+
+    .poste-tabs .tab-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        min-height: 44px;
+    }
+
+    .view-message-btn,
+    .post-action-btn {
+        min-height: 40px;
+    }
+
+    .suggestion-item {
+        align-items: center;
+        min-height: 44px;
+    }
+
+    /* La liste d'autocomplétion reste visible dans l'écran */
+    .user-suggestions {
+        max-height: min(220px, 40vh);
+    }
+
+    .notification {
+        max-width: calc(100vw - 32px);
+    }
+}
+
+@media (max-width: 768px) {
+    /* Cartes reçues / envoyées : 2 par rangée */
+    .postcards-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    /* Timbres côte à côte pour garder le dialogue court */
+    .stamp-selection .stamps-row {
+        flex-direction: row;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .stamps-row .stamp-option {
+        flex: 1 1 0;
+        max-width: 180px;
+        padding: 12px 8px;
+    }
+
+    .stamp-option img {
+        height: 56px;
+    }
+
+    .step-buttons .btn-back,
+    .step-buttons .btn-next,
+    .step-buttons .btn-send {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .la-poste-page {
+        padding: 70px 12px 50px;
+    }
+
+    .poste-header h1 {
+        font-size: 1.7rem;
+    }
+
+    .header-icon {
+        width: 70px;
+        height: 70px;
+    }
+
+    /* Une carte par rangée sur mobile étroit */
+    .postcards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .post-actions {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    /* Dialogues de composition et de choix : quasi plein écran */
+    .compose-modal,
+    .picker-modal {
+        padding: 0;
+    }
+
+    .compose-modal .modal-content,
+    .picker-modal .modal-content {
+        margin: 0;
+        border-radius: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+    }
+
+    .picker-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .compose-message-input {
+        padding: 8px;
+    }
+
+    .view-message-content {
+        padding: 20px 14px 25px;
+    }
+
+    .signature-required-content {
+        padding: 32px 20px;
+    }
+
+    .signature-required-actions {
+        flex-direction: column;
+    }
+
+    .signature-required-actions .btn-cancel,
+    .signature-required-actions .btn-create {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .notification {
+        top: 76px;
+        left: 12px;
+        right: 12px;
+        max-width: none;
+        justify-content: center;
+    }
+}
 </style>
 {% endblock %}

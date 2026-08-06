@@ -1618,5 +1618,92 @@ window.addEventListener('load', () => {
         max-height: 40vh;
     }
 }
+
+/* — Responsive (round 2) — */
+/* >= 1024px : rendu strictement inchangé. En dessous : cibles tactiles,
+   lisibilité et modale ajustée au viewport. Additif uniquement. */
+
+@media (max-width: 1023px) {
+    /* Cibles tactiles >= 40px (sans changer le style existant) */
+    .sort-btn { min-height: 44px; }
+    .like-btn, .suggest-btn { min-height: 40px; }
+    .video-tab { min-height: 40px; padding: 8px 18px; font-size: 0.875rem; }
+    .cancel-btn, .submit-btn { min-height: 44px; }
+    .success-content button { min-height: 44px; }
+
+    /* Lisibilité : tailles effectives >= 14px */
+    .card-number { font-size: 0.875rem; }
+    .multi-video-badge { font-size: 0.875rem; }
+    .char-count { font-size: 0.875rem; }
+}
+
+@media (max-width: 768px) {
+    /* Grille : 2 colonnes régulières */
+    .animated-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        padding: 0 16px;
+    }
+
+    .card-info { padding: 14px; }
+    .card-actions { flex-wrap: wrap; }
+    .header-stats { flex-wrap: wrap; gap: 16px; }
+
+    /* Modale vidéo : plein écran réel, défilement interne,
+       bouton Fermer toujours accessible au-dessus du contenu */
+    .animated-modal { padding: 0; }
+
+    .modal-container {
+        height: 100vh;
+        max-height: 100vh;
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+
+    .modal-scroll-content { max-height: 100%; }
+
+    .modal-close { z-index: 20; }
+
+    /* Modale de confirmation : tient dans le viewport */
+    .success-modal { padding: 16px; }
+
+    .success-content {
+        width: min(100%, 420px);
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 30px 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Grille : 1 colonne */
+    .animated-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .gallery-header { padding-bottom: 36px; }
+    .header-content p { font-size: 1rem; }
+    .sort-options { gap: 10px; }
+    .sort-btn { padding: 10px 16px; }
+
+    /* Modale : formulaires et actions empilés, pleine largeur */
+    .modal-info-section { padding: 20px 16px; }
+    .modal-title { font-size: 1.2rem; }
+    .modal-actions { gap: 10px; }
+
+    .modal-like-btn, .modal-suggest-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 18px;
+    }
+
+    .video-selector { padding: 12px 16px; }
+    .suggest-form-container { padding: 16px; }
+    .form-actions { flex-direction: column; }
+    .cancel-btn, .submit-btn { width: 100%; }
+
+    .success-content { padding: 24px 20px; }
+}
 </style>
 {% endblock %}

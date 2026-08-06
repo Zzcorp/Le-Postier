@@ -112,6 +112,7 @@ urlpatterns = [
     path('api/admin/postcard-analytics/<int:postcard_id>/', views.admin_postcard_analytics, name='admin_postcard_analytics'),
     path('api/admin/add-postcard/', views.admin_add_postcard, name='admin_add_postcard'),
     path('api/admin/detailed-stats/', views.admin_detailed_stats_api, name='admin_detailed_stats_api'),
+    path('api/admin/overview-extra/', views.admin_overview_extra, name='admin_overview_extra'),
     path('api/admin/user-analytics/<int:user_id>/', views.admin_user_analytics_api, name='admin_user_analytics_api'),
     path('api/admin/country-analytics/<str:country>/', views.admin_country_analytics_api, name='admin_country_analytics_api'),
     path('api/admin/export/', views.admin_export_analytics, name='admin_export_analytics'),

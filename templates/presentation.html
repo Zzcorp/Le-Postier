@@ -476,5 +476,32 @@
         margin-bottom: 15px;
     }
 }
+
+/* — Responsive (round 2) — */
+@media (min-width: 768px) and (max-width: 1023px) {
+    /* Tablette : 3 colonnes deviennent trop étroites — 2 cartes + la
+       dernière en pleine largeur. Sans effet à partir de 1024px. */
+    .presentation-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .presentation-card:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 600px) {
+    /* Le texte justifié crée des rivières sur colonne étroite */
+    .card-text { text-align: left; }
+}
+
+@media (max-width: 480px) {
+    .presentation-page { padding: 70px 15px 50px; }
+    .presentation-date { font-size: 1.1rem; letter-spacing: 2px; }
+    .card-text { font-size: 1rem; }
+
+    /* Le bouton reste sur une ligne même à 320px de large */
+    .discover-btn { padding: 15px 22px; font-size: 1rem; }
+}
 </style>
 {% endblock %}

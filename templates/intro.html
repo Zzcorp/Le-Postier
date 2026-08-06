@@ -165,6 +165,35 @@
             font-size: 12px;
             font-style: italic;
         }
+
+        /* — Responsive (round 2) — */
+        @media (max-width: 1023px) {
+            .loading-info { font-size: 14px; }
+        }
+
+        @media (max-width: 480px) {
+            .intro-content { padding: 0 20px; }
+            .logo { width: 150px; height: 150px; }
+            .fish-logo { width: 90px; height: 60px; }
+            .site-name { font-size: 26px; margin-top: 24px; }
+            .loading-container { margin-top: 30px; }
+            .loading-bar { width: min(300px, 78vw); }
+        }
+
+        @media (max-width: 360px) {
+            .logo { width: 120px; height: 120px; }
+            .fish-logo { width: 72px; height: 48px; }
+            .site-name { font-size: 22px; }
+        }
+
+        @media (max-width: 1023px) and (max-height: 560px) {
+            /* Paysage court : on compacte la pile pour que tout reste visible */
+            .logo { width: 110px; height: 110px; }
+            .fish-logo { width: 66px; height: 44px; }
+            .site-name { font-size: 22px; margin-top: 16px; }
+            .loading-container { margin-top: 20px; }
+            .loading-info { margin-top: 6px; }
+        }
     </style>
 </head>
 <body>

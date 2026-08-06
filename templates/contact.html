@@ -534,6 +534,76 @@
         gap: 20px;
     }
 }
+
+/* — Responsive (round 2) — */
+@media (max-width: 1023px) {
+    .submit-btn {
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 600px) {
+    .contact-page {
+        padding: 70px 14px 50px;
+    }
+
+    .contact-header h1 {
+        font-size: 2rem;
+    }
+
+    /* Verso de la carte : le message au-dessus de la zone timbre/destinataire.
+       Le fond de carte couvre toute la hauteur pour que rien ne soit coupé. */
+    .postcard-bg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .postcard-form {
+        position: relative;
+        inset: auto;
+        grid-template-rows: auto auto auto;
+        padding: 6%;
+    }
+
+    .message-input {
+        grid-row: 1;
+        min-height: 160px;
+    }
+
+    .stamp-area {
+        grid-row: 2;
+    }
+
+    .recipient-area {
+        grid-row: 3;
+        padding: 12px;
+    }
+
+    .recipient-placeholder {
+        padding: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .contact-header h1 {
+        font-size: 1.7rem;
+    }
+
+    .interactive-elements {
+        gap: 16px;
+        padding: 16px 12px;
+    }
+
+    .success-message {
+        width: calc(100% - 32px);
+        max-height: 85vh;
+        overflow-y: auto;
+        padding: 32px 20px;
+    }
+}
 </style>
 
 <script>

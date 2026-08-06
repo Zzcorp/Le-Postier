@@ -4,6 +4,10 @@
 
 {% block page_title %}Tableau de Bord Admin{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/admin_dashboard.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="admin-dashboard">
     <!-- Header -->
@@ -94,8 +98,75 @@
         </div>
     </header>
 
+    <!-- Sticky Section Nav -->
+    <nav class="dash-nav" id="dashNav" aria-label="Navigation du tableau de bord">
+        <a href="#direct" class="dash-nav-link">Direct</a>
+        <a href="#vue-ensemble" class="dash-nav-link">Vue d'ensemble</a>
+        <a href="#stats" class="dash-nav-link">Statistiques</a>
+        <a href="#metriques" class="dash-nav-link">Métriques</a>
+        <a href="#graphiques" class="dash-nav-link">Graphiques</a>
+        <a href="#geographie" class="dash-nav-link">Géographie</a>
+        <a href="#recherches" class="dash-nav-link">Recherches</a>
+        <a href="#donnees" class="dash-nav-link">Données</a>
+        <a href="#systeme" class="dash-nav-link">Système</a>
+    </nav>
+
+    <!-- KPI Row -->
+    <section class="kpi-section" aria-label="Indicateurs clés">
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Visiteurs aujourd'hui</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <span class="kpi-value">{{ unique_visitors_today }}</span>
+                <span class="kpi-hint">visiteurs uniques</span>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Visiteurs 30 j</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <span class="kpi-value" id="kpiVisitors30">—</span>
+                <span class="kpi-hint">sessions cumulées</span>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Membres</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <span class="kpi-value">{{ total_users }}</span>
+                <span class="kpi-hint">+{{ new_users_today }} aujourd'hui</span>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Cartes vues aujourd'hui</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                </div>
+                <span class="kpi-value">{{ page_views_today }}</span>
+                <span class="kpi-hint">pages vues</span>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Likes</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </div>
+                <span class="kpi-value">{{ total_likes }}</span>
+                <span class="kpi-hint">+{{ likes_today }} aujourd'hui</span>
+            </div>
+            <div class="kpi-card kpi-live">
+                <div class="kpi-top">
+                    <span class="kpi-label">En ligne maintenant</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <span class="kpi-value" id="kpiOnlineNow">{{ active_visitor_count }}</span>
+                <span class="kpi-hint">visiteurs actifs</span>
+            </div>
+        </div>
+    </section>
+
     <!-- Real-Time Section -->
-    <section class="realtime-section">
+    <section class="realtime-section" id="direct">
         <div class="realtime-card">
             <div class="realtime-header">
                 <div class="realtime-indicator">
@@ -142,15 +213,91 @@
         </div>
     </section>
 
+    <!-- Vue d'ensemble (API overview-extra) -->
+    <section class="overview-section" id="vue-ensemble">
+        <h2 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+            </svg>
+            Vue d'ensemble
+        </h2>
+        <p class="overview-status" id="overviewStatus">Chargement des données…</p>
+        <div class="overview-grid" id="overviewGrid" hidden>
+            <div class="overview-card ov-funnel">
+                <h3>Entonnoir membres</h3>
+                <div class="ov-chart">
+                    <canvas id="funnelChart"></canvas>
+                </div>
+            </div>
+            <div class="overview-card ov-laposte">
+                <h3>La Poste</h3>
+                <div class="ov-counters" id="ovLaPoste"></div>
+            </div>
+            <div class="overview-card ov-media">
+                <h3>Couverture média</h3>
+                <div class="ov-counters" id="ovMediaCounters"></div>
+                <div class="ov-coverage">
+                    <div class="ov-coverage-bar"><div class="ov-coverage-fill" id="ovCoverageFill"></div></div>
+                    <span class="ov-coverage-label" id="ovCoverageLabel"></span>
+                </div>
+            </div>
+            <div class="overview-card ov-zero">
+                <h3>Recherches sans résultat</h3>
+                <div class="ov-table-wrap">
+                    <table class="ov-table">
+                        <thead>
+                            <tr><th>Recherche</th><th class="num">Occurrences</th></tr>
+                        </thead>
+                        <tbody id="ovZeroBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="overview-card ov-top">
+                <h3>Top 5 cartes</h3>
+                <div class="ov-tables-grid">
+                    <div class="ov-top-block">
+                        <h4>Les plus vues</h4>
+                        <div class="ov-table-wrap">
+                            <table class="ov-table">
+                                <thead><tr><th>Carte</th><th class="num">Vues</th></tr></thead>
+                                <tbody id="ovTopViewed"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ov-top-block">
+                        <h4>Les plus aimées</h4>
+                        <div class="ov-table-wrap">
+                            <table class="ov-table">
+                                <thead><tr><th>Carte</th><th class="num">Likes</th></tr></thead>
+                                <tbody id="ovTopLiked"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ov-top-block">
+                        <h4>Les plus zoomées</h4>
+                        <div class="ov-table-wrap">
+                            <table class="ov-table">
+                                <thead><tr><th>Carte</th><th class="num">Zooms</th></tr></thead>
+                                <tbody id="ovTopZoomed"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Quick Stats Grid -->
-    <section class="stats-section">
+    <section class="stats-section" id="stats">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 20V10"/>
                 <path d="M12 20V4"/>
                 <path d="M6 20v-6"/>
             </svg>
-            Vue d'ensemble
+            Statistiques générales
         </h2>
         <div class="stats-grid">
             <!-- Users -->
@@ -316,7 +463,7 @@
     </section>
 
     <!-- Performance Metrics -->
-    <section class="metrics-section">
+    <section class="metrics-section" id="metriques">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
@@ -386,7 +533,7 @@
     </section>
 
     <!-- Charts Section -->
-    <section class="charts-section">
+    <section class="charts-section" id="graphiques">
         <div class="charts-grid">
             <!-- Activity Chart -->
             <div class="chart-card chart-wide">
@@ -426,19 +573,19 @@
                 </div>
                 <div class="chart-stats">
                     <div class="chart-stat">
-                        <span class="dot" style="background: #6b7280;"></span>
+                        <span class="dot" style="background: #3987E5;"></span>
                         Non vérifiés: {{ user_categories.unverified }}
                     </div>
                     <div class="chart-stat">
-                        <span class="dot" style="background: #10b981;"></span>
+                        <span class="dot" style="background: #D95926;"></span>
                         Vérifiés: {{ user_categories.verified }}
                     </div>
                     <div class="chart-stat">
-                        <span class="dot" style="background: #f59e0b;"></span>
+                        <span class="dot" style="background: #199E70;"></span>
                         Facteurs: {{ user_categories.postman }}
                     </div>
                     <div class="chart-stat">
-                        <span class="dot" style="background: #8b5cf6;"></span>
+                        <span class="dot" style="background: #C98500;"></span>
                         Staff: {{ user_categories.staff }}
                     </div>
                 </div>
@@ -460,15 +607,15 @@
                 </div>
                 <div class="chart-stats">
                     <div class="chart-stat">
-                        <span class="dot" style="background: #3b82f6;"></span>
+                        <span class="dot" style="background: #3987E5;"></span>
                         Mobile: {{ device_breakdown.mobile }}
                     </div>
                     <div class="chart-stat">
-                        <span class="dot" style="background: #10b981;"></span>
+                        <span class="dot" style="background: #D95926;"></span>
                         Desktop: {{ device_breakdown.desktop }}
                     </div>
                     <div class="chart-stat">
-                        <span class="dot" style="background: #f59e0b;"></span>
+                        <span class="dot" style="background: #199E70;"></span>
                         Tablette: {{ device_breakdown.tablet }}
                     </div>
                 </div>
@@ -496,7 +643,7 @@
     </section>
 
     <!-- Geographic Section -->
-    <section class="geo-section">
+    <section class="geo-section" id="geographie">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
@@ -601,7 +748,7 @@
     </section>
 
     <!-- Search Analytics -->
-    <section class="search-section">
+    <section class="search-section" id="recherches">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/>
@@ -670,7 +817,7 @@
     </section>
 
     <!-- Tabs Section -->
-    <section class="tabs-section">
+    <section class="tabs-section" id="donnees">
         <div class="tabs-nav">
             <button class="tab-btn active" data-tab="likes">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -980,8 +1127,8 @@
                                 <th>Pays</th>
                                 <th>Ville</th>
                                 <th>FAI</th>
-                                <th>Sessions</th>
-                                <th>Pages</th>
+                                <th class="num">Sessions</th>
+                                <th class="num">Pages</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -992,8 +1139,8 @@
                                 <td>{{ ip.country|default:"N/A" }}</td>
                                 <td>{{ ip.city|default:"N/A" }}</td>
                                 <td class="truncate">{{ ip.isp|truncatechars:25 }}</td>
-                                <td>{{ ip.session_count }}</td>
-                                <td>{{ ip.total_page_views|default:0 }}</td>
+                                <td class="num">{{ ip.session_count }}</td>
+                                <td class="num">{{ ip.total_page_views|default:0 }}</td>
                                 <td>
                                     <button class="icon-btn" onclick="lookupIP('{{ ip.ip_address }}')" title="Détails" aria-label="Détails de l'IP">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1036,7 +1183,7 @@
     </section>
 
     <!-- System Health -->
-    <section class="system-section">
+    <section class="system-section" id="systeme">
         <h2 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
@@ -1258,8 +1405,8 @@
     </div>
 </div>
 
-<!-- Include Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js (auto-hébergé) -->
+<script src="{% static 'js/vendor/chart.umd.js' %}"></script>
 
 <script>
 const csrfToken = '{{ csrf_token }}';
@@ -1277,6 +1424,67 @@ const ICON_HEART = svgIcon('<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1
 const ICON_FILM = svgIcon('<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>', 12);
 const ICON_WARNING = svgIcon('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>');
 const ICON_GLOBE = svgIcon('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>', 18);
+const ICON_PAGE = svgIcon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', 12);
+const ICON_CHECK = svgIcon('<path d="M20 6L9 17l-5-5"/>', 16);
+const ICON_ALERT = svgIcon('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>', 16);
+
+// — Safe DOM helpers: every dynamic string goes through textContent, never innerHTML —
+function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null && text !== '') node.textContent = String(text);
+    return node;
+}
+
+function iconNode(svgString) {
+    // Static, hard-coded SVG markup only — never fed with API data.
+    const tpl = document.createElement('template');
+    tpl.innerHTML = svgString.trim();
+    return tpl.content.firstChild;
+}
+
+function clearNode(node) {
+    while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function setSpinner(node) {
+    clearNode(node);
+    node.appendChild(el('div', 'loading-spinner'));
+}
+
+function setLoadError(node, message) {
+    clearNode(node);
+    node.appendChild(el('p', 'error', message));
+}
+
+function warningTag(text) {
+    const tag = el('div', 'warning-tag');
+    tag.appendChild(iconNode(ICON_WARNING));
+    tag.appendChild(document.createTextNode(' ' + text));
+    return tag;
+}
+
+function statBox(num, label) {
+    const box = el('div', 'stat-box');
+    box.appendChild(el('span', 'stat-num', (num === undefined || num === null) ? '0' : num));
+    box.appendChild(el('span', 'stat-label', label));
+    return box;
+}
+
+function statsRow(pairs) {
+    const row = el('div', 'stats-row');
+    pairs.forEach(pair => row.appendChild(statBox(pair[0], pair[1])));
+    return row;
+}
+
+function appendListOrEmpty(container, items, emptyText, buildRow) {
+    if (Array.isArray(items) && items.length > 0) {
+        items.forEach(item => container.appendChild(buildRow(item)));
+    } else {
+        container.appendChild(el('p', 'no-data', emptyText));
+    }
+    return container;
+}
 
 // Update current time
 function updateCurrentTime() {
@@ -1427,86 +1635,70 @@ async function updateSuggestionStatus(suggestionId, status) {
 
 // IP Modal
 async function lookupIP(ipAddress) {
+    const content = document.getElementById('ipModalContent');
     document.getElementById('ipModal').classList.add('active');
-    document.getElementById('ipModalContent').innerHTML = '<div class="loading-spinner"></div>';
-    
+    setSpinner(content);
+
     try {
         const response = await fetch(`/api/admin/ip/${ipAddress}/`);
         const data = await response.json();
-        
-        document.getElementById('ipModalContent').innerHTML = `
-            <div class="ip-details">
-                <div class="detail-section">
-                    <h4>Localisation</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <span class="label">IP</span>
-                            <code>${data.ip_address}</code>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">Pays</span>
-                            <span>${data.location.flag} ${data.location.country}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">Ville</span>
-                            <span>${data.location.city}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">Région</span>
-                            <span>${data.location.region || 'N/A'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">FAI</span>
-                            <span>${data.location.isp || 'N/A'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">Fuseau</span>
-                            <span>${data.location.timezone || 'N/A'}</span>
-                        </div>
-                    </div>
-                    ${data.location.is_vpn ? '<div class="warning-tag">' + ICON_WARNING + ' VPN/Hosting détecté</div>' : ''}
-                    ${data.location.is_proxy ? '<div class="warning-tag">' + ICON_WARNING + ' Proxy détecté</div>' : ''}
-                </div>
-                
-                <div class="detail-section">
-                    <h4>Statistiques</h4>
-                    <div class="stats-row">
-                        <div class="stat-box">
-                            <span class="stat-num">${data.total_sessions}</span>
-                            <span class="stat-label">Sessions</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-num">${data.total_page_views}</span>
-                            <span class="stat-label">Pages</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-num">${data.total_likes}</span>
-                            <span class="stat-label">Likes</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-num">${data.total_searches}</span>
-                            <span class="stat-label">Recherches</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="detail-section">
-                    <h4>Sessions récentes</h4>
-                    <div class="sessions-list">
-                        ${data.sessions.map(s => `
-                            <div class="session-row">
-                                <span>${s.first_visit}</span>
-                                <span>${s.device_type} - ${s.browser}</span>
-                                <span>${s.page_views} pages</span>
-                                <span>${s.username ? ICON_USER + ' ' + s.username : ''}</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucune session</p>'}
-                    </div>
-                </div>
-            </div>
-        `;
+        const loc = data.location || {};
+        const root = el('div', 'ip-details');
+
+        const locSection = el('div', 'detail-section');
+        locSection.appendChild(el('h4', '', 'Localisation'));
+        const grid = el('div', 'detail-grid');
+        [
+            ['IP', data.ip_address, true],
+            ['Pays', ((loc.flag || '') + ' ' + (loc.country || 'N/A')).trim()],
+            ['Ville', loc.city || 'N/A'],
+            ['Région', loc.region || 'N/A'],
+            ['FAI', loc.isp || 'N/A'],
+            ['Fuseau', loc.timezone || 'N/A']
+        ].forEach(entry => {
+            const item = el('div', 'detail-item');
+            item.appendChild(el('span', 'label', entry[0]));
+            item.appendChild(el(entry[2] ? 'code' : 'span', '', entry[1]));
+            grid.appendChild(item);
+        });
+        locSection.appendChild(grid);
+        if (loc.is_vpn) locSection.appendChild(warningTag('VPN/Hosting détecté'));
+        if (loc.is_proxy) locSection.appendChild(warningTag('Proxy détecté'));
+        root.appendChild(locSection);
+
+        const statsSection = el('div', 'detail-section');
+        statsSection.appendChild(el('h4', '', 'Statistiques'));
+        statsSection.appendChild(statsRow([
+            [data.total_sessions, 'Sessions'],
+            [data.total_page_views, 'Pages'],
+            [data.total_likes, 'Likes'],
+            [data.total_searches, 'Recherches']
+        ]));
+        root.appendChild(statsSection);
+
+        const sessSection = el('div', 'detail-section');
+        sessSection.appendChild(el('h4', '', 'Sessions récentes'));
+        const sessList = el('div', 'sessions-list');
+        appendListOrEmpty(sessList, data.sessions, 'Aucune session', s => {
+            const row = el('div', 'session-row');
+            row.appendChild(el('span', '', s.first_visit));
+            row.appendChild(el('span', '', (s.device_type || '') + ' - ' + (s.browser || '')));
+            row.appendChild(el('span', '', (s.page_views || 0) + ' pages'));
+            const userSpan = el('span');
+            if (s.username) {
+                userSpan.appendChild(iconNode(ICON_USER));
+                userSpan.appendChild(document.createTextNode(' ' + s.username));
+            }
+            row.appendChild(userSpan);
+            return row;
+        });
+        sessSection.appendChild(sessList);
+        root.appendChild(sessSection);
+
+        clearNode(content);
+        content.appendChild(root);
     } catch (error) {
-        document.getElementById('ipModalContent').innerHTML = '<p class="error">Erreur de chargement</p>';
+        setLoadError(content, 'Erreur de chargement');
     }
 }
 
@@ -1517,83 +1709,77 @@ function closeIPModal() {
 // User Analytics Modal
 async function showUserAnalytics(userId) {
     if (!userId) return;
-    
+
+    const content = document.getElementById('userModalContent');
     document.getElementById('userModal').classList.add('active');
-    document.getElementById('userModalContent').innerHTML = '<div class="loading-spinner"></div>';
-    
+    setSpinner(content);
+
     try {
         const response = await fetch(`/api/admin/user-analytics/${userId}/`);
         const data = await response.json();
-        
-        document.getElementById('userModalContent').innerHTML = `
-            <div class="user-details">
-                <div class="user-header">
-                    <div class="user-avatar-large">${data.user.username.charAt(0).toUpperCase()}</div>
-                    <div class="user-info">
-                        <h3>${data.user.username}</h3>
-                        <span class="user-email">${data.user.email}</span>
-                        <span class="user-category badge ${data.user.category}">${data.user.category}</span>
-                    </div>
-                </div>
-                
-                <div class="stats-row">
-                    <div class="stat-box">
-                        <span class="stat-num">${data.stats.total_likes}</span>
-                        <span class="stat-label">Likes</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num">${data.stats.total_searches}</span>
-                        <span class="stat-label">Recherches</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num">${data.stats.total_page_views}</span>
-                        <span class="stat-label">Pages vues</span>
-                    </div>
-                </div>
-                
-                <div class="detail-section">
-                    <h4>Cartes favorites</h4>
-                    <div class="favorites-list">
-                        ${data.favorite_postcards.map(p => `
-                            <div class="favorite-item" onclick="showPostcardAnalytics(${p.postcard__id})">
-                                <span>N°${p.postcard__number}</span>
-                                <span class="favorite-title">${(p.postcard__title || '').substring(0, 30)}...</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucun favori</p>'}
-                    </div>
-                </div>
-                
-                <div class="detail-section">
-                    <h4>Recherches récentes</h4>
-                    <div class="searches-list">
-                        ${data.recent_searches.map(s => `
-                            <div class="search-row">
-                                <span class="search-kw">"${s.keyword}"</span>
-                                <span>${s.results_count} rés.</span>
-                                <span>${s.created_at}</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucune recherche</p>'}
-                    </div>
-                </div>
-                
-                <div class="detail-section">
-                    <h4>Sessions</h4>
-                    <div class="sessions-list">
-                        ${data.sessions.map(s => `
-                            <div class="session-row">
-                                <span>${s.first_visit}</span>
-                                <span>${s.duration}</span>
-                                <span>${s.page_views} pages</span>
-                                <span>${s.device} ${s.browser}</span>
-                                <span>${s.country}</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucune session</p>'}
-                    </div>
-                </div>
-            </div>
-        `;
+        const username = (data.user && data.user.username) || '?';
+        const root = el('div', 'user-details');
+
+        const header = el('div', 'user-header');
+        header.appendChild(el('div', 'user-avatar-large', username.charAt(0).toUpperCase()));
+        const info = el('div', 'user-info');
+        info.appendChild(el('h3', '', username));
+        info.appendChild(el('span', 'user-email', data.user.email || ''));
+        info.appendChild(el('span', 'user-category badge ' + (data.user.category || ''), data.user.category || ''));
+        header.appendChild(info);
+        root.appendChild(header);
+
+        root.appendChild(statsRow([
+            [data.stats.total_likes, 'Likes'],
+            [data.stats.total_searches, 'Recherches'],
+            [data.stats.total_page_views, 'Pages vues']
+        ]));
+
+        const favSection = el('div', 'detail-section');
+        favSection.appendChild(el('h4', '', 'Cartes favorites'));
+        const favList = el('div', 'favorites-list');
+        appendListOrEmpty(favList, data.favorite_postcards, 'Aucun favori', p => {
+            const item = el('div', 'favorite-item');
+            item.appendChild(el('span', '', 'N°' + (p.postcard__number || '?')));
+            item.appendChild(el('span', 'favorite-title', (p.postcard__title || '').substring(0, 30) + '...'));
+            item.addEventListener('click', () => showPostcardAnalytics(p.postcard__id));
+            return item;
+        });
+        favSection.appendChild(favList);
+        root.appendChild(favSection);
+
+        const searchSection = el('div', 'detail-section');
+        searchSection.appendChild(el('h4', '', 'Recherches récentes'));
+        const searchList = el('div', 'searches-list');
+        appendListOrEmpty(searchList, data.recent_searches, 'Aucune recherche', s => {
+            const row = el('div', 'search-row');
+            row.appendChild(el('span', 'search-kw', '"' + (s.keyword || '') + '"'));
+            row.appendChild(el('span', '', (s.results_count || 0) + ' rés.'));
+            row.appendChild(el('span', '', s.created_at));
+            return row;
+        });
+        searchSection.appendChild(searchList);
+        root.appendChild(searchSection);
+
+        const sessSection = el('div', 'detail-section');
+        sessSection.appendChild(el('h4', '', 'Sessions'));
+        const sessList = el('div', 'sessions-list');
+        appendListOrEmpty(sessList, data.sessions, 'Aucune session', s => {
+            const row = el('div', 'session-row');
+            row.appendChild(el('span', '', s.first_visit));
+            row.appendChild(el('span', '', s.duration));
+            row.appendChild(el('span', '', (s.page_views || 0) + ' pages'));
+            row.appendChild(el('span', '', ((s.device || '') + ' ' + (s.browser || '')).trim()));
+            row.appendChild(el('span', '', s.country));
+            return row;
+        });
+        sessSection.appendChild(sessList);
+        root.appendChild(sessSection);
+
+        clearNode(content);
+        content.appendChild(root);
     } catch (error) {
-        document.getElementById('userModalContent').innerHTML = '<p class="error">Erreur de chargement</p>';
+        setLoadError(content, 'Erreur de chargement');
     }
 }
 
@@ -1603,83 +1789,74 @@ function closeUserModal() {
 
 // Country Analytics Modal
 async function showCountryAnalytics(country) {
+    const content = document.getElementById('countryModalContent');
     document.getElementById('countryModal').classList.add('active');
-    document.getElementById('countryModalContent').innerHTML = '<div class="loading-spinner"></div>';
-    
+    setSpinner(content);
+
     try {
         const response = await fetch(`/api/admin/country-analytics/${encodeURIComponent(country)}/`);
         const data = await response.json();
-        
-        document.getElementById('countryModalContent').innerHTML = `
-            <div class="country-details">
-                <div class="country-header">
-                    <h3>${data.country}</h3>
-                </div>
-                
-                <div class="stats-row">
-                    <div class="stat-box">
-                        <span class="stat-num">${data.stats.total_sessions}</span>
-                        <span class="stat-label">Sessions</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num">${data.stats.unique_visitors}</span>
-                        <span class="stat-label">Visiteurs</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num">${data.stats.total_page_views}</span>
-                        <span class="stat-label">Pages</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num">${data.stats.total_likes}</span>
-                        <span class="stat-label">Likes</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num">${data.stats.avg_session_duration_formatted}</span>
-                        <span class="stat-label">Durée moy.</span>
-                    </div>
-                </div>
-                
-                <div class="detail-grid-2">
-                    <div class="detail-section">
-                        <h4>Villes</h4>
-                        <div class="list-compact">
-                            ${data.cities.map(c => `
-                                <div class="list-item">
-                                    <span>${c.city}</span>
-                                    <span>${c.session_count}</span>
-                                </div>
-                            `).join('') || '<p class="no-data">Aucune ville</p>'}
-                        </div>
-                    </div>
-                    
-                    <div class="detail-section">
-                        <h4>Appareils</h4>
-                        <div class="list-compact">
-                            ${data.devices.map(d => `
-                                <div class="list-item">
-                                    <span>${d.device_type}</span>
-                                    <span>${d.count}</span>
-                                </div>
-                            `).join('') || '<p class="no-data">Aucune donnée</p>'}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="detail-section">
-                    <h4>Cartes populaires</h4>
-                    <div class="favorites-list">
-                        ${data.popular_postcards.map(p => `
-                            <div class="favorite-item" onclick="showPostcardAnalytics(${p.postcard__id})">
-                                <span>N°${p.postcard__number}</span>
-                                <span>${p.like_count} ${ICON_HEART}</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucun like</p>'}
-                    </div>
-                </div>
-            </div>
-        `;
+        const root = el('div', 'country-details');
+
+        const header = el('div', 'country-header');
+        header.appendChild(el('h3', '', data.country));
+        root.appendChild(header);
+
+        root.appendChild(statsRow([
+            [data.stats.total_sessions, 'Sessions'],
+            [data.stats.unique_visitors, 'Visiteurs'],
+            [data.stats.total_page_views, 'Pages'],
+            [data.stats.total_likes, 'Likes'],
+            [data.stats.avg_session_duration_formatted, 'Durée moy.']
+        ]));
+
+        const grid2 = el('div', 'detail-grid-2');
+
+        const citiesSection = el('div', 'detail-section');
+        citiesSection.appendChild(el('h4', '', 'Villes'));
+        const citiesList = el('div', 'list-compact');
+        appendListOrEmpty(citiesList, data.cities, 'Aucune ville', c => {
+            const item = el('div', 'list-item');
+            item.appendChild(el('span', '', c.city));
+            item.appendChild(el('span', '', c.session_count));
+            return item;
+        });
+        citiesSection.appendChild(citiesList);
+        grid2.appendChild(citiesSection);
+
+        const devicesSection = el('div', 'detail-section');
+        devicesSection.appendChild(el('h4', '', 'Appareils'));
+        const devicesList = el('div', 'list-compact');
+        appendListOrEmpty(devicesList, data.devices, 'Aucune donnée', d => {
+            const item = el('div', 'list-item');
+            item.appendChild(el('span', '', d.device_type));
+            item.appendChild(el('span', '', d.count));
+            return item;
+        });
+        devicesSection.appendChild(devicesList);
+        grid2.appendChild(devicesSection);
+
+        root.appendChild(grid2);
+
+        const popSection = el('div', 'detail-section');
+        popSection.appendChild(el('h4', '', 'Cartes populaires'));
+        const popList = el('div', 'favorites-list');
+        appendListOrEmpty(popList, data.popular_postcards, 'Aucun like', p => {
+            const item = el('div', 'favorite-item');
+            item.appendChild(el('span', '', 'N°' + (p.postcard__number || '?')));
+            const likeSpan = el('span', '', (p.like_count || 0) + ' ');
+            likeSpan.appendChild(iconNode(ICON_HEART));
+            item.appendChild(likeSpan);
+            item.addEventListener('click', () => showPostcardAnalytics(p.postcard__id));
+            return item;
+        });
+        popSection.appendChild(popList);
+        root.appendChild(popSection);
+
+        clearNode(content);
+        content.appendChild(root);
     } catch (error) {
-        document.getElementById('countryModalContent').innerHTML = '<p class="error">Erreur de chargement</p>';
+        setLoadError(content, 'Erreur de chargement');
     }
 }
 
@@ -1690,88 +1867,97 @@ function closeCountryModal() {
 // Postcard Analytics Modal
 async function showPostcardAnalytics(postcardId) {
     if (!postcardId) return;
-    
+
+    const content = document.getElementById('postcardModalContent');
     document.getElementById('postcardModal').classList.add('active');
-    document.getElementById('postcardModalContent').innerHTML = '<div class="loading-spinner"></div>';
-    
+    setSpinner(content);
+
     try {
         const response = await fetch(`/api/admin/postcard-analytics/${postcardId}/`);
         const data = await response.json();
-        
-        document.getElementById('postcardModalContent').innerHTML = `
-            <div class="postcard-details">
-                <div class="postcard-header">
-                    <div class="postcard-preview">
-                        ${data.postcard.vignette_url ? 
-                            `<img src="${data.postcard.vignette_url}" alt="Carte">` : 
-                            '<div class="no-image">Pas d\'image</div>'}
-                    </div>
-                    <div class="postcard-info">
-                        <h3>N°${data.postcard.number}</h3>
-                        <p>${data.postcard.title}</p>
-                        <span class="rarity-badge ${data.postcard.rarity}">${data.postcard.rarity}</span>
-                        ${data.postcard.has_animation ? '<span class="anim-badge">' + ICON_FILM + ' Animée</span>' : ''}
-                    </div>
-                </div>
-                
-                <div class="stats-row">
-                    <div class="stat-box">
-                        <span class="stat-num">${data.postcard.views_count}</span>
-                        <span class="stat-label">Vues</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num">${data.postcard.zoom_count}</span>
-                        <span class="stat-label">Zooms</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num">${data.likes_total}</span>
-                        <span class="stat-label">Likes</span>
-                    </div>
-                </div>
-                
-                <div class="detail-grid-2">
-                    <div class="detail-section">
-                        <h4>Likes par pays</h4>
-                        <div class="list-compact">
-                            ${data.likes_by_country.map(c => `
-                                <div class="list-item">
-                                    <span>${c.flag || ''} ${c.country}</span>
-                                    <span>${c.count}</span>
-                                </div>
-                            `).join('') || '<p class="no-data">Aucun like</p>'}
-                        </div>
-                    </div>
-                    
-                    <div class="detail-section">
-                        <h4>Likes par appareil</h4>
-                        <div class="list-compact">
-                            ${data.likes_by_device.map(d => `
-                                <div class="list-item">
-                                    <span>${d.device_type}</span>
-                                    <span>${d.count}</span>
-                                </div>
-                            `).join('') || '<p class="no-data">Aucun like</p>'}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="detail-section">
-                    <h4>Likes récents</h4>
-                    <div class="likes-list">
-                        ${data.recent_likes.map(l => `
-                            <div class="like-row">
-                                <span>${l.user !== 'Anonyme' ? ICON_USER + ' ' + l.user : ICON_USER_ANON + ' Anonyme'}</span>
-                                <span>${l.flag} ${l.city}, ${l.country}</span>
-                                <span>${l.device_type}</span>
-                                <span>${l.created_at}</span>
-                            </div>
-                        `).join('') || '<p class="no-data">Aucun like</p>'}
-                    </div>
-                </div>
-            </div>
-        `;
+        const pc = data.postcard || {};
+        const root = el('div', 'postcard-details');
+
+        const header = el('div', 'postcard-header');
+        const preview = el('div', 'postcard-preview');
+        if (pc.vignette_url) {
+            const img = document.createElement('img');
+            img.src = pc.vignette_url;
+            img.alt = 'Carte';
+            preview.appendChild(img);
+        } else {
+            preview.appendChild(el('div', 'no-image', "Pas d'image"));
+        }
+        header.appendChild(preview);
+
+        const info = el('div', 'postcard-info');
+        info.appendChild(el('h3', '', 'N°' + (pc.number || '?')));
+        info.appendChild(el('p', '', pc.title || ''));
+        info.appendChild(el('span', 'rarity-badge ' + (pc.rarity || ''), pc.rarity || ''));
+        if (pc.has_animation) {
+            const anim = el('span', 'anim-badge');
+            anim.appendChild(iconNode(ICON_FILM));
+            anim.appendChild(document.createTextNode(' Animée'));
+            info.appendChild(anim);
+        }
+        header.appendChild(info);
+        root.appendChild(header);
+
+        root.appendChild(statsRow([
+            [pc.views_count, 'Vues'],
+            [pc.zoom_count, 'Zooms'],
+            [data.likes_total, 'Likes']
+        ]));
+
+        const grid2 = el('div', 'detail-grid-2');
+
+        const countrySection = el('div', 'detail-section');
+        countrySection.appendChild(el('h4', '', 'Likes par pays'));
+        const countryList = el('div', 'list-compact');
+        appendListOrEmpty(countryList, data.likes_by_country, 'Aucun like', c => {
+            const item = el('div', 'list-item');
+            item.appendChild(el('span', '', ((c.flag || '') + ' ' + (c.country || '')).trim()));
+            item.appendChild(el('span', '', c.count));
+            return item;
+        });
+        countrySection.appendChild(countryList);
+        grid2.appendChild(countrySection);
+
+        const deviceSection = el('div', 'detail-section');
+        deviceSection.appendChild(el('h4', '', 'Likes par appareil'));
+        const deviceList = el('div', 'list-compact');
+        appendListOrEmpty(deviceList, data.likes_by_device, 'Aucun like', d => {
+            const item = el('div', 'list-item');
+            item.appendChild(el('span', '', d.device_type));
+            item.appendChild(el('span', '', d.count));
+            return item;
+        });
+        deviceSection.appendChild(deviceList);
+        grid2.appendChild(deviceSection);
+
+        root.appendChild(grid2);
+
+        const likesSection = el('div', 'detail-section');
+        likesSection.appendChild(el('h4', '', 'Likes récents'));
+        const likesList = el('div', 'likes-list');
+        appendListOrEmpty(likesList, data.recent_likes, 'Aucun like', l => {
+            const row = el('div', 'like-row');
+            const userSpan = el('span');
+            userSpan.appendChild(iconNode(l.user !== 'Anonyme' ? ICON_USER : ICON_USER_ANON));
+            userSpan.appendChild(document.createTextNode(' ' + (l.user !== 'Anonyme' ? l.user : 'Anonyme')));
+            row.appendChild(userSpan);
+            row.appendChild(el('span', '', ((l.flag || '') + ' ' + (l.city || '') + ', ' + (l.country || '')).trim()));
+            row.appendChild(el('span', '', l.device_type));
+            row.appendChild(el('span', '', l.created_at));
+            return row;
+        });
+        likesSection.appendChild(likesList);
+        root.appendChild(likesSection);
+
+        clearNode(content);
+        content.appendChild(root);
     } catch (error) {
-        document.getElementById('postcardModalContent').innerHTML = '<p class="error">Erreur de chargement</p>';
+        setLoadError(content, 'Erreur de chargement');
     }
 }
 
@@ -1785,34 +1971,48 @@ function updateRealTimeVisitors() {
         .then(response => response.json())
         .then(data => {
             document.getElementById('activeVisitorCount').textContent = data.count;
-            
+            const kpiOnline = document.getElementById('kpiOnlineNow');
+            if (kpiOnline) kpiOnline.textContent = data.count;
+
             const list = document.getElementById('activeVisitorsList');
+            clearNode(list);
             if (data.visitors.length > 0) {
-                list.innerHTML = data.visitors.map(v => `
-                    <div class="active-visitor" onclick="lookupIP('${v.ip_address}')">
-                        <div class="visitor-location">
-                            <span class="visitor-flag">${v.flag || ICON_GLOBE}</span>
-                            <div class="visitor-geo">
-                                <span class="visitor-country">${v.country || 'Inconnu'}</span>
-                                <span class="visitor-city">${v.city || ''}</span>
-                            </div>
-                        </div>
-                        <div class="visitor-page">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                            </svg>
-                            ${(v.page_title || '').substring(0, 20)}
-                        </div>
-                        <div class="visitor-tech">
-                            <span class="visitor-device">${v.device_type || ''}</span>
-                            <span class="visitor-browser">${v.browser || ''}</span>
-                        </div>
-                        ${v.username ? `<span class="visitor-user">${v.username}</span>` : ''}
-                    </div>
-                `).join('');
+                data.visitors.forEach(v => {
+                    const visitor = el('div', 'active-visitor');
+                    visitor.addEventListener('click', () => lookupIP(v.ip_address));
+
+                    const location = el('div', 'visitor-location');
+                    const flag = el('span', 'visitor-flag');
+                    if (v.flag) {
+                        flag.textContent = v.flag;
+                    } else {
+                        flag.appendChild(iconNode(ICON_GLOBE));
+                    }
+                    location.appendChild(flag);
+                    const geo = el('div', 'visitor-geo');
+                    geo.appendChild(el('span', 'visitor-country', v.country || 'Inconnu'));
+                    geo.appendChild(el('span', 'visitor-city', v.city || ''));
+                    location.appendChild(geo);
+                    visitor.appendChild(location);
+
+                    const page = el('div', 'visitor-page');
+                    page.appendChild(iconNode(ICON_PAGE));
+                    page.appendChild(document.createTextNode(' ' + (v.page_title || '').substring(0, 20)));
+                    visitor.appendChild(page);
+
+                    const tech = el('div', 'visitor-tech');
+                    tech.appendChild(el('span', 'visitor-device', v.device_type || ''));
+                    tech.appendChild(el('span', 'visitor-browser', v.browser || ''));
+                    visitor.appendChild(tech);
+
+                    if (v.username) {
+                        visitor.appendChild(el('span', 'visitor-user', v.username));
+                    }
+
+                    list.appendChild(visitor);
+                });
             } else {
-                list.innerHTML = '<p class="no-visitors">Aucun visiteur actif</p>';
+                list.appendChild(el('p', 'no-visitors', 'Aucun visiteur actif'));
             }
         })
         .catch(error => console.log('Realtime error:', error));
@@ -1822,14 +2022,9 @@ setInterval(updateRealTimeVisitors, 30000);
 
 // Notifications
 function showNotification(message, type) {
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            ${type === 'success' ? '<path d="M20 6L9 17l-5-5"/>' : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
-        </svg>
-        ${message}
-    `;
+    const notification = el('div', `notification notification-${type}`);
+    notification.appendChild(iconNode(type === 'success' ? ICON_CHECK : ICON_ALERT));
+    notification.appendChild(document.createTextNode(' ' + message));
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
@@ -1845,9 +2040,322 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Initialize Charts
+// ========================================
+// CHART THEME (série palette à ordre fixe)
+// ========================================
+const CHART_SERIES = ['#3987E5', '#D95926', '#199E70', '#C98500', '#D55181'];
+const CHART_GRID_COLOR = 'rgba(255, 255, 255, 0.08)';
+const CHART_LABEL_COLOR = 'rgba(255, 255, 255, 0.6)';
+
+function chartTooltipStyle() {
+    return {
+        backgroundColor: 'rgba(20, 14, 8, 0.95)',
+        borderColor: 'rgba(181, 96, 11, 0.35)',
+        borderWidth: 1,
+        titleColor: '#ffffff',
+        bodyColor: 'rgba(255, 255, 255, 0.8)',
+        padding: 10,
+        cornerRadius: 8
+    };
+}
+
+function chartAxes(extraX) {
+    return {
+        y: {
+            beginAtZero: true,
+            grid: { color: CHART_GRID_COLOR },
+            ticks: { color: CHART_LABEL_COLOR, precision: 0 }
+        },
+        x: Object.assign({
+            grid: { display: false },
+            ticks: { color: CHART_LABEL_COLOR }
+        }, extraX || {})
+    };
+}
+
+// ========================================
+// KPI ROW
+// ========================================
+function initKpis() {
+    const kpi30 = document.getElementById('kpiVisitors30');
+    if (kpi30 && Array.isArray(dailyStats)) {
+        const total = dailyStats.reduce((sum, d) => sum + (Number(d.sessions) || 0), 0);
+        kpi30.textContent = total.toLocaleString('fr-FR');
+    }
+}
+
+// ========================================
+// STICKY SECTION NAV (lien actif au défilement)
+// ========================================
+function initDashNav() {
+    const nav = document.getElementById('dashNav');
+    if (!nav || !('IntersectionObserver' in window)) return;
+    const links = Array.from(nav.querySelectorAll('a[href^="#"]'));
+    const linkById = {};
+    links.forEach(link => { linkById[link.getAttribute('href').slice(1)] = link; });
+    const sections = links
+        .map(link => document.getElementById(link.getAttribute('href').slice(1)))
+        .filter(Boolean);
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && linkById[entry.target.id]) {
+                links.forEach(link => link.classList.remove('active'));
+                linkById[entry.target.id].classList.add('active');
+            }
+        });
+    }, { rootMargin: '-25% 0px -65% 0px' });
+    sections.forEach(section => observer.observe(section));
+}
+
+// ========================================
+// VUE D'ENSEMBLE (GET /api/admin/overview-extra/)
+// Tout le rendu passe par textContent / createElement.
+// ========================================
+const FUNNEL_LABELS = {
+    unverified: 'Non vérifiés',
+    verified: 'Vérifiés',
+    postman: 'Facteurs',
+    staff: 'Staff',
+    active_30d: 'Actifs 30 j'
+};
+
+const LA_POSTE_LABELS = {
+    sent: 'Envoyées',
+    sent_total: 'Envoyées (total)',
+    sent_today: "Envoyées aujourd'hui",
+    sent_30d: 'Envoyées (30 j)',
+    clicks: 'Clics',
+    clicks_total: 'Clics (total)',
+    clicks_today: "Clics aujourd'hui",
+    clicks_30d: 'Clics (30 j)',
+    orders: 'Commandes',
+    total: 'Total'
+};
+
+const MEDIA_LABELS = {
+    with_images: 'Avec images',
+    without_images: 'Sans image',
+    animations: 'Animations',
+    animated: 'Animations',
+    webp: 'WebP',
+    total: 'Total'
+};
+
+function prettyLabel(key, map) {
+    if (map && map[key]) return map[key];
+    const spaced = String(key).replace(/_/g, ' ');
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function counterTile(value, label) {
+    const tile = el('div', 'ov-counter');
+    tile.appendChild(el('span', 'ov-counter-value', (value === undefined || value === null) ? '0' : value));
+    tile.appendChild(el('span', 'ov-counter-label', label));
+    return tile;
+}
+
+function ovNoDataRow(tbody, colspan, text) {
+    const tr = el('tr');
+    const td = el('td', 'no-data-cell', text);
+    td.colSpan = colspan;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+}
+
+function funnelEntries(funnel) {
+    if (!funnel) return [];
+    if (Array.isArray(funnel)) {
+        return funnel.map(item => [
+            String(item.label || item.name || item.key || '?'),
+            Number(item.value !== undefined ? item.value : item.count) || 0
+        ]);
+    }
+    const orderedKeys = ['unverified', 'verified', 'postman', 'staff', 'active_30d'];
+    const entries = [];
+    orderedKeys.forEach(key => {
+        if (funnel[key] !== undefined) entries.push([FUNNEL_LABELS[key], Number(funnel[key]) || 0]);
+    });
+    Object.keys(funnel).forEach(key => {
+        if (orderedKeys.indexOf(key) === -1) entries.push([prettyLabel(key, FUNNEL_LABELS), Number(funnel[key]) || 0]);
+    });
+    return entries;
+}
+
+function renderOverviewFunnel(data) {
+    const canvas = document.getElementById('funnelChart');
+    if (!canvas) return;
+    const entries = funnelEntries(data.funnel);
+    if (!entries.length) {
+        const holder = canvas.parentElement;
+        clearNode(holder);
+        holder.appendChild(el('p', 'no-data', 'Aucune donnée'));
+        return;
+    }
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: entries.map(e => e[0]),
+            datasets: [{
+                data: entries.map(e => e[1]),
+                backgroundColor: entries.map((e, i) => CHART_SERIES[i % CHART_SERIES.length]),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: chartTooltipStyle() },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: CHART_GRID_COLOR },
+                    ticks: { color: CHART_LABEL_COLOR, precision: 0 }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: CHART_LABEL_COLOR }
+                }
+            }
+        }
+    });
+}
+
+function renderOverviewLaPoste(data) {
+    const container = document.getElementById('ovLaPoste');
+    if (!container) return;
+    clearNode(container);
+    const counters = data.la_poste || data.laposte || data.la_poste_counters;
+    if (!counters || typeof counters !== 'object' || Array.isArray(counters)) {
+        container.appendChild(el('p', 'no-data', 'Aucune donnée'));
+        return;
+    }
+    const keys = Object.keys(counters);
+    if (!keys.length) {
+        container.appendChild(el('p', 'no-data', 'Aucune donnée'));
+        return;
+    }
+    keys.forEach(key => {
+        container.appendChild(counterTile(counters[key], prettyLabel(key, LA_POSTE_LABELS)));
+    });
+}
+
+function renderOverviewMedia(data) {
+    const container = document.getElementById('ovMediaCounters');
+    const fill = document.getElementById('ovCoverageFill');
+    const label = document.getElementById('ovCoverageLabel');
+    if (!container) return;
+    clearNode(container);
+    const media = data.media || data.media_coverage;
+    if (!media || typeof media !== 'object') {
+        container.appendChild(el('p', 'no-data', 'Aucune donnée'));
+        return;
+    }
+    const orderedKeys = ['with_images', 'without_images', 'animations', 'animated', 'webp'];
+    const seen = [];
+    orderedKeys.forEach(key => {
+        if (media[key] !== undefined && seen.indexOf(MEDIA_LABELS[key]) === -1) {
+            container.appendChild(counterTile(media[key], MEDIA_LABELS[key]));
+            seen.push(MEDIA_LABELS[key]);
+        }
+    });
+    Object.keys(media).forEach(key => {
+        if (orderedKeys.indexOf(key) === -1) {
+            container.appendChild(counterTile(media[key], prettyLabel(key, MEDIA_LABELS)));
+        }
+    });
+    const withImages = Number(media.with_images) || 0;
+    const withoutImages = Number(media.without_images) || 0;
+    const totalCards = withImages + withoutImages;
+    if (fill && label && totalCards > 0) {
+        const percent = Math.round((withImages / totalCards) * 100);
+        fill.style.width = percent + '%';
+        label.textContent = percent + '% des cartes avec images';
+    } else if (label) {
+        label.textContent = '';
+    }
+}
+
+function renderOverviewZeroSearches(data) {
+    const tbody = document.getElementById('ovZeroBody');
+    if (!tbody) return;
+    clearNode(tbody);
+    const searches = data.zero_searches || data.top_zero_searches || data.searches_zero_results || [];
+    if (!Array.isArray(searches) || !searches.length) {
+        ovNoDataRow(tbody, 2, 'Aucune recherche sans résultat');
+        return;
+    }
+    searches.forEach(s => {
+        const tr = el('tr');
+        tr.appendChild(el('td', '', s.keyword || s.query || ''));
+        tr.appendChild(el('td', 'num', s.count !== undefined ? s.count : 0));
+        tbody.appendChild(tr);
+    });
+}
+
+function renderTopPostcardList(tbodyId, items, countKeys) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    clearNode(tbody);
+    if (!Array.isArray(items) || !items.length) {
+        ovNoDataRow(tbody, 2, 'Aucune donnée');
+        return;
+    }
+    items.slice(0, 5).forEach(p => {
+        const tr = el('tr');
+        tr.appendChild(el('td', '', 'N°' + (p.number || p.postcard__number || '?')));
+        let count = 0;
+        for (let i = 0; i < countKeys.length; i++) {
+            if (p[countKeys[i]] !== undefined) { count = p[countKeys[i]]; break; }
+        }
+        tr.appendChild(el('td', 'num', count));
+        const postcardId = p.id || p.postcard_id || p.postcard__id;
+        if (postcardId) {
+            tr.className = 'ov-clickable';
+            tr.addEventListener('click', () => showPostcardAnalytics(postcardId));
+        }
+        tbody.appendChild(tr);
+    });
+}
+
+function renderOverviewTopPostcards(data) {
+    const top = data.top_postcards || data.top_cards || {};
+    renderTopPostcardList('ovTopViewed', top.viewed || top.views || data.top_viewed, ['count', 'views_count', 'views']);
+    renderTopPostcardList('ovTopLiked', top.liked || top.likes || data.top_liked, ['count', 'likes_count', 'likes']);
+    renderTopPostcardList('ovTopZoomed', top.zoomed || top.zooms || data.top_zoomed, ['count', 'zoom_count', 'zooms']);
+}
+
+async function loadOverviewExtra() {
+    const status = document.getElementById('overviewStatus');
+    const grid = document.getElementById('overviewGrid');
+    if (!status || !grid) return;
+    try {
+        const response = await fetch('/api/admin/overview-extra/');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        // Afficher la grille avant de créer le graphique (dimensionnement du canvas).
+        status.hidden = true;
+        grid.hidden = false;
+        renderOverviewFunnel(data);
+        renderOverviewLaPoste(data);
+        renderOverviewMedia(data);
+        renderOverviewZeroSearches(data);
+        renderOverviewTopPostcards(data);
+    } catch (error) {
+        status.textContent = 'Données « Vue d’ensemble » indisponibles pour le moment.';
+        status.classList.add('ov-status-error');
+    }
+}
+
+// ========================================
+// INITIALISATION
+// ========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Activity Chart
+    initKpis();
+    initDashNav();
+    loadOverviewExtra();
+
+    // Activity Chart (trafic principal : remplissage léger sous « Vues » uniquement)
     const activityCtx = document.getElementById('activityChart');
     if (activityCtx && dailyStats.length > 0) {
         new Chart(activityCtx, {
@@ -1858,42 +2366,45 @@ document.addEventListener('DOMContentLoaded', () => {
                     {
                         label: 'Vues',
                         data: dailyStats.map(d => d.views),
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderColor: CHART_SERIES[0],
+                        backgroundColor: 'rgba(57, 135, 229, 0.12)',
+                        borderWidth: 2,
                         tension: 0.4,
-                        fill: true
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
                     },
                     {
                         label: 'Sessions',
                         data: dailyStats.map(d => d.sessions),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderColor: CHART_SERIES[1],
+                        borderWidth: 2,
                         tension: 0.4,
-                        fill: true
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
                     },
                     {
                         label: 'Likes',
                         data: dailyStats.map(d => d.likes),
-                        borderColor: '#ef4444',
-                        tension: 0.4
+                        borderColor: CHART_SERIES[2],
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: 'rgba(255, 255, 255, 0.6)' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: 'rgba(255, 255, 255, 0.6)' }
-                    }
-                }
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: chartTooltipStyle()
+                },
+                scales: chartAxes()
             }
         });
     }
@@ -1912,13 +2423,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         {{ user_categories.postman }},
                         {{ user_categories.staff }}
                     ],
-                    backgroundColor: ['#6b7280', '#10b981', '#f59e0b', '#8b5cf6']
+                    backgroundColor: CHART_SERIES.slice(0, 4),
+                    borderColor: 'rgba(26, 18, 8, 0.9)',
+                    borderWidth: 2
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: chartTooltipStyle()
+                },
                 cutout: '65%'
             }
         });
@@ -1937,13 +2453,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         {{ device_breakdown.desktop }},
                         {{ device_breakdown.tablet }}
                     ],
-                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b']
+                    backgroundColor: CHART_SERIES.slice(0, 3),
+                    borderColor: 'rgba(26, 18, 8, 0.9)',
+                    borderWidth: 2
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: chartTooltipStyle()
+                },
                 cutout: '65%'
             }
         });
@@ -1959,8 +2480,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 datasets: [{
                     label: 'Vues',
                     data: hourlyTraffic.map(h => h.count),
-                    backgroundColor: 'rgba(245, 158, 11, 0.6)',
-                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(57, 135, 229, 0.55)',
+                    borderColor: CHART_SERIES[0],
                     borderWidth: 1,
                     borderRadius: 4
                 }]
@@ -1968,23 +2489,14 @@ document.addEventListener('DOMContentLoaded', () => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: 'rgba(255, 255, 255, 0.6)' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: 'rgba(255, 255, 255, 0.6)', maxRotation: 0 }
-                    }
-                }
+                plugins: {
+                    legend: { display: false },
+                    tooltip: chartTooltipStyle()
+                },
+                scales: chartAxes({ ticks: { color: CHART_LABEL_COLOR, maxRotation: 0 } })
             }
         });
     }
 });
 </script>
-
-<link rel="stylesheet" href="{% static 'css/admin_dashboard.css' %}">
 {% endblock %}

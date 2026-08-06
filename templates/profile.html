@@ -3534,5 +3534,151 @@ document.addEventListener('DOMContentLoaded', () => {
 .postcard-grid-cover::-webkit-scrollbar-thumb:hover {
     background: rgba(181, 96, 11, 0.6);
 }
+
+/* — Responsive (round 2) — */
+@media (max-width: 1023px) {
+    /* Boutons d'édition toujours visibles au toucher (pas de survol sur mobile) */
+    .edit-cover-btn,
+    .avatar-edit-btn {
+        opacity: 1;
+    }
+
+    .tabs-header .tab-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .toggle-password {
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .btn-edit-bio,
+    .btn-send-card,
+    .btn-explore,
+    .btn-small {
+        min-height: 40px;
+    }
+
+    .notification {
+        max-width: calc(100vw - 32px);
+    }
+}
+
+@media (max-width: 768px) {
+    .liked-postcards-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+    }
+}
+
+@media (max-width: 600px) {
+    .tabs-header .tab-btn {
+        justify-content: center;
+        flex: 1 0 auto;
+    }
+
+    /* Le bouton Modifier de la bio passe sous le texte */
+    .btn-edit-bio {
+        position: static;
+        margin-top: 12px;
+    }
+
+    .bio-form-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .bio-buttons {
+        justify-content: flex-end;
+    }
+
+    .sent-postcard-item {
+        flex-wrap: wrap;
+    }
+
+    .stat-card {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .stat-icon {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-container {
+        padding: 70px 12px 30px;
+    }
+
+    .cover-username {
+        font-size: 1.4rem;
+    }
+
+    .tab-content {
+        padding: 18px 14px;
+    }
+
+    .settings-section {
+        padding: 18px 14px;
+    }
+
+    .postcards-section {
+        padding: 14px;
+    }
+
+    .connection-card {
+        padding: 16px;
+    }
+
+    .password-form {
+        max-width: none;
+    }
+
+    .liked-postcards-grid {
+        gap: 10px;
+    }
+
+    /* Fenêtres modales : quasi plein écran */
+    .cover-modal,
+    .signature-modal,
+    .draw-modal {
+        padding: 0;
+    }
+
+    .cover-modal .modal-content,
+    .signature-modal .modal-content,
+    .draw-modal .modal-content {
+        margin: 0;
+        border-radius: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+
+    .modal-actions .btn-cancel,
+    .modal-actions .btn-save {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .draw-tools {
+        flex-wrap: wrap;
+    }
+
+    .notification {
+        left: 12px;
+        right: 12px;
+        justify-content: center;
+    }
+}
 </style>
 {% endblock %}

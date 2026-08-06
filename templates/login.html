@@ -201,5 +201,36 @@
     color: #ffc168;
     text-decoration: underline;
 }
+
+/* — Responsive (round 2) — */
+@media (max-width: 480px) {
+    .login-page {
+        padding: 16px 12px;
+    }
+
+    .login-container {
+        padding: 30px 22px;
+        border-radius: 20px;
+    }
+
+    .login-header h1 {
+        font-size: 1.7rem;
+    }
+
+    .form-group input {
+        padding: 14px 16px;
+    }
+
+    .btn-login {
+        padding: 16px;
+    }
+
+    .forgot-password a,
+    .login-footer a {
+        display: inline-block;
+        padding: 10px 6px;
+        margin: -6px -2px;
+    }
+}
 </style>
 {% endblock %}

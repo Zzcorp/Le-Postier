@@ -1923,9 +1923,29 @@ let zoomState = {
     lastY: 0
 };
 
+// Comptage des zooms (tableau de bord admin) : requête « fire-and-forget »,
+// une seule fois par carte et par chargement de page ; toute erreur est ignorée
+// en silence pour ne jamais gêner l'ouverture du zoom.
+const zoomTrackedIds = new Set();
+
+function trackZoomCount(id) {
+    if (zoomTrackedIds.has(id)) return;
+    zoomTrackedIds.add(id);
+    try {
+        fetch('/api/postcard/' + id + '/zoom/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken }
+        }).catch(function() {});
+    } catch (e) {
+        // silencieux
+    }
+}
+
 function showZoom(id) {
     const postcard = allPostcardsData.find(p => p.id === id);
     if (!postcard) return;
+
+    trackZoomCount(id);
     
     const modal = document.getElementById('zoom-modal');
     const img = document.getElementById('zoom-image');
@@ -4297,9 +4317,129 @@ setTimeout(() => {
         flex-direction: column;
         gap: 6px;
     }
-    
+
     .popup-img-action-btn {
         padding: 8px 10px;
+    }
+}
+
+/* — Responsive (round 2) — */
+/* Ajouts uniquement sous 1024px : le rendu desktop (>= 1024px) reste inchangé. */
+
+@media (max-width: 1023px) {
+    /* Bandeau d'instructions du zoom : passe à la ligne, jamais de débordement */
+    .zoom-instructions {
+        white-space: normal;
+        max-width: calc(100vw - 40px);
+        font-size: 0.875rem;
+    }
+
+    .zoom-instructions span {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Grille : 2 cartes par ligne, légendes lisibles */
+    .postcards-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card-title { font-size: 0.875rem; }
+    .card-number { font-size: 0.875rem; }
+
+    /* Cibles tactiles >= 40px et textes >= 14px effectifs */
+    .action-btn { width: 40px; height: 40px; }
+    .clear-btn { width: 40px; height: 40px; }
+    .filter-close { width: 40px; height: 40px; }
+    .filter-option { min-height: 40px; font-size: 0.875rem; }
+    .page-btn { min-width: 40px; height: 40px; font-size: 0.875rem; }
+    .mode-btn { min-height: 40px; font-size: 0.875rem; }
+    .floating-keyword { min-height: 40px; }
+    .keyword-small { font-size: 0.875rem; }
+    .river-keywords-header p { font-size: 0.875rem; }
+    .cinema-btn-subtitle { font-size: 0.875rem; }
+    .cinema-info span { font-size: 0.875rem; }
+    .cinema-counter { font-size: 0.875rem; }
+    .browse-footer { font-size: 0.875rem; }
+    .zoom-tool-btn { width: 40px; height: 40px; }
+
+    .popup-img-action-btn {
+        min-height: 40px;
+        min-width: 40px;
+        justify-content: center;
+        font-size: 0.875rem;
+    }
+
+    /* Panneau de filtres : tient dans l'écran, défilement interne */
+    .filter-panel {
+        max-height: calc(100vh - 170px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    /* Popup détail : quasi pleine largeur ; précédent/suivant ramenés dans
+       l'écran (ils étaient hors champ), sans recouvrir les actions du bas */
+    #popup-detail { max-width: calc(100vw - 16px); }
+    .popup-image-container { max-width: calc(100vw - 16px); }
+    .popup-prev { left: 6px; }
+    .popup-next { right: 6px; }
+    .popup-nav { background: rgba(0, 0, 0, 0.7); }
+
+    /* Zoom : barre d'outils à portée de pouce
+       (les instructions molette sont déjà masquées à cette taille) */
+    .zoom-toolbar { bottom: 16px; }
+    .zoom-close-btn { top: 12px; right: 12px; }
+
+    /* Cinéma : tout tient dans l'écran, défilement interne si nécessaire ;
+       le bouton fermer reste épinglé en haut à droite du viewport */
+    .cinema-container {
+        width: 100%;
+        max-height: 100vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        box-sizing: border-box;
+        padding: 60px 10px 12px;
+    }
+
+    .cinema-close {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+    }
+
+    .cinema-screen { max-height: 52vh; }
+    .cinema-media { max-height: 52vh; }
+}
+
+@media (max-width: 480px) {
+    /* Grille : 1 carte par ligne, carte confortable */
+    .postcards-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    /* Pas de survol au doigt : légende et actions toujours visibles */
+    .card-overlay { opacity: 1; }
+    .card-actions { gap: 8px; }
+    .action-btn { width: 40px; height: 40px; }
+
+    /* Popup détail : actions en ligne, sous le pouce */
+    .popup-image-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /* Zoom : la barre d'outils tient dans l'écran, quitte à passer à la ligne */
+    .zoom-toolbar {
+        max-width: calc(100vw - 24px);
+        flex-wrap: wrap;
+        row-gap: 8px;
+        bottom: 12px;
     }
 }
 </style>

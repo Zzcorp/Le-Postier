@@ -340,3 +340,38 @@ body {
     -ms-user-select: none;
     user-select: none;
 }
+
+/* — Responsive (round 2) — */
+
+/* Sous la mise en page bureau uniquement : rien ne change à >= 1024px. */
+@media (max-width: 1023.98px) {
+    /* Jamais de défilement horizontal de la page (le contenu large
+       défile dans son propre conteneur) ; les ancres et cibles de
+       défilement se posent sous l'en-tête fixe de 60px au lieu de
+       disparaître derrière. */
+    html {
+        overflow-x: hidden;
+        scroll-padding-top: 74px;
+    }
+
+    /* Plancher de lisibilité : la note de pied de page était à 12px */
+    footer {
+        font-size: 14px;
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+    }
+}
+
+/* Les messages (toasts) tiennent dans les petits écrans au lieu
+   de s'accrocher à une colonne fixe de 400px. */
+@media (max-width: 480px) {
+    #messages-container {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+
+    .alert {
+        padding: 13px 16px;
+    }
+}

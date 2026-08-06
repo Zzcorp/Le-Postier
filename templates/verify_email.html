@@ -555,15 +555,67 @@ document.addEventListener('DOMContentLoaded', () => {
     .verification-card {
         padding: 30px 20px;
     }
-    
+
     .code-digit {
         width: 42px;
         height: 52px;
         font-size: 20px;
     }
-    
+
     .step-line {
         width: 40px;
+    }
+}
+
+/* — Responsive (round 2) — */
+@media (max-width: 1023px) {
+    .btn-resend {
+        min-height: 40px;
+    }
+
+    .notification {
+        max-width: calc(100vw - 32px);
+    }
+}
+
+@media (max-width: 480px) {
+    .notification {
+        left: 12px;
+        right: 12px;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 400px) {
+    .verification-page {
+        padding: 16px 10px;
+    }
+
+    .verification-card {
+        padding: 25px 14px;
+    }
+
+    .verification-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .progress-steps .step-line {
+        width: 24px;
+        margin: 0 6px 24px;
+    }
+
+    .code-inputs {
+        gap: 6px;
+    }
+
+    .code-separator {
+        display: none;
+    }
+
+    .code-digit {
+        width: 38px;
+        height: 50px;
+        font-size: 18px;
     }
 }
 </style>

@@ -853,19 +853,164 @@ window.addEventListener('resize', function() {
     .navbar {
         padding: 0 15px;
     }
-    
+
     .brand-logo {
         height: 30px;
     }
-    
+
     .brand-text {
         font-size: 0.95rem;
     }
-    
+
     .mobile-menu-panel {
         width: 100%;
         max-width: 100%;
         right: -100%;
+    }
+}
+
+/* — Responsive (round 2) — */
+
+/* 901–1023px : le menu bureau est intact, on ne gère que les encoches
+   (safe areas) et le plancher de lisibilité. Rien ne change à >= 1024px. */
+@media (max-width: 1023.98px) {
+    .navbar {
+        padding-left: max(25px, env(safe-area-inset-left));
+        padding-right: max(25px, env(safe-area-inset-right));
+    }
+
+    .dropdown-category,
+    .mobile-category {
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 900px) {
+    /* La marque ne provoque jamais de défilement horizontal :
+       les titres longs sont tronqués avec des points de suspension. */
+    .nav-brand {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .nav-brand a {
+        min-width: 0;
+        max-width: 100%;
+        padding: 8px 0;
+        margin: -8px 0;
+    }
+
+    .brand-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .nav-mobile {
+        flex-shrink: 0;
+    }
+
+    /* Le bouton Compte mobile rouvre le menu déroulant : le menu bureau
+       reste masqué élément par élément, mais son conteneur déroulant est
+       conservé dans l'arborescence pour que #account-dropdown s'affiche. */
+    .nav-menu {
+        display: block;
+        position: static;
+    }
+
+    .nav-menu > li {
+        display: none;
+    }
+
+    .nav-menu > li.nav-dropdown {
+        display: block;
+        position: static;
+        width: 0;
+        height: 0;
+    }
+
+    .nav-dropdown > .nav-account-btn {
+        display: none;
+    }
+
+    .dropdown-menu {
+        position: fixed;
+        top: 68px;
+        right: max(12px, env(safe-area-inset-right));
+        left: auto;
+        width: min(280px, calc(100vw - 24px));
+        max-height: calc(100vh - 80px);
+        max-height: calc(100dvh - 80px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .dropdown-arrow {
+        display: none;
+    }
+
+    /* Cibles tactiles confortables (>= 40px) dans le menu compte */
+    .dropdown-item {
+        padding-top: 13px;
+        padding-bottom: 13px;
+    }
+
+    /* Panneau latéral : unités de fenêtre modernes, encoches,
+       défilement contenu (pas d'entraînement de la page derrière). */
+    .mobile-menu-panel {
+        height: 100dvh;
+        padding-right: env(safe-area-inset-right);
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-nav {
+        padding-bottom: calc(25px + env(safe-area-inset-bottom));
+    }
+}
+
+/* Écrans courts (téléphone en paysage) : rythme resserré du panneau,
+   cibles tactiles toujours >= 40px, le reste défile. */
+@media (max-width: 900px) and (max-height: 520px) {
+    .mobile-nav {
+        padding-top: 66px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+
+    .mobile-nav-link {
+        padding-top: 10px;
+        padding-bottom: 10px;
+        margin-bottom: 2px;
+    }
+
+    .mobile-user-header {
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    .mobile-nav-divider {
+        margin: 12px 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar {
+        padding-left: max(15px, env(safe-area-inset-left));
+        padding-right: max(15px, env(safe-area-inset-right));
+    }
+
+    .nav-mobile {
+        gap: 10px;
+    }
+
+    /* Panneau plein écran : respecter aussi l'encoche gauche */
+    .mobile-menu-panel {
+        padding-left: env(safe-area-inset-left);
+    }
+
+    /* Menu compte quasi pleine largeur sur petit téléphone */
+    .dropdown-menu {
+        width: min(300px, calc(100vw - 20px));
     }
 }
 </style>
