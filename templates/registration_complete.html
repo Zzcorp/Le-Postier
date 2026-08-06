@@ -3,9 +3,19 @@
 
 {% block page_title %}Inscription réussie{% endblock %}
 
+{% block extra_css %}
+{# Ambiance aquatique — eau calme derrière la carte de bienvenue #}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
 <div class="complete-page">
-    <div class="complete-container">
+    {% include 'partials/ambiance.html' with ambiance_mode='calme' %}
+    <div class="complete-container amb-contenu">
         <div class="complete-card">
             <div class="success-animation">
                 <div class="checkmark-circle">

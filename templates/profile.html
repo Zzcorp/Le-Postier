@@ -15,6 +15,10 @@
 <meta property="og:locale" content="fr_FR">
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="profile-page">
     <!-- Background -->
@@ -22,7 +26,10 @@
         <div class="bg-pattern"></div>
     </div>
 
-    <div class="profile-container">
+    {# Ambiance aquatique (mode douce) — placée APRÈS le fond sépia pour que l'eau se dessine par-dessus, tout en restant derrière le contenu (.amb-contenu). #}
+    {% include 'partials/ambiance.html' with ambiance_mode='douce' %}
+
+    <div class="profile-container amb-contenu">
         <!-- Profile Header with Cover Image -->
         <div class="profile-header-card animate-fade-in-down">
             <div class="cover-image-section" id="coverImageSection">
@@ -3681,4 +3688,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
 {% endblock %}

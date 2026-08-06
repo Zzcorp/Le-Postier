@@ -2,6 +2,8 @@
 {% load static %}
 
 {% block extra_css %}
+{# Ambiance aquatique — eau calme derrière la carte d'inscription #}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
 <style>
     .register-container {
         max-width: 400px;
@@ -130,9 +132,14 @@
 
 {% block page_title %}Inscription{% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
 <div class="main-content">
-    <div class="register-container">
+    {% include 'partials/ambiance.html' with ambiance_mode='calme' %}
+    <div class="register-container amb-contenu">
         <h1 class="register-title">Inscription</h1>
         
         {% if form.errors %}

@@ -1,0 +1,240 @@
+/* ==========================================================================
+   Ambiance aquatique — Collection Samathey
+   --------------------------------------------------------------------------
+   Fond ambiant sous-marin : eau sombre et chaude qui se fond dans la palette
+   sépia du site (#1a1208) et glisse vers un bleu-vert très profond
+   (#0d1614 / #101c1a) en bas de page. Or discret (#d1872c) pour la lumière.
+
+   Règles dures respectées ici :
+     - animations GPU uniquement (transform / opacity) ;
+     - tout vit DERRIÈRE le contenu : pointer-events none, z-index 0 ;
+     - prefers-reduced-motion => plus aucun mouvement (couches statiques ok) ;
+     - .amb-pause (posée par ambiance.js quand l'onglet est masqué)
+       met toutes les animations en pause.
+
+   CONTRAT AVEC LES PAGES (documenté, les pages s'appuient dessus) :
+     Toute page qui inclut partials/ambiance.html doit poser la classe
+     .amb-contenu sur son conteneur principal ; elle le remonte au-dessus
+     de l'ambiance dans l'ordre d'empilement.
+   ========================================================================== */
+
+.ambiance {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    contain: strict; /* isole le rendu : rien ne déborde, rien ne recalcule la page */
+}
+
+/* Le contenu des pages s'empile AU-DESSUS de l'ambiance grâce à cette classe. */
+.amb-contenu {
+    position: relative;
+    z-index: 1;
+}
+
+/* Onglet masqué (document.hidden) : ambiance.js pose .amb-pause sur .ambiance. */
+.amb-pause,
+.amb-pause * {
+    animation-play-state: paused !important;
+}
+
+/* Chaque couche occupe tout le conteneur. */
+.amb-fond,
+.amb-rayons,
+.amb-vagues,
+.amb-poissons,
+.amb-bulles,
+.amb-particules {
+    position: absolute;
+    inset: 0;
+}
+
+/* --------------------------------------------------------------------------
+   1. Fond — voile d'eau profonde, transparent en haut, bleu-vert sombre en bas
+   -------------------------------------------------------------------------- */
+.amb-fond {
+    background: linear-gradient(
+        180deg,
+        rgba(13, 22, 20, 0)    0%,
+        rgba(13, 22, 20, 0)   38%,
+        rgba(13, 22, 20, 0.07) 62%,
+        rgba(13, 22, 20, 0.13) 80%,
+        rgba(16, 28, 26, 0.18) 100%
+    );
+}
+
+/* --------------------------------------------------------------------------
+   2. Rayons — lueurs diagonales d'or pâle qui traversent l'eau
+   -------------------------------------------------------------------------- */
+.amb-rayon {
+    position: absolute;
+    top: -18vh;
+    height: 140vh;
+    background: linear-gradient(
+        180deg,
+        rgba(209, 135, 44, 0.30) 0%,
+        rgba(209, 135, 44, 0.10) 45%,
+        rgba(209, 135, 44, 0)    78%
+    );
+    filter: blur(18px);
+    transform: rotate(var(--angle, 16deg)) translate3d(0, 0, 0);
+    animation: amb-rayon-balancement var(--duree, 75s) ease-in-out infinite alternate;
+    will-change: transform;
+}
+
+/* Balancement très lent, à peine perceptible — 60 à 90 s par aller. */
+@keyframes amb-rayon-balancement {
+    from { transform: rotate(var(--angle, 16deg)) translate3d(0, 0, 0); }
+    to   { transform: rotate(var(--angle, 16deg)) translate3d(4vw, 0, 0); }
+}
+
+/* --------------------------------------------------------------------------
+   3. Vagues — deux nappes d'eau profonde épinglées en bas, sens opposés
+   Chaque nappe fait 200% de large ; son motif SVG (background-size 50%)
+   se répète exactement deux fois, donc un glissement de 50% boucle sans
+   couture.
+   -------------------------------------------------------------------------- */
+.amb-vague {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 12vh;
+    background-repeat: repeat-x;
+    background-size: 50% 100%;
+    background-position: bottom left;
+    will-change: transform;
+}
+
+.amb-vague--avant {
+    opacity: 0.08;
+    animation: amb-vague-gauche 45s linear infinite;
+}
+
+.amb-vague--arriere {
+    opacity: 0.05;
+    height: 14vh;
+    animation: amb-vague-droite 70s linear infinite;
+}
+
+/* Vers la gauche : de 0 à -50% (une tuile exactement). */
+@keyframes amb-vague-gauche {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Vers la droite : de -50% à 0 (le conteneur couvre l'écran sur tout le trajet). */
+@keyframes amb-vague-droite {
+    from { transform: translate3d(-50%, 0, 0); }
+    to   { transform: translate3d(0, 0, 0); }
+}
+
+/* --------------------------------------------------------------------------
+   4. Poissons — grandes ombres fuselées glissant à différentes profondeurs
+   Silhouette SVG en background ; flou doux pour l'effet "ombre dans l'eau".
+   La traversée dure 40 à 90 s (jamais moins de 25 s, règle de lenteur).
+   -------------------------------------------------------------------------- */
+.amb-poisson {
+    position: absolute;
+    left: 0;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+    filter: blur(var(--flou, 6px));
+    will-change: transform;
+}
+
+/* Traversée gauche -> droite, avec une lente dérive verticale. */
+.amb-poisson--droite {
+    animation: amb-nage-droite var(--duree, 60s) linear infinite;
+}
+
+@keyframes amb-nage-droite {
+    0%   { transform: translate3d(-22vw, 0, 0); }
+    30%  { transform: translate3d(20vw, -2.5vh, 0); }
+    55%  { transform: translate3d(55vw, 1.5vh, 0); }
+    80%  { transform: translate3d(90vw, -1.5vh, 0); }
+    100% { transform: translate3d(118vw, 0, 0); }
+}
+
+/* Traversée droite -> gauche : silhouette retournée (scaleX(-1)). */
+.amb-poisson--gauche {
+    animation: amb-nage-gauche var(--duree, 60s) linear infinite;
+}
+
+@keyframes amb-nage-gauche {
+    0%   { transform: translate3d(118vw, 0, 0) scaleX(-1); }
+    30%  { transform: translate3d(78vw, 2vh, 0) scaleX(-1); }
+    55%  { transform: translate3d(45vw, -2vh, 0) scaleX(-1); }
+    80%  { transform: translate3d(8vw, 1.5vh, 0) scaleX(-1); }
+    100% { transform: translate3d(-22vw, 0, 0) scaleX(-1); }
+}
+
+/* --------------------------------------------------------------------------
+   5. Bulles — remontée pleine hauteur avec ondulation sinusoïdale
+   --sx est l'amplitude d'ondulation, --sxn son opposé (précalculés en JS
+   car calc() ne sait pas nier une variable de façon portable).
+   -------------------------------------------------------------------------- */
+.amb-bulle {
+    position: absolute;
+    bottom: -3vh;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle at 34% 30%,
+        rgba(240, 224, 195, 0.9) 0%,
+        rgba(240, 224, 195, 0.28) 42%,
+        rgba(240, 224, 195, 0) 72%
+    );
+    opacity: 0;
+    animation: amb-montee var(--duree, 22s) linear infinite;
+    animation-delay: var(--retard, 0s);
+    will-change: transform, opacity;
+}
+
+@keyframes amb-montee {
+    0%   { transform: translate3d(0, 0, 0);                  opacity: 0; }
+    8%   {                                                    opacity: var(--op, 0.10); }
+    25%  { transform: translate3d(var(--sx, 2vw), -28vh, 0); }
+    50%  { transform: translate3d(var(--sxn, -2vw), -56vh, 0); }
+    75%  { transform: translate3d(var(--sx, 2vw), -84vh, 0);  opacity: var(--op, 0.10); }
+    100% { transform: translate3d(0, -112vh, 0);              opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   6. Particules — poussières d'eau dérivant lentement en diagonale montante
+   -------------------------------------------------------------------------- */
+.amb-particule {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(233, 215, 180, 0.9);
+    opacity: 0;
+    animation: amb-derive var(--duree, 55s) linear infinite;
+    animation-delay: var(--retard, 0s);
+    will-change: transform, opacity;
+}
+
+@keyframes amb-derive {
+    0%   { transform: translate3d(0, 0, 0);                       opacity: 0; }
+    12%  {                                                         opacity: var(--op, 0.07); }
+    88%  {                                                         opacity: var(--op, 0.07); }
+    100% { transform: translate3d(var(--dx, 5vw), -38vh, 0);       opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Mouvement réduit : plus aucune animation. ambiance.js ne construit alors
+   que les couches statiques (fond, rayons, vagues) ; ce filet de sécurité
+   CSS immobilise tout, même si le JS a construit davantage.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    .ambiance,
+    .ambiance * {
+        animation: none !important;
+    }
+
+    /* Les éléments dont l'opacité vit dans l'animation restent visibles, en très faible. */
+    .amb-bulle,
+    .amb-particule {
+        opacity: var(--op, 0.07);
+    }
+}

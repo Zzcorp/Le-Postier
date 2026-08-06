@@ -15,6 +15,10 @@
 <meta property="og:locale" content="fr_FR">
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="la-poste-page">
     <!-- Elegant Background -->
@@ -23,7 +27,10 @@
         <div class="dust-particles" id="dust-particles"></div>
     </div>
 
-    <div class="poste-container">
+    {# Ambiance aquatique (mode riche) — placée APRÈS le fond sépia pour que l'eau se dessine par-dessus, tout en restant derrière le contenu (.amb-contenu). #}
+    {% include 'partials/ambiance.html' with ambiance_mode='riche' %}
+
+    <div class="poste-container amb-contenu">
         <!-- Header -->
         <header class="poste-header animate-fade-in-down">
             <div class="header-icon">
@@ -3137,4 +3144,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
 {% endblock %}

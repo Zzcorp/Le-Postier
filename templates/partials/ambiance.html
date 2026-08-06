@@ -1,0 +1,18 @@
+{% comment %}
+    Ambiance aquatique — Collection Samathey
+    ----------------------------------------
+    Conteneur unique de l'ambiance sous-marine (bulles, poissons, vagues,
+    rayons de lumière, particules). Les couches sont construites par
+    static/js/ambiance.js ; les styles vivent dans static/css/ambiance.css.
+
+    IMPORTANT : ce partial ne charge NI le CSS NI le JS. Chaque page qui
+    l'inclut doit charger elle-même :
+        {% templatetag openblock %} block extra_css {% templatetag closeblock %} -> css/ambiance.css
+        {% templatetag openblock %} block extra_js  {% templatetag closeblock %} -> js/ambiance.js (defer)
+    et poser la classe .amb-contenu sur son conteneur principal pour que le
+    contenu reste au-dessus de l'ambiance (voir ambiance.css).
+
+    Modes de densité (variable de contexte facultative "ambiance_mode") :
+        'riche' | 'douce' (défaut) | 'calme'
+{% endcomment %}
+<div class="ambiance" data-ambiance="{{ ambiance_mode|default:'douce' }}" aria-hidden="true"></div>

@@ -1,10 +1,14 @@
 <!-- templates/intro.html -->
+{% load static %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Le Postier - Chargement</title>
+    {# Ambiance aquatique partagée (page autonome : liens directs, pas de base.html) #}
+    <link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+    <script src="{% static 'js/ambiance.js' %}" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -197,6 +201,13 @@
     </style>
 </head>
 <body>
+    {# Ambiance aquatique — placée en PREMIER dans le body : l'eau (fixe,
+       z-index 0) se peint sous les vagues et particules dorées existantes,
+       qui gardent leur ordre et leur minutage inchangés. Le contenu de
+       l'intro (z-index 10) reste très au-dessus. Mode 'calme' : rayons de
+       lumière + quelques bulles ; le grand poisson est ajouté plus bas. #}
+    {% include 'partials/ambiance.html' with ambiance_mode='calme' %}
+
     <div class="river-container">
         <div class="wave"></div>
         <div class="wave"></div>
@@ -275,6 +286,58 @@
         setTimeout(() => {
             window.location.href = '{{ redirect_url }}';
         }, 3000);
+    </script>
+
+    <script>
+        /* Ambiance aquatique — complément propre à l'intro : UN grand poisson,
+           ombre floue traversant lentement derrière le contenu. Le mode 'calme'
+           du système partagé n'en crée aucun ; on l'ajoute ici en réutilisant
+           les classes et la silhouette de static/js/ambiance.js. Exécuté après
+           le script différé (DOMContentLoaded), donc après la construction des
+           couches ; la pause d'onglet masqué (.amb-pause) le couvre aussi. */
+        document.addEventListener('DOMContentLoaded', function () {
+            'use strict';
+
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                return; /* mouvement réduit : pas de poisson (l'eau reste statique) */
+            }
+
+            var conteneur = document.querySelector('.ambiance');
+            if (!conteneur) { return; }
+
+            var largeur = window.innerWidth || document.documentElement.clientWidth;
+            if (largeur < 480) {
+                return; /* très petit écran : ambiance minimale, pas de poisson */
+            }
+
+            /* Même silhouette fuselée que dans ambiance.js (data URI, aucune
+               ressource externe). */
+            var svgPoisson = 'data:image/svg+xml,' + encodeURIComponent(
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 70">' +
+                '<path fill="#000" d="' +
+                'M6 36 C24 18 62 9 104 10 C136 11 162 20 180 32 ' +
+                'L208 14 C200 26 200 44 208 58 L180 40 ' +
+                'C162 51 136 59 104 59 C62 60 24 52 6 36 Z ' +
+                'M78 12 C88 1 104 0 116 8 L80 13 Z ' +
+                'M118 57 C124 66 134 68 142 61 L120 56 Z' +
+                '"/></svg>'
+            );
+
+            var taille = largeur < 768 ? 110 : 140; /* grand, réduit sur petit écran */
+            var poisson = document.createElement('div');
+            poisson.className = 'amb-poisson amb-poisson--gauche';
+            poisson.style.top = '62vh';
+            poisson.style.width = taille + 'px';
+            poisson.style.height = Math.round(taille * 70 / 220) + 'px';
+            poisson.style.backgroundImage = 'url("' + svgPoisson + '")';
+            poisson.style.opacity = '0.16';
+            poisson.style.setProperty('--flou', '5px');
+            poisson.style.setProperty('--duree', '60s'); /* traversée très lente */
+            /* Retard négatif : le poisson est déjà au milieu de l'écran pendant
+               les ~3 secondes que dure l'intro. */
+            poisson.style.animationDelay = '-24s';
+            conteneur.appendChild(poisson);
+        });
     </script>
 </body>
 </html>

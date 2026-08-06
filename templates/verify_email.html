@@ -3,9 +3,19 @@
 
 {% block page_title %}Vérification Email{% endblock %}
 
+{% block extra_css %}
+{# Ambiance aquatique — eau calme derrière la carte de vérification #}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
 <div class="verification-page">
-    <div class="verification-container">
+    {% include 'partials/ambiance.html' with ambiance_mode='calme' %}
+    <div class="verification-container amb-contenu">
         <!-- Progress Steps -->
         <div class="progress-steps">
             <div class="step completed">

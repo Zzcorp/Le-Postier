@@ -15,6 +15,10 @@
 <meta property="og:locale" content="fr_FR">
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="contact-page">
     <!-- Background Animation -->
@@ -22,7 +26,10 @@
         <div class="floating-particles" id="particles"></div>
     </div>
 
-    <div class="contact-container">
+    {# Ambiance aquatique (mode riche) — le bureau d'écriture flotte sur l'eau profonde. Placée APRÈS le fond sépia pour que l'eau se dessine par-dessus, derrière le contenu (.amb-contenu). #}
+    {% include 'partials/ambiance.html' with ambiance_mode='riche' %}
+
+    <div class="contact-container amb-contenu">
         <header class="contact-header animate-fade-in-down">
             <h1>Nous Contacter</h1>
             <p>Envoyez-nous un message sur notre carte postale</p>
@@ -188,6 +195,9 @@
     margin: 0 auto;
     border-radius: 12px;
     overflow: hidden;
+    /* Papier opaque sous le verso : la carte reste parfaitement lisible
+       au-dessus de l'ambiance aquatique, même avant le chargement de l'image. */
+    background: #e9dfc9;
     box-shadow: 
         0 30px 80px rgba(0, 0, 0, 0.5),
         0 0 0 3px rgba(181, 96, 11, 0.3);
@@ -703,4 +713,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(style);
 });
 </script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
 {% endblock %}

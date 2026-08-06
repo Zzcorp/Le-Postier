@@ -4,9 +4,19 @@
 
 {% block page_title %}Connexion{% endblock %}
 
+{% block extra_css %}
+{# Ambiance aquatique — eau calme derrière la carte de connexion #}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
 <div class="login-page">
-    <div class="login-container">
+    {% include 'partials/ambiance.html' with ambiance_mode='calme' %}
+    <div class="login-container amb-contenu">
         <div class="login-header">
             <h1>Connexion</h1>
             <p>Accédez à votre collection</p>

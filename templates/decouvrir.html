@@ -15,16 +15,26 @@
 <meta property="og:locale" content="fr_FR">
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="decouvrir-page">
+    {# Ambiance aquatique — premier enfant positionné : l'eau se peint au-dessus
+       du dégradé opaque de .decouvrir-page ; le contenu porte .amb-contenu
+       (z-index 1) et reste donc au-dessus. La modale vidéo (z-index 3000)
+       flotte très au-dessus de tout. #}
+    {% include 'partials/ambiance.html' with ambiance_mode='riche' %}
+
     <!-- Header -->
-    <header class="page-header animate-fade-in-down">
+    <header class="page-header amb-contenu animate-fade-in-down">
         <h1>La Galerie</h1>
         <p>Découvrez quelques tableaux animés</p>
     </header>
 
     <!-- Paintings Gallery -->
-    <section class="paintings-gallery">
+    <section class="paintings-gallery amb-contenu">
         <div class="paintings-grid">
             {% for painting in paintings %}
             <div class="painting-item animate-fade-in-up" 
@@ -134,6 +144,14 @@ document.addEventListener('keydown', (e) => {
 </script>
 
 <style>
+/* Le pied de page (base.html, statique) doit rester AU-DESSUS de l'ambiance
+   aquatique fixe — même contrat que .amb-contenu, appliqué ici car cette page
+   ne possède pas base.html. */
+footer {
+    position: relative;
+    z-index: 1;
+}
+
 .decouvrir-page {
     min-height: 100vh;
     background: linear-gradient(180deg, #1a1208 0%, #2d1f0d 50%, #1a1208 100%);
@@ -486,4 +504,8 @@ document.addEventListener('keydown', (e) => {
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
 {% endblock %}

@@ -15,14 +15,23 @@
 <meta property="og:locale" content="fr_FR">
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ambiance.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="presentation-page">
     <!-- Decorative background -->
     <div class="presentation-bg">
         <div class="bg-pattern"></div>
     </div>
-    
-    <div class="presentation-container">
+
+    {# Ambiance aquatique — APRÈS .presentation-bg (fixe, z-index 0, opaque) pour
+       que l'eau se peigne au-dessus du fond décoratif, et AVANT le conteneur
+       .amb-contenu (z-index 1) qui garde tout le contenu au-dessus de l'eau. #}
+    {% include 'partials/ambiance.html' with ambiance_mode='riche' %}
+
+    <div class="presentation-container amb-contenu">
         <!-- Header -->
         <header class="presentation-header">
             <div class="header-decoration">
@@ -191,6 +200,14 @@
 </div>
 
 <style>
+/* Le pied de page (base.html, statique) doit rester AU-DESSUS de l'ambiance
+   aquatique fixe — même contrat que .amb-contenu, appliqué ici car cette page
+   ne possède pas base.html. */
+footer {
+    position: relative;
+    z-index: 1;
+}
+
 .presentation-page {
     min-height: 100vh;
     position: relative;
@@ -504,4 +521,8 @@
     .discover-btn { padding: 15px 22px; font-size: 1rem; }
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ambiance.js' %}" defer></script>
 {% endblock %}
