@@ -394,7 +394,7 @@
                                 <div class="verso-corps">
                                     <div class="verso-gauche">
                                         <div class="verso-chargement" aria-hidden="true"></div>
-                                        <p class="verso-texte" data-role="verso-message"></p>
+                                        <p class="verso-texte ecriture-{{ postcard.get_ecriture }}" data-role="verso-message"></p>
                                         {% if postcard.sender.signature_image %}
                                         <img class="verso-signature" src="{{ postcard.sender.signature_image.url }}" alt="Signature de {{ postcard.sender.get_display_name }}">
                                         {% endif %}
@@ -513,7 +513,7 @@
                                 <div class="verso-corps">
                                     <div class="verso-gauche">
                                         <div class="verso-chargement" aria-hidden="true"></div>
-                                        <p class="verso-texte" data-role="verso-message"></p>
+                                        <p class="verso-texte ecriture-{{ postcard.get_ecriture }}" data-role="verso-message"></p>
                                         {% if postcard.sender.signature_image %}
                                         <img class="verso-signature" src="{{ postcard.sender.signature_image.url }}" alt="Votre signature">
                                         {% endif %}
@@ -617,7 +617,7 @@
                                     <div class="verso-corps">
                                         <div class="verso-gauche">
                                             <div class="verso-chargement" aria-hidden="true"></div>
-                                            <p class="verso-texte" data-role="verso-message"></p>
+                                            <p class="verso-texte ecriture-{{ postcard.get_ecriture }}" data-role="verso-message"></p>
                                             {% if postcard.sender.signature_image %}
                                             <img class="verso-signature" src="{{ postcard.sender.signature_image.url }}" alt="Signature de {{ postcard.sender.get_display_name }}">
                                             {% endif %}
@@ -819,6 +819,38 @@
                     </div>
                 </div>
                 
+                <!-- Choix de l'écriture -->
+                <div class="ecriture-selection">
+                    <p class="ecriture-instruction" id="ecritureLabel">Écriture</p>
+                    <div class="ecritures-row" id="ecritureRow" role="radiogroup" aria-labelledby="ecritureLabel">
+                        <button type="button" class="ecriture-option selected" role="radio" aria-checked="true" tabindex="0"
+                                data-ecriture="dancing" onclick="selectEcriture('dancing')">
+                            <span class="ecriture-echantillon ecriture-dancing" aria-hidden="true">Bien à vous</span>
+                            <span class="ecriture-nom">Anglaise</span>
+                        </button>
+                        <button type="button" class="ecriture-option" role="radio" aria-checked="false" tabindex="-1"
+                                data-ecriture="parisienne" onclick="selectEcriture('parisienne')">
+                            <span class="ecriture-echantillon ecriture-parisienne" aria-hidden="true">Bien à vous</span>
+                            <span class="ecriture-nom">Parisienne</span>
+                        </button>
+                        <button type="button" class="ecriture-option" role="radio" aria-checked="false" tabindex="-1"
+                                data-ecriture="formal" onclick="selectEcriture('formal')">
+                            <span class="ecriture-echantillon ecriture-formal" aria-hidden="true">Bien à vous</span>
+                            <span class="ecriture-nom">Ronde formelle</span>
+                        </button>
+                        <button type="button" class="ecriture-option" role="radio" aria-checked="false" tabindex="-1"
+                                data-ecriture="marck" onclick="selectEcriture('marck')">
+                            <span class="ecriture-echantillon ecriture-marck" aria-hidden="true">Bien à vous</span>
+                            <span class="ecriture-nom">Plume courante</span>
+                        </button>
+                        <button type="button" class="ecriture-option" role="radio" aria-checked="false" tabindex="-1"
+                                data-ecriture="caveat" onclick="selectEcriture('caveat')">
+                            <span class="ecriture-echantillon ecriture-caveat" aria-hidden="true">Bien à vous</span>
+                            <span class="ecriture-nom">Main libre</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Stamp Selection -->
                 <div class="stamp-selection">
                     <p class="stamp-instruction">Choisissez votre affranchissement :</p>
@@ -1086,6 +1118,12 @@ let currentStamp = '10c';
 let currentStep = 1;
 const userHasSignature = {{ user_has_signature|yesno:"true,false" }};
 
+// Écritures manuscrites : mêmes clés que SentPostcard.HANDWRITING_CHOICES
+// et que les classes CSS « ecriture-<clé> ». L'anglaise est le repli.
+const ECRITURES = ['dancing', 'parisienne', 'formal', 'marck', 'caveat'];
+const ECRITURE_DEFAUT = 'dancing';
+let currentEcriture = ECRITURE_DEFAUT;
+
 // Échappement HTML pour tout contenu injecté via innerHTML
 function escapeHtml(valeur) {
     return String(valeur == null ? '' : valeur).replace(/[&<>"']/g, c => ({
@@ -1178,6 +1216,9 @@ function resetComposeForm() {
     document.getElementById('staticPickerGrid').style.display = 'grid';
     document.getElementById('animatedPickerGrid').style.display = 'none';
     
+    // Reset writing choice (le form.reset() ne touche pas ces boutons)
+    selectEcriture(ECRITURE_DEFAUT);
+
     // Reset visibility
     setVisibility('private');
     
@@ -1337,6 +1378,62 @@ function validateStep2() {
 }
 
 // ============================================
+// CHOIX DE L'ÉCRITURE
+// ============================================
+// Pose la classe « ecriture-<clé> » sur un élément qui écrit, en retirant
+// les quatre autres. Toute clé inconnue retombe sur l'anglaise.
+function appliquerEcriture(element, cle) {
+    if (!element) return ECRITURE_DEFAUT;
+    const choix = ECRITURES.indexOf(cle) === -1 ? ECRITURE_DEFAUT : cle;
+    ECRITURES.forEach(c => element.classList.toggle('ecriture-' + c, c === choix));
+    return choix;
+}
+
+function selectEcriture(cle) {
+    currentEcriture = ECRITURES.indexOf(cle) === -1 ? ECRITURE_DEFAUT : cle;
+
+    document.querySelectorAll('#ecritureRow .ecriture-option').forEach(option => {
+        const actif = option.dataset.ecriture === currentEcriture;
+        option.classList.toggle('selected', actif);
+        option.setAttribute('aria-checked', actif ? 'true' : 'false');
+        option.tabIndex = actif ? 0 : -1;
+    });
+
+    // Aperçu immédiat : la zone de saisie prend la plume choisie
+    appliquerEcriture(document.getElementById('composeMessageInput'), currentEcriture);
+}
+
+// Navigation au clavier d'un groupe de radios : flèches, Origine et Fin.
+function initEcritureRadios() {
+    const rangee = document.getElementById('ecritureRow');
+    if (!rangee) return;
+
+    rangee.addEventListener('keydown', (e) => {
+        const touches = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+        if (touches.indexOf(e.key) === -1) return;
+
+        const options = Array.from(rangee.querySelectorAll('.ecriture-option'));
+        const courant = options.indexOf(document.activeElement);
+        if (courant === -1) return;
+
+        e.preventDefault();
+        let suivant;
+        if (e.key === 'Home') {
+            suivant = 0;
+        } else if (e.key === 'End') {
+            suivant = options.length - 1;
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            suivant = (courant + 1) % options.length;
+        } else {
+            suivant = (courant - 1 + options.length) % options.length;
+        }
+
+        selectEcriture(options[suivant].dataset.ecriture);
+        options[suivant].focus();
+    });
+}
+
+// ============================================
 // VISIBILITY & RECIPIENT
 // ============================================
 function setVisibility(vis) {
@@ -1418,6 +1515,7 @@ async function sendPostcard(event) {
                 visibility: currentVisibility,
                 postcard_id: selectedPostcardId,
                 stamp_type: currentStamp,
+                handwriting: currentEcriture,
                 is_animated: isAnimatedCard
             })
         });
@@ -1534,7 +1632,9 @@ async function loadVersoMessage(wrap) {
     if (!id || !verso || !texte) return;
 
     if (versoMessageCache.has(id)) {
-        texte.textContent = versoMessageCache.get(id).message;
+        const enCache = versoMessageCache.get(id);
+        appliquerEcriture(texte, enCache.handwriting);
+        texte.textContent = enCache.message;
         return;
     }
 
@@ -1546,6 +1646,9 @@ async function loadVersoMessage(wrap) {
             throw new Error(data.error || 'Erreur');
         }
         versoMessageCache.set(id, data);
+        // L'écriture voyage avec le message : le serveur l'a déjà validée,
+        // mais on repasse par le repli pour les cartes d'avant le choix.
+        appliquerEcriture(texte, data.handwriting);
         texte.textContent = data.message;
         // La lecture côté serveur vient de marquer la carte comme lue
         markCardReadInUi(id);
@@ -1606,7 +1709,9 @@ async function viewPostcardMessage(id) {
             return;
         }
         
-        // Set message text
+        // Set message text — dans l'écriture choisie par l'expéditeur
+        appliquerEcriture(document.getElementById('viewMessageText'), data.handwriting);
+        appliquerEcriture(document.getElementById('viewMessageSender'), data.handwriting);
         document.getElementById('viewMessageText').textContent = data.message;
         
         // Set stamp
@@ -1762,9 +1867,13 @@ document.addEventListener('DOMContentLoaded', () => {
     createDustParticles();
     initVideoHovers();
     initFlipCards();
+    initEcritureRadios();
 
     // Auto-select stamp on load
     selectStamp('10c');
+
+    // Écriture par défaut : l'anglaise, appliquée d'emblée à la zone de saisie
+    selectEcriture(ECRITURE_DEFAUT);
 
     // Liens profonds : ?open= (lire une carte reçue), ?postcard= (carte présélectionnée), ?to= (destinataire)
     const deepLinkParams = new URLSearchParams(window.location.search);
@@ -2539,7 +2648,11 @@ document.addEventListener('DOMContentLoaded', () => {
     min-height: 0;
 }
 
+/* Marge de tête du message : environ 2,5 lignes d'écriture
+   (2,5 × 1,45 × 1,05rem ≈ 3,8rem). Réglée ici pour que le chatoiement de
+   chargement descende exactement avec le texte. */
 .verso-gauche {
+    --verso-retrait: 3.8rem;
     flex: 1.25;
     min-width: 0;
     display: flex;
@@ -2547,32 +2660,85 @@ document.addEventListener('DOMContentLoaded', () => {
     position: relative;
 }
 
+/* ————— Les cinq écritures manuscrites —————
+   Les familles sont auto-hébergées dans static/fonts/ecritures.css (chargée
+   par base.html) : sans cette feuille, 'Dancing Script' n'existait pas et le
+   navigateur retombait sur le « cursive » générique (Comic Sans sous Windows).
+   Chaque classe ne pose que trois variables — famille, échelle, interligne —
+   si bien qu'elle l'emporte toujours, quelle que soit la spécificité des
+   blocs qui écrivent. Les plumes n'ont pas la même hauteur d'x : Parisienne,
+   Petit Formal Script et Caveat sont menues (on les grossit), Marck Script
+   court large et haut (on la retient à peine).
+   Les blocs qui écrivent déclarent leur taille de référence (--ecriture-base)
+   et leur interligne de référence (--ecriture-ligne), puis multiplient. */
+.ecriture-dancing {
+    --ecriture-famille: 'Dancing Script', 'Caveat', cursive;
+    --ecriture-echelle: 1;
+    --ecriture-interligne: 1;
+}
+
+.ecriture-parisienne {
+    --ecriture-famille: 'Parisienne', 'Dancing Script', 'Caveat', cursive;
+    --ecriture-echelle: 1.22;
+    --ecriture-interligne: 1.1;
+}
+
+.ecriture-formal {
+    --ecriture-famille: 'Petit Formal Script', 'Dancing Script', 'Caveat', cursive;
+    --ecriture-echelle: 1.16;
+    --ecriture-interligne: 1.08;
+}
+
+.ecriture-marck {
+    --ecriture-famille: 'Marck Script', 'Dancing Script', 'Caveat', cursive;
+    --ecriture-echelle: 1.04;
+    --ecriture-interligne: 1.02;
+}
+
+.ecriture-caveat {
+    --ecriture-famille: 'Caveat', 'Dancing Script', cursive;
+    --ecriture-echelle: 1.26;
+    --ecriture-interligne: 1;
+}
+
+/* Le message : une vraie carte postale laisse une marge en tête, l'écriture
+   commence deux lignes et demie plus bas (--verso-retrait, réglé par
+   contexte et par palier pour ne jamais déborder la face). */
 .verso-texte {
-    font-family: 'Dancing Script', cursive, Georgia, serif;
-    font-size: 1.05rem;
+    --ecriture-base: 1.05rem;
+    --ecriture-ligne: 1.45;
+    font-family: var(--ecriture-famille, 'Dancing Script', 'Caveat', cursive);
+    font-size: calc(var(--ecriture-base) * var(--ecriture-echelle, 1));
+    line-height: calc(var(--ecriture-ligne) * var(--ecriture-interligne, 1));
     color: #4a3728;
-    line-height: 1.45;
     margin: 0;
+    padding-top: var(--verso-retrait, 3.8rem);
+    min-height: 0;
     overflow-y: auto;
     overflow-wrap: break-word;
 }
 
 /* Signature du correspondant : encre transparente posée telle quelle
-   sur le papier — aucun fond, aucune bordure, aucun filtre. */
+   sur le papier — aucun fond, aucune bordure, aucun filtre. Elle reprend
+   sa place d'origine, juste sous le message (flux naturel), et ne se
+   comprime jamais : un message long fait défiler le texte, pas la plume. */
 .verso-signature {
     align-self: flex-start;
-    margin-top: auto;
+    margin-top: 10px;
     max-width: 70%;
     max-height: 48px;
+    flex-shrink: 0;
     background: none;
     border: none;
     filter: none;
 }
 
+/* La date garde son ancrage en pied de colonne */
 .verso-date {
     color: rgba(74, 55, 40, 0.55);
     font-size: 0.72rem;
-    margin-top: 6px;
+    margin-top: auto;
+    padding-top: 6px;
     flex-shrink: 0;
 }
 
@@ -2604,9 +2770,11 @@ document.addEventListener('DOMContentLoaded', () => {
     padding-bottom: 6px;
 }
 
+/* L'adresse reste toujours de la même main — celle du bureau de poste —
+   quelle que soit l'écriture choisie pour le message. */
 .verso-adresse-ligne {
     display: block;
-    font-family: 'Dancing Script', cursive, Georgia, serif;
+    font-family: 'Dancing Script', 'Caveat', cursive;
     font-size: 0.95rem;
     color: #4a3728;
     border-bottom: 1px solid rgba(74, 55, 40, 0.35);
@@ -2624,7 +2792,7 @@ document.addEventListener('DOMContentLoaded', () => {
 .verso-chargement {
     display: none;
     position: absolute;
-    top: 2px;
+    top: calc(var(--verso-retrait, 3.8rem) + 2px);
     left: 0;
     right: 12%;
     height: 3.4em;
@@ -2693,9 +2861,15 @@ document.addEventListener('DOMContentLoaded', () => {
     border-bottom: 1px solid rgba(74, 55, 40, 0.2);
 }
 
+/* Mur : la carte est bien plus grande, l'écriture et sa marge de tête
+   suivent (2,5 × 1,5 × 1,5rem ≈ 5,6rem). */
+.post-flip .verso-gauche {
+    --verso-retrait: 5.6rem;
+}
+
 .post-flip .verso-texte {
-    font-size: 1.5rem;
-    line-height: 1.5;
+    --ecriture-base: 1.5rem;
+    --ecriture-ligne: 1.5;
 }
 
 .post-flip .verso-adresse-ligne {
@@ -3432,10 +3606,14 @@ document.addEventListener('DOMContentLoaded', () => {
     background: transparent;
     border: none;
     resize: none;
-    font-family: 'Dancing Script', cursive, Georgia, serif;
-    font-size: 14px;
+    /* L'aperçu en direct : la plume choisie s'applique à la frappe */
+    --ecriture-base: 15px;
+    --ecriture-ligne: 1.5;
+    font-family: var(--ecriture-famille, 'Dancing Script', 'Caveat', cursive);
+    font-size: calc(var(--ecriture-base) * var(--ecriture-echelle, 1));
+    line-height: calc(var(--ecriture-ligne) * var(--ecriture-interligne, 1));
     color: #4a3728;
-    line-height: 1.5;
+    transition: font-size 0.18s ease;
 }
 
 .compose-message-input:focus {
@@ -3489,6 +3667,95 @@ document.addEventListener('DOMContentLoaded', () => {
 .compose-signature-img {
     max-width: 100%;
     max-height: 60px;
+}
+
+/* ————— Choix de l'écriture —————
+   Cinq plumes présentées côte à côte, chacune traçant le même court billet
+   français dans sa propre main. Sélection : liseré ocre et légère élévation,
+   comme une carte que l'on soulève du sous-main. */
+.ecriture-selection {
+    margin-bottom: 22px;
+}
+
+.ecriture-instruction {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.ecritures-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 10px;
+}
+
+.ecriture-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 13px 5px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #f3e6cd;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ecriture-option:hover {
+    background: rgba(181, 96, 11, 0.1);
+    border-color: rgba(181, 96, 11, 0.3);
+}
+
+.ecriture-option.selected {
+    background: rgba(181, 96, 11, 0.2);
+    border-color: #b5600b;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+}
+
+.ecriture-option:focus-visible {
+    outline: 2px solid #d1872c;
+    outline-offset: 3px;
+}
+
+.ecriture-echantillon {
+    --ecriture-base: 1.15rem;
+    --ecriture-ligne: 1.25;
+    font-family: var(--ecriture-famille, 'Dancing Script', 'Caveat', cursive);
+    font-size: calc(var(--ecriture-base) * var(--ecriture-echelle, 1));
+    line-height: calc(var(--ecriture-ligne) * var(--ecriture-interligne, 1));
+    text-align: center;
+    /* Deux lignes réservées : les cinq pastilles gardent la même assise
+       que le billet tienne sur une ligne ou deux. */
+    min-height: calc(2 * var(--ecriture-base) * var(--ecriture-echelle, 1) * var(--ecriture-ligne) * var(--ecriture-interligne, 1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ecriture-nom {
+    font-size: 0.68rem;
+    letter-spacing: 0.4px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.ecriture-option.selected .ecriture-nom {
+    color: #ffc168;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ecriture-option,
+    .compose-message-input {
+        transition: none;
+    }
+
+    .ecriture-option.selected {
+        transform: none;
+    }
 }
 
 /* Stamp Selection */
@@ -3905,11 +4172,14 @@ document.addEventListener('DOMContentLoaded', () => {
     overflow: hidden;
 }
 
+/* Dialogue de repli (carte absente de la grille) : même plume que la carte */
 .message-text-area p {
-    font-family: 'Dancing Script', cursive, Georgia, serif;
-    font-size: 14px;
+    --ecriture-base: 15px;
+    --ecriture-ligne: 1.5;
+    font-family: var(--ecriture-famille, 'Dancing Script', 'Caveat', cursive);
+    font-size: calc(var(--ecriture-base) * var(--ecriture-echelle, 1));
+    line-height: calc(var(--ecriture-ligne) * var(--ecriture-interligne, 1));
     color: #4a3728;
-    line-height: 1.5;
     margin: 0;
 }
 
@@ -3940,9 +4210,14 @@ document.addEventListener('DOMContentLoaded', () => {
     margin-bottom: 8px;
 }
 
+/* Le nom sous la signature suit la plume de la carte, pour que le dos
+   entier semble tracé de la même main. */
 .signature-name {
-    font-family: 'Dancing Script', cursive, Georgia, serif;
-    font-size: 14px;
+    --ecriture-base: 15px;
+    --ecriture-ligne: 1.35;
+    font-family: var(--ecriture-famille, 'Dancing Script', 'Caveat', cursive);
+    font-size: calc(var(--ecriture-base) * var(--ecriture-echelle, 1));
+    line-height: calc(var(--ecriture-ligne) * var(--ecriture-interligne, 1));
     color: #4a3728;
     margin: 0;
 }
@@ -4230,7 +4505,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     .postcard-item .verso-texte {
-        font-size: 0.95rem;
+        --ecriture-base: 0.95rem;
+    }
+
+    /* Marge de tête resserrée sur carte étroite : 2 lignes suffisent
+       (2 × 1,45 × 0,95rem ≈ 2,75rem) pour l'air d'une vraie carte. */
+    .postcard-item .verso-gauche {
+        --verso-retrait: 2.75rem;
     }
 
     .postcard-item .verso-adresse-ligne {
@@ -4242,7 +4523,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     .post-flip .verso-texte {
-        font-size: 1.25rem;
+        --ecriture-base: 1.25rem;
+    }
+
+    /* 2,5 × 1,5 × 1,25rem ≈ 4,7rem */
+    .post-flip .verso-gauche {
+        --verso-retrait: 4.7rem;
     }
 
     .post-flip .verso-timbre {
@@ -4310,6 +4596,17 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Une carte par rangée sur mobile étroit */
     .postcards-grid {
         grid-template-columns: 1fr;
+    }
+
+    /* Verso très court : on ramène la marge de tête à 1,8 ligne
+       (1,8 × 1,45 × 0,95rem ≈ 2,5rem) — le message et la signature
+       restent tous deux visibles. */
+    .postcard-item .verso-gauche {
+        --verso-retrait: 2.5rem;
+    }
+
+    .postcard-item .verso-signature {
+        max-height: 40px;
     }
 
     .post-actions {

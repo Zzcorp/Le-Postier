@@ -1873,6 +1873,9 @@ def send_postcard(request):
         recipient_username = data.get('recipient')
         postcard_id = data.get('postcard_id')
         is_animated = data.get('is_animated', False)
+        # Écriture manuscrite : toute valeur absente ou inconnue retombe
+        # silencieusement sur l'anglaise, jamais d'erreur pour l'expéditeur.
+        handwriting = SentPostcard.normaliser_ecriture(data.get('handwriting'))
 
         recipient = None
         if visibility == 'private':
@@ -1902,6 +1905,7 @@ def send_postcard(request):
             postcard=postcard,
             message=message,
             stamp_type=stamp_type,
+            handwriting=handwriting,
             visibility=visibility,
             is_animated=is_animated
         )
@@ -1934,6 +1938,8 @@ def get_postcard_message(request, postcard_id):
             'id': sent_postcard.id,
             'message': sent_postcard.message,
             'stamp_type': sent_postcard.stamp_type,
+            # Écriture de la carte : ajout additif, les anciens clients l'ignorent
+            'handwriting': sent_postcard.get_ecriture(),
             'sender_username': sent_postcard.sender.username,
             'sender_display': sent_postcard.sender.get_display_name(),
             'sender_signature_url': sent_postcard.get_sender_signature_url(),

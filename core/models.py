@@ -640,6 +640,19 @@ class SentPostcard(models.Model):
         ('10c', '10 centimes - 55 caractères'),
     ]
 
+    # Plume choisie à la composition. Les valeurs correspondent aux familles
+    # auto-hébergées de static/fonts/ecritures.css et aux classes CSS
+    # « ecriture-<clé> » de la page La Poste.
+    HANDWRITING_CHOICES = [
+        ('dancing', 'Anglaise'),
+        ('parisienne', 'Parisienne'),
+        ('formal', 'Ronde formelle'),
+        ('marck', 'Plume courante'),
+        ('caveat', 'Main libre'),
+    ]
+
+    DEFAULT_HANDWRITING = 'dancing'
+
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_postcards')
     recipient = models.ForeignKey(
         CustomUser,
@@ -652,6 +665,12 @@ class SentPostcard(models.Model):
     custom_image_url = models.URLField(max_length=500, blank=True)
     message = models.TextField(max_length=55, verbose_name="Message")  # Max for 10c stamp
     stamp_type = models.CharField(max_length=10, choices=STAMP_CHOICES, default='10c', verbose_name="Type de timbre")
+    handwriting = models.CharField(
+        max_length=24,
+        choices=HANDWRITING_CHOICES,
+        default=DEFAULT_HANDWRITING,
+        verbose_name="Écriture",
+    )
     visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='private')
     is_read = models.BooleanField(default=False)
     is_animated = models.BooleanField(default=False, verbose_name="Carte animée")
@@ -690,6 +709,19 @@ class SentPostcard(models.Model):
         if self.sender.signature_image:
             return self.sender.signature_image.url
         return None
+
+    @classmethod
+    def normaliser_ecriture(cls, valeur):
+        """Ramène une écriture quelconque à une clé valide (repli : anglaise)."""
+        cles = [c[0] for c in cls.HANDWRITING_CHOICES]
+        try:
+            return valeur if valeur in cles else cls.DEFAULT_HANDWRITING
+        except TypeError:
+            return cls.DEFAULT_HANDWRITING
+
+    def get_ecriture(self):
+        """Clé d'écriture sûre — les cartes d'avant le choix gardent l'anglaise."""
+        return self.normaliser_ecriture(self.handwriting)
 
 
 class PostcardComment(models.Model):
