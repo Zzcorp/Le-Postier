@@ -1018,6 +1018,12 @@
                         <span class="rank">#{{ forloop.counter }}</span>
                         <span class="number">N°{{ p.number }}</span>
                         <span class="views">{{ p.views_count }} vues</span>
+                        {% if p.generation_rating %}
+                        <span class="mini-stars" title="Note de génération : {{ p.generation_rating }}/5" aria-label="Note de génération : {{ p.generation_rating }}/5">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            {{ p.generation_rating }}/5
+                        </span>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -1031,6 +1037,12 @@
                         <span class="rank">#{{ forloop.counter }}</span>
                         <span class="number">N°{{ p.number }}</span>
                         <span class="likes">{{ p.likes_count }} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+                        {% if p.generation_rating %}
+                        <span class="mini-stars" title="Note de génération : {{ p.generation_rating }}/5" aria-label="Note de génération : {{ p.generation_rating }}/5">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            {{ p.generation_rating }}/5
+                        </span>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -1270,41 +1282,77 @@
             Ajouter une carte postale
         </h2>
         <form id="addPostcardForm" onsubmit="submitAddPostcard(event)">
-            <div class="form-group">
-                <label for="postcardNumber">Numéro *</label>
-                <input type="text" id="postcardNumber" name="number" placeholder="Ex: 000123" required>
-                <span class="form-hint">Format: 6 chiffres recommandé</span>
-            </div>
-            <div class="form-group">
-                <label for="postcardTitle">Titre *</label>
-                <input type="text" id="postcardTitle" name="title" placeholder="Titre de la carte postale" required>
-            </div>
-            <div class="form-group">
-                <label for="postcardDescription">Description</label>
-                <textarea id="postcardDescription" name="description" rows="3" placeholder="Description optionnelle..."></textarea>
-            </div>
-            <div class="form-group">
-                <label for="postcardKeywords">Mots-clés</label>
-                <input type="text" id="postcardKeywords" name="keywords" placeholder="mot1, mot2, mot3...">
-                <span class="form-hint">Séparés par des virgules</span>
-            </div>
-            <div class="form-group">
-                <label for="postcardRarity">Rareté</label>
-                <select id="postcardRarity" name="rarity">
-                    <option value="common">Commune</option>
-                    <option value="rare">Rare</option>
-                    <option value="very_rare">Très Rare</option>
-                </select>
-            </div>
+            <fieldset class="form-section">
+                <legend class="form-section-title">Informations</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="postcardNumber">Numéro *</label>
+                        <input type="text" id="postcardNumber" name="number" placeholder="Ex. : 000123" required>
+                        <span class="form-hint">Format recommandé : 6 chiffres</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="postcardRarity">Rareté</label>
+                        <select id="postcardRarity" name="rarity">
+                            <option value="common">Commune</option>
+                            <option value="rare">Rare</option>
+                            <option value="very_rare">Très Rare</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="postcardTitle">Titre *</label>
+                    <input type="text" id="postcardTitle" name="title" placeholder="Titre de la carte postale" required>
+                </div>
+                <div class="form-group">
+                    <label for="postcardDescription">Description</label>
+                    <textarea id="postcardDescription" name="description" rows="3" placeholder="Description optionnelle…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="postcardKeywords">Mots-clés</label>
+                    <input type="text" id="postcardKeywords" name="keywords" placeholder="mot1, mot2, mot3…">
+                    <span class="form-hint">Séparés par des virgules</span>
+                </div>
+            </fieldset>
+            <fieldset class="form-section">
+                <legend class="form-section-title">Images (optionnelles)</legend>
+                <div class="form-file-grid">
+                    <div class="form-group">
+                        <label for="postcardVignette">Vignette</label>
+                        <input type="file" id="postcardVignette" name="vignette" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="postcardGrande">Grande</label>
+                        <input type="file" id="postcardGrande" name="grande" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="postcardDos">Dos</label>
+                        <input type="file" id="postcardDos" name="dos" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="postcardZoom">Zoom</label>
+                        <input type="file" id="postcardZoom" name="zoom" accept="image/*">
+                    </div>
+                </div>
+                <span class="form-hint">jpg, jpeg, png ou gif — enregistrées sous le numéro de la carte</span>
+            </fieldset>
+            <fieldset class="form-section">
+                <legend class="form-section-title">Animation (optionnelle)</legend>
+                <div class="form-group">
+                    <label for="postcardAnimation">Vidéo</label>
+                    <input type="file" id="postcardAnimation" name="animation" accept="video/mp4,video/webm">
+                    <span class="form-hint">mp4 ou webm, 200 Mo maximum</span>
+                </div>
+            </fieldset>
+            <div class="form-result" id="addPostcardResult" hidden></div>
             <div class="form-actions">
                 <button type="button" class="btn-secondary" onclick="closeAddPostcardModal()">Annuler</button>
-                <button type="submit" class="btn-primary">
+                <button type="submit" class="btn-primary" id="addPostcardSubmit">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                         <polyline points="17 21 17 13 7 13 7 21"/>
                         <polyline points="7 3 7 8 15 8"/>
                     </svg>
-                    Créer
+                    <span id="addPostcardSubmitLabel">Créer</span>
                 </button>
             </div>
         </form>
@@ -1427,6 +1475,7 @@ const ICON_GLOBE = svgIcon('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12"
 const ICON_PAGE = svgIcon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', 12);
 const ICON_CHECK = svgIcon('<path d="M20 6L9 17l-5-5"/>', 16);
 const ICON_ALERT = svgIcon('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>', 16);
+const ICON_STAR = svgIcon('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>', 16);
 
 // — Safe DOM helpers: every dynamic string goes through textContent, never innerHTML —
 function el(tag, className, text) {
@@ -1530,40 +1579,83 @@ function openAddPostcardModal() {
 function closeAddPostcardModal() {
     document.getElementById('addPostcardModal').classList.remove('active');
     document.getElementById('addPostcardForm').reset();
+    const result = document.getElementById('addPostcardResult');
+    clearNode(result);
+    result.hidden = true;
+    result.classList.remove('is-error');
+    setAddPostcardBusy(false);
+}
+
+function setAddPostcardBusy(busy) {
+    const submit = document.getElementById('addPostcardSubmit');
+    const label = document.getElementById('addPostcardSubmitLabel');
+    if (submit) submit.disabled = busy;
+    if (label) label.textContent = busy ? 'Envoi en cours…' : 'Créer';
+}
+
+function renderAddPostcardResult(result) {
+    const box = document.getElementById('addPostcardResult');
+    clearNode(box);
+    box.hidden = false;
+    box.classList.remove('is-error');
+    box.appendChild(el('p', 'form-result-title', result.message || 'Carte créée.'));
+    const files = result.files_saved || [];
+    if (files.length > 0) {
+        const list = el('ul', 'form-result-list');
+        files.forEach(f => list.appendChild(el('li', '', f.label + ' — ' + f.path)));
+        box.appendChild(list);
+    } else {
+        box.appendChild(el('p', 'form-result-empty', 'Aucun fichier joint — la carte a été créée sans média.'));
+    }
+    (result.files_errors || []).forEach(message => {
+        box.appendChild(el('p', 'form-result-error', message));
+    });
 }
 
 async function submitAddPostcard(e) {
     e.preventDefault();
-    
+
     const form = document.getElementById('addPostcardForm');
-    const data = {
-        number: form.number.value.trim(),
-        title: form.title.value.trim(),
-        description: form.description.value.trim(),
-        keywords: form.keywords.value.trim(),
-        rarity: form.rarity.value,
-    };
-    
+    const formData = new FormData();
+    formData.append('number', form.number.value.trim());
+    formData.append('title', form.title.value.trim());
+    formData.append('description', form.description.value.trim());
+    formData.append('keywords', form.keywords.value.trim());
+    formData.append('rarity', form.rarity.value);
+    ['vignette', 'grande', 'dos', 'zoom', 'animation'].forEach(field => {
+        const input = form[field];
+        if (input && input.files && input.files[0]) {
+            formData.append(field, input.files[0]);
+        }
+    });
+
+    setAddPostcardBusy(true);
+
     try {
         const response = await fetch('/api/admin/add-postcard/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify(data)
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             showNotification(result.message, 'success');
-            closeAddPostcardModal();
+            renderAddPostcardResult(result);
+            form.reset();
         } else {
+            const box = document.getElementById('addPostcardResult');
+            clearNode(box);
+            box.hidden = false;
+            box.classList.add('is-error');
+            box.appendChild(el('p', 'form-result-error', result.error || 'Erreur lors de la création'));
             showNotification(result.error || 'Erreur lors de la création', 'error');
         }
     } catch (error) {
         showNotification('Erreur de connexion', 'error');
+    } finally {
+        setAddPostcardBusy(false);
     }
 }
 
@@ -1864,6 +1956,163 @@ function closeCountryModal() {
     document.getElementById('countryModal').classList.remove('active');
 }
 
+// — Gestion de la carte (note de génération + animation) dans la modale —
+function paintGenerationStars(stars, rating) {
+    stars.dataset.rating = String(rating);
+    Array.from(stars.children).forEach((btn, index) => {
+        btn.classList.toggle('filled', index < rating);
+    });
+}
+
+async function saveGenerationRating(postcardId, rating, stars) {
+    const previous = Number(stars.dataset.rating) || 0;
+    if (rating === previous) return;
+    paintGenerationStars(stars, rating); // optimiste
+
+    try {
+        const response = await fetch(`/api/admin/postcard/${postcardId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ generation_rating: rating })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Erreur');
+        }
+        showNotification(rating > 0 ? 'Note de génération enregistrée' : 'Note de génération effacée', 'success');
+    } catch (error) {
+        paintGenerationStars(stars, previous); // retour arrière
+        showNotification("Erreur lors de l'enregistrement de la note", 'error');
+    }
+}
+
+function buildGenerationRatingSection(pc) {
+    const section = el('div', 'detail-section manage-section');
+    section.appendChild(el('h4', '', 'Note de génération'));
+    const row = el('div', 'gen-rating-row');
+
+    const stars = el('div', 'gen-stars');
+    stars.dataset.rating = String(pc.generation_rating || 0);
+    for (let i = 1; i <= 5; i++) {
+        const btn = el('button', 'gen-star');
+        btn.type = 'button';
+        btn.title = i + '/5';
+        btn.setAttribute('aria-label', 'Noter ' + i + ' sur 5');
+        btn.appendChild(iconNode(ICON_STAR));
+        btn.addEventListener('click', () => saveGenerationRating(pc.id, i, stars));
+        stars.appendChild(btn);
+    }
+    paintGenerationStars(stars, pc.generation_rating || 0);
+    row.appendChild(stars);
+
+    const clearBtn = el('button', 'gen-clear', 'Effacer');
+    clearBtn.type = 'button';
+    clearBtn.title = 'Remettre la note à zéro';
+    clearBtn.addEventListener('click', () => saveGenerationRating(pc.id, 0, stars));
+    row.appendChild(clearBtn);
+
+    if (Number(pc.public_count) > 0) {
+        const publicText = 'Public : ' + pc.public_avg + '/5 (' + pc.public_count +
+            ' vote' + (pc.public_count > 1 ? 's' : '') + ')';
+        row.appendChild(el('span', 'gen-public', publicText));
+    }
+
+    section.appendChild(row);
+    return section;
+}
+
+function paintAnimationState(state, hasAnimation, videoCount) {
+    const count = Number(videoCount) || (hasAnimation ? 1 : 0);
+    if (hasAnimation) {
+        state.textContent = 'Animation présente — ' + count + ' vidéo' + (count > 1 ? 's' : '');
+        state.classList.add('present');
+    } else {
+        state.textContent = 'Aucune animation';
+        state.classList.remove('present');
+    }
+}
+
+async function uploadPostcardAnimation(postcardId, input, btn, state, feedback) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    if (file.size > 200 * 1024 * 1024) {
+        feedback.textContent = 'Fichier trop volumineux (200 Mo maximum)';
+        feedback.className = 'anim-feedback is-error';
+        input.value = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', 'animated_cp');
+    formData.append('postcard_id', postcardId);
+
+    btn.disabled = true;
+    feedback.textContent = 'Envoi de « ' + file.name + ' »…';
+    feedback.className = 'anim-feedback is-sending';
+
+    try {
+        const response = await fetch('/api/admin/upload-media/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || "Erreur lors de l'envoi");
+        }
+        paintAnimationState(state, result.has_animation, result.video_count);
+        feedback.textContent = 'Vidéo enregistrée : ' + (result.saved || result.filename);
+        feedback.className = 'anim-feedback is-success';
+        showNotification('Animation ajoutée à la carte', 'success');
+    } catch (error) {
+        feedback.textContent = error.message || "Erreur lors de l'envoi";
+        feedback.className = 'anim-feedback is-error';
+        showNotification("Erreur lors de l'envoi de la vidéo", 'error');
+    } finally {
+        btn.disabled = false;
+        input.value = '';
+    }
+}
+
+function buildAnimationUploadSection(pc) {
+    const section = el('div', 'detail-section manage-section');
+    section.appendChild(el('h4', '', 'Animation'));
+    const row = el('div', 'anim-upload-row');
+
+    const state = el('span', 'anim-state');
+    paintAnimationState(state, pc.has_animation, pc.video_count);
+    row.appendChild(state);
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/mp4,video/webm';
+    input.hidden = true;
+
+    const btn = el('button', 'btn-secondary btn-compact');
+    btn.type = 'button';
+    btn.appendChild(iconNode(ICON_FILM));
+    btn.appendChild(document.createTextNode(' Ajouter une vidéo'));
+    btn.addEventListener('click', () => input.click());
+
+    const feedback = el('span', 'anim-feedback');
+    feedback.textContent = 'mp4 ou webm, 200 Mo maximum';
+
+    input.addEventListener('change', () => {
+        uploadPostcardAnimation(pc.id, input, btn, state, feedback);
+    });
+
+    row.appendChild(btn);
+    row.appendChild(input);
+    section.appendChild(row);
+    section.appendChild(feedback);
+    return section;
+}
+
 // Postcard Analytics Modal
 async function showPostcardAnalytics(postcardId) {
     if (!postcardId) return;
@@ -1908,6 +2157,9 @@ async function showPostcardAnalytics(postcardId) {
             [pc.zoom_count, 'Zooms'],
             [data.likes_total, 'Likes']
         ]));
+
+        root.appendChild(buildGenerationRatingSection(pc));
+        root.appendChild(buildAnimationUploadSection(pc));
 
         const grid2 = el('div', 'detail-grid-2');
 

@@ -26,8 +26,8 @@ VIDEO_SUFFIXES = {'.mp4', '.webm'}
 
 MEDIA_FIELDS = [
     'vignette_file', 'grande_file', 'dos_file', 'zoom_file',
-    'vignette_webp', 'animation_files', 'has_animation', 'has_images',
-    'search_blob', 'media_synced_at',
+    'vignette_webp', 'grande_webp', 'animation_files', 'has_animation',
+    'has_images', 'search_blob', 'media_synced_at',
 ]
 
 
@@ -128,6 +128,7 @@ class Command(BaseCommand):
         }
         animated_dir = media_root / 'animated_cp'
         webp_dir = media_root / 'postcards' / 'VignetteWebP'
+        grande_webp_dir = media_root / 'postcards' / 'GrandeWebP'
 
         # One listing per folder
         indexes = {name: self.build_image_index(path) for name, path in folders.items()}
@@ -138,11 +139,18 @@ class Command(BaseCommand):
                 f.name for f in webp_dir.iterdir()
                 if f.is_file() and f.suffix.lower() == '.webp'
             }
+        grande_webp_names = set()
+        if grande_webp_dir.exists():
+            grande_webp_names = {
+                f.name for f in grande_webp_dir.iterdir()
+                if f.is_file() and f.suffix.lower() == '.webp'
+            }
 
         for name, index in indexes.items():
             self.stdout.write(f'  {name}: {len(index)} index entries')
         self.stdout.write(f'  animated_cp: {len(animation_index)} index entries')
         self.stdout.write(f'  VignetteWebP: {len(webp_names)} files')
+        self.stdout.write(f'  GrandeWebP: {len(grande_webp_names)} files')
         self.stdout.write('')
 
         now = timezone.now()
@@ -154,6 +162,8 @@ class Command(BaseCommand):
         matched_animation_files = set()
         webp_kept = 0
         webp_cleared = 0
+        grande_webp_kept = 0
+        grande_webp_cleared = 0
 
         for postcard in Postcard.objects.all().iterator(chunk_size=500):
             new_values = {}
@@ -192,6 +202,23 @@ class Command(BaseCommand):
                     webp_cleared += 1
             else:
                 new_values['vignette_webp'] = ''
+
+            # Grande WebP derivative: same keep/clear rule as the vignette —
+            # generate_webp repopulates cleared paths.
+            current_grande_webp = postcard.grande_webp
+            if current_grande_webp:
+                if current_grande_webp.startswith('postcards/GrandeWebP/'):
+                    grande_webp_ok = Path(current_grande_webp).name in grande_webp_names
+                else:
+                    grande_webp_ok = (media_root / current_grande_webp).exists()
+                if grande_webp_ok:
+                    new_values['grande_webp'] = current_grande_webp
+                    grande_webp_kept += 1
+                else:
+                    new_values['grande_webp'] = ''
+                    grande_webp_cleared += 1
+            else:
+                new_values['grande_webp'] = ''
 
             animation_names = self.lookup(animation_index, postcard) or []
             new_values['animation_files'] = [f'animated_cp/{n}' for n in animation_names]
@@ -258,6 +285,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'With images:          {with_images}'))
         self.stdout.write(self.style.SUCCESS(f'With animation:       {with_animation}'))
         self.stdout.write(f'WebP vignettes:       kept {webp_kept}, cleared {webp_cleared}')
+        self.stdout.write(f'WebP grandes:         kept {grande_webp_kept}, cleared {grande_webp_cleared}')
         self.stdout.write(f'Orphan media files:   {len(orphans)}')
         if orphans:
             for orphan in orphans[:30]:

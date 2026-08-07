@@ -50,7 +50,10 @@
         </button>
        
         <div class="cinema-screen">
-            <img id="cinemaImage" src="" alt="Diaporama" class="cinema-media">
+            <picture>
+                <source id="cinemaImageWebp" type="image/webp">
+                <img id="cinemaImage" src="" alt="Diaporama" class="cinema-media">
+            </picture>
             <video id="cinemaVideo" muted loop playsinline class="cinema-media" style="display:none;">
                 <source src="" type="video/mp4">
             </video>
@@ -554,7 +557,10 @@
     </button>
 
     <div class="popup-image-container">
-        <img id="popup-image" src="" alt="">
+        <picture>
+            <source id="popup-image-webp" type="image/webp">
+            <img id="popup-image" src="" alt="">
+        </picture>
 
         <!-- Contrôles épinglés sur le cadre de la carte -->
         <button class="popup-close" onclick="closeDetailPopup()" title="Fermer" aria-label="Fermer">
@@ -630,7 +636,10 @@
         </button>
         
         <div class="zoom-image-wrapper" id="zoom-image-wrapper">
-            <img id="zoom-image" src="" alt="Zoom" draggable="false">
+            <picture>
+                <source id="zoom-image-webp" type="image/webp">
+                <img id="zoom-image" src="" alt="Zoom" draggable="false">
+            </picture>
         </div>
         
         <div class="zoom-toolbar">
@@ -717,6 +726,7 @@ const allPostcardsData = JSON.parse(document.getElementById('cards-data').textCo
         rarity: c.rarity || '',
         views_count: c.views || 0,
         grande_url: c.grande || '',
+        grande_webp: c.grande_webp || '',
         dos_url: c.dos || '',
         zoom_url: c.zoom || '',
         vignette_url: c.vignette || '',
@@ -2142,6 +2152,21 @@ function trackZoomCount(id) {
     }
 }
 
+// Variante WebP des grandes images (popup, cinéma, zoom) : renseigne — ou retire —
+// le srcset de la <source type="image/webp"> jumelle de l'<img>. Sans srcset, le
+// navigateur retombe sur le JPG de l'<img> (dos, zoom et cartes sans WebP).
+// À appeler AVANT chaque affectation de img.src pour ne jamais laisser un srcset
+// périmé afficher la mauvaise carte.
+function setWebpSource(sourceId, url) {
+    const source = document.getElementById(sourceId);
+    if (!source) return;
+    if (url) {
+        source.srcset = url;
+    } else {
+        source.removeAttribute('srcset');
+    }
+}
+
 function showZoom(id) {
     const postcard = allPostcardsData.find(p => p.id === id);
     if (!postcard) return;
@@ -2166,12 +2191,15 @@ function showZoom(id) {
     };
     
     const imageUrl = postcard.zoom_url || postcard.grande_url || postcard.vignette_url;
-    
+
     img.onload = function() {
         updateZoomTransform();
         updateZoomLevel();
     };
-    
+
+    // WebP uniquement quand c'est la grande image qui sert de repli
+    // (zoom_url n'a pas de variante WebP) ; sinon on nettoie le srcset.
+    setWebpSource('zoom-image-webp', (!postcard.zoom_url && postcard.grande_url) ? postcard.grande_webp : '');
     img.src = imageUrl;
     
     modal.classList.add('active');
@@ -2519,6 +2547,7 @@ function setCinemaMode(mode) {
     cinemaIndex = 0;
    
     if (cinemaPostcards.length === 0) {
+        setWebpSource('cinemaImageWebp', '');
         document.getElementById('cinemaImage').src = '';
         document.getElementById('cinemaTitle').textContent = 'Aucune carte disponible';
         return;
@@ -2561,6 +2590,7 @@ function updateCinemaDisplay() {
             loading.style.display = 'none';
             video.style.display = 'none';
             img.style.display = 'block';
+            setWebpSource('cinemaImageWebp', postcard.grande_url ? postcard.grande_webp : '');
             img.src = postcard.grande_url || postcard.vignette_url;
         };
     } else {
@@ -2571,6 +2601,7 @@ function updateCinemaDisplay() {
         const imageUrl = postcard.grande_url || postcard.vignette_url;
         img.onload = () => { loading.style.display = 'none'; };
         img.onerror = () => { loading.style.display = 'none'; };
+        setWebpSource('cinemaImageWebp', postcard.grande_url ? postcard.grande_webp : '');
         img.src = imageUrl;
     }
 }
@@ -2629,11 +2660,12 @@ function showDetail(id) {
     if (currentIndex === -1) currentIndex = 0;
     currentView = 'front';
    
+    setWebpSource('popup-image-webp', postcard.grande_url ? postcard.grande_webp : '');
     document.getElementById('popup-image').src = postcard.grande_url || postcard.vignette_url;
     document.getElementById('popup-title').textContent = postcard.title;
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
     document.getElementById('popup-like-count-img').textContent = postcard.likes_count || 0;
-   
+
     // Update send button link
     const sendBtn = document.getElementById('popup-send-img-btn');
     sendBtn.href = `/la-poste/?postcard=${id}`;
@@ -2647,7 +2679,7 @@ function showDetail(id) {
         videoBtn.style.display = 'none';
     }
     
-    document.getElementById('popup-flip').style.display = postcard.dos_url ? 'flex' : 'none';
+    document.getElementById('popup-flip').style.display = 'flex'; // toujours visible (dos générique sinon)
    
     const cardLikeBtn = document.querySelector(`.like-btn[data-id="${id}"]`);
     const popupLikeBtn = document.getElementById('popup-like-img-btn');
@@ -2669,18 +2701,23 @@ function closeDetailPopup() {
     popupsOpen = false;
 }
  
+// Dos générique pour les cartes dont le verso n'a pas été numérisé
+const VERSO_GENERIQUE = "{% static 'images/Verso.png' %}";
+
 function togglePostcardSide() {
     const postcard = filteredPostcards[currentIndex];
     if (!postcard) return;
-   
+
     const img = document.getElementById('popup-image');
     const flipBtn = document.getElementById('popup-flip');
-   
-    if (currentView === 'front' && postcard.dos_url) {
-        img.src = postcard.dos_url;
+
+    if (currentView === 'front') {
+        setWebpSource('popup-image-webp', ''); // le dos n'a pas de variante WebP
+        img.src = postcard.dos_url || VERSO_GENERIQUE;
         currentView = 'back';
         flipBtn.classList.add('flipped');
     } else {
+        setWebpSource('popup-image-webp', postcard.grande_url ? postcard.grande_webp : '');
         img.src = postcard.grande_url || postcard.vignette_url;
         currentView = 'front';
         flipBtn.classList.remove('flipped');
@@ -2707,6 +2744,7 @@ function updatePopup() {
    
     currentPostcardId = postcard.id;
     currentView = 'front';
+    setWebpSource('popup-image-webp', postcard.grande_url ? postcard.grande_webp : '');
     document.getElementById('popup-image').src = postcard.grande_url || postcard.vignette_url;
     document.getElementById('popup-title').textContent = postcard.title;
     document.getElementById('popup-number').textContent = 'N° ' + postcard.number;
@@ -2723,7 +2761,7 @@ function updatePopup() {
         videoBtn.style.display = 'none';
     }
     
-    document.getElementById('popup-flip').style.display = postcard.dos_url ? 'flex' : 'none';
+    document.getElementById('popup-flip').style.display = 'flex'; // toujours visible (dos générique sinon)
     document.getElementById('popup-flip').classList.remove('flipped');
    
     updateNavButtons();
@@ -4132,7 +4170,10 @@ setTimeout(() => {
 
 .card-image-wrapper { position: relative; aspect-ratio: 4/3; overflow: hidden; background: #1a1208; }
 /* <picture> (variante WebP) transparent pour le layout : l'img se dimensionne comme avant */
-.card-image-wrapper picture { display: contents; }
+.card-image-wrapper picture,
+.popup-image-container picture,
+.cinema-screen picture,
+.zoom-image-wrapper picture { display: contents; }
 .card-image { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s; }
 .card-image.loaded { opacity: 1; }
 .card-placeholder {
@@ -4316,7 +4357,7 @@ setTimeout(() => {
 /* Fermer : pastille circulaire épinglée à cheval sur le coin haut droit de la
    carte, à la manière d'un cartel de musée */
 .popup-close {
-    position: absolute; top: -20px; right: -20px;
+    position: absolute; top: 10px; right: 10px;
     width: 44px; height: 44px;
     background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -4329,7 +4370,7 @@ setTimeout(() => {
 
 /* Voir le verso : posé sur le coin bas droit de la carte, à portée de main */
 .popup-flip {
-    position: absolute; bottom: 15px; right: 15px;
+    position: absolute; bottom: 10px; right: 10px;
     width: 44px; height: 44px;
     background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -4710,8 +4751,8 @@ setTimeout(() => {
     .popup-nav { display: none; }
     /* Contrôles épinglés au cadre : le bouton fermer reste à cheval sur le coin
        sans jamais sortir de l'écran, le verso reste au coin bas droit */
-    .popup-flip { bottom: 10px; right: 10px; }
-    .popup-close { top: -14px; right: -2px; }
+    .popup-flip { bottom: 8px; right: 8px; }
+    .popup-close { top: 8px; right: 8px; }
     
     .popup-image-actions {
         bottom: 10px;

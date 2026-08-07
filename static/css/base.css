@@ -234,7 +234,6 @@ body {
    FOOTER
    ======================================== */
 footer {
-    position: relative;
     text-align: center;
     padding: 20px;
     font-size: 12px;
@@ -246,22 +245,8 @@ footer {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
-/* Double filet fin au-dessus du texte : 1px + 3px d'air + 1px.
-   Posé en absolu dans le padding existant — la hauteur ne change pas. */
-footer::before {
-    content: "";
-    position: absolute;
-    top: 7px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(230px, 56%);
-    height: 5px;
-    border-top: 1px solid rgba(255, 255, 255, 0.28);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.28);
-    pointer-events: none;
-}
-
-/* Petites capitales espacées, fleurons postaux de part et d'autre */
+/* Petites capitales espacées, une vague élégante de part et d'autre,
+   centrée verticalement sur le texte */
 footer p {
     display: flex;
     align-items: center;
@@ -275,6 +260,9 @@ footer p {
 footer p svg {
     flex-shrink: 0;
     opacity: 0.65;
+    /* La vague (16px) dépasse d'un rien la ligne de texte : la marge
+       négative la recentre sans changer la hauteur du pied de page. */
+    margin: -1px 0;
 }
 
 /* ========================================

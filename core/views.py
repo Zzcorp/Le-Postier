@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from django.core.cache import cache
 from datetime import timedelta
+from pathlib import Path
 import traceback
 import json
 import unicodedata
@@ -1327,6 +1328,7 @@ def browse(request):
                 'vignette': vignette,
                 'vignette_webp': f'{media_url}{p.vignette_webp}' if p.vignette_webp else '',
                 'grande': grande,
+                'grande_webp': f'{media_url}{p.grande_webp}' if p.grande_webp else '',
                 'dos': f'{media_url}{p.dos_file}' if p.dos_file else '',
                 'zoom': f'{media_url}{p.zoom_file}' if p.zoom_file else grande,
                 'video': f'{media_url}{videos[0]}' if videos else '',
@@ -1553,6 +1555,9 @@ def get_postcard_detail(request, postcard_id):
                 'rarity': postcard.rarity,
                 'vignette_url': member_card_url,
                 'grande_url': member_card_url,
+                # Pas de dérivé WebP pour les visiteurs sans accès : la vraie
+                # image ne doit jamais fuiter par ce champ.
+                'grande_webp': '',
                 'dos_url': member_card_url,
                 'zoom_url': member_card_url,
                 'animated_urls': [],
@@ -1570,6 +1575,7 @@ def get_postcard_detail(request, postcard_id):
                 'rarity': postcard.rarity,
                 'vignette_url': postcard.get_vignette_url(),
                 'grande_url': postcard.get_grande_url(),
+                'grande_webp': postcard.get_grande_webp_url(),
                 'dos_url': postcard.get_dos_url(),
                 'zoom_url': postcard.get_zoom_url(),
                 'animated_urls': postcard.get_animated_urls(),
@@ -2896,6 +2902,13 @@ def admin_postcard_analytics(request, postcard_id):
         .order_by('-count')
     )
 
+    # Notes de l'animation : moyenne publique + nombre de votes (additif)
+    rating_agg = AnimationRating.objects.filter(postcard=postcard).aggregate(
+        avg=Avg('rating'), nb=Count('id')
+    )
+    public_avg = round(float(rating_agg['avg']), 1) if rating_agg['avg'] else 0
+    public_count = rating_agg['nb'] or 0
+
     return JsonResponse({
         'postcard': {
             'id': postcard.id,
@@ -2906,7 +2919,11 @@ def admin_postcard_analytics(request, postcard_id):
             'zoom_count': postcard.zoom_count,
             'likes_count': postcard.likes_count,
             'has_animation': bool(postcard.has_animation),
+            'video_count': postcard.video_count,
             'vignette_url': postcard.get_vignette_url(),
+            'generation_rating': postcard.generation_rating,
+            'public_avg': public_avg,
+            'public_count': public_count,
         },
         'likes_total': likes.count(),
         'likes_by_country': likes_by_country,
@@ -3099,6 +3116,7 @@ def admin_postcards_api(request):
             'views_count': p.views_count,
             'likes_count': p.likes_count,
             'has_vignette': p.has_images,
+            'generation_rating': p.generation_rating,
         } for p in postcards]
         return JsonResponse({'postcards': data, 'total': Postcard.objects.count()})
 
@@ -3149,8 +3167,23 @@ def admin_postcard_detail(request, postcard_id):
             for field in ['number', 'title', 'description', 'keywords', 'rarity']:
                 if field in data:
                     setattr(postcard, field, data[field])
+            # Note de génération (0-5) — ignorée quand absente (rétrocompatible)
+            if 'generation_rating' in data:
+                try:
+                    rating = int(data['generation_rating'])
+                except (TypeError, ValueError):
+                    return JsonResponse(
+                        {'error': 'generation_rating doit être un entier entre 0 et 5'},
+                        status=400,
+                    )
+                if not 0 <= rating <= 5:
+                    return JsonResponse(
+                        {'error': 'generation_rating doit être un entier entre 0 et 5'},
+                        status=400,
+                    )
+                postcard.generation_rating = rating
             postcard.save()
-            return JsonResponse({'success': True})
+            return JsonResponse({'success': True, 'generation_rating': postcard.generation_rating})
 
         elif request.method == 'DELETE':
             postcard.delete()
@@ -3240,43 +3273,129 @@ def admin_export_data(request):
     return response
 
 
+# ---- Shared admin media upload helpers (admin_upload_media / admin_add_postcard) ----
+
+ADMIN_IMAGE_FOLDERS = ('Vignette', 'Grande', 'Dos', 'Zoom')
+ADMIN_UPLOAD_FOLDERS = ADMIN_IMAGE_FOLDERS + ('animated_cp',)
+ADMIN_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif'}
+ADMIN_VIDEO_EXTENSIONS = {'.mp4', '.webm'}
+ADMIN_VIDEO_MAX_BYTES = 200 * 1024 * 1024  # 200 Mo
+
+
+def _admin_media_dest_dir(folder):
+    """Destination directory under MEDIA_ROOT for an admin upload folder."""
+    media_root = Path(settings.MEDIA_ROOT)
+    if folder == 'animated_cp':
+        return media_root / 'animated_cp'
+    return media_root / 'postcards' / folder
+
+
+def _admin_validate_image(upload, label):
+    """Check the upload is a real image (Pillow verify). Returns (ext, error)."""
+    ext = Path(upload.name).suffix.lower()
+    if ext not in ADMIN_IMAGE_EXTENSIONS:
+        return None, (f"{label} : extension non prise en charge "
+                      f"({ext or 'aucune'}) — jpg, jpeg, png ou gif attendu")
+    try:
+        from PIL import Image
+        upload.seek(0)
+        with Image.open(upload) as img:
+            img.verify()
+        upload.seek(0)
+    except Exception:
+        return None, f"{label} : le fichier n'est pas une image valide"
+    return ext, None
+
+
+def _admin_validate_video(upload, label):
+    """Check the upload is an mp4/webm no larger than 200 Mo. Returns (ext, error)."""
+    ext = Path(upload.name).suffix.lower()
+    if ext not in ADMIN_VIDEO_EXTENSIONS:
+        return None, f"{label} : format vidéo non pris en charge — mp4 ou webm attendu"
+    if upload.size > ADMIN_VIDEO_MAX_BYTES:
+        size_mo = upload.size // (1024 * 1024)
+        return None, f"{label} : fichier trop volumineux ({size_mo} Mo, maximum 200 Mo)"
+    return ext, None
+
+
+def _admin_save_media_file(upload, folder, filename):
+    """Chunked write into MEDIA_ROOT (overwrites duplicates).
+    Returns the MEDIA_ROOT-relative path of the saved file."""
+    dest_dir = _admin_media_dest_dir(folder)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_dir / filename
+    with open(dest_path, 'wb+') as destination:
+        for chunk in upload.chunks():
+            destination.write(chunk)
+    if folder == 'animated_cp':
+        return f'animated_cp/{filename}'
+    return f'postcards/{folder}/{filename}'
+
+
 @user_passes_test(is_admin)
 @require_http_methods(["POST"])
 def admin_upload_media(request):
-    """Admin endpoint to upload media files."""
-    from pathlib import Path
+    """Admin endpoint to upload media files.
 
+    Sans `postcard_id` : comportement historique — le fichier est enregistré
+    sous son nom d'origine dans le dossier demandé.
+
+    Avec `postcard_id` (paramètre additif) : le fichier est validé (image
+    réelle via Pillow, ou vidéo mp4/webm ≤ 200 Mo pour animated_cp),
+    enregistré sous <numéro paddé><ext minuscule>, puis le cache média de la
+    carte est rafraîchi pour qu'elle soit visible immédiatement.
+    """
     if 'file' not in request.FILES:
         return JsonResponse({'error': 'No file provided'}, status=400)
 
     file = request.FILES['file']
     folder = request.POST.get('folder', 'Vignette')
 
-    valid_folders = ['Vignette', 'Grande', 'Dos', 'Zoom', 'animated_cp']
-    if folder not in valid_folders:
+    if folder not in ADMIN_UPLOAD_FOLDERS:
         return JsonResponse({'error': f'Invalid folder: {folder}'}, status=400)
 
-    media_root = Path(settings.MEDIA_ROOT)
-    if folder == 'animated_cp':
-        dest_dir = media_root / 'animated_cp'
-    else:
-        dest_dir = media_root / 'postcards' / folder
+    postcard = None
+    postcard_id = (request.POST.get('postcard_id') or '').strip()
+    if postcard_id:
+        try:
+            postcard = Postcard.objects.get(id=int(postcard_id))
+        except (TypeError, ValueError, Postcard.DoesNotExist):
+            return JsonResponse({'error': 'Carte introuvable'}, status=404)
 
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_path = dest_dir / file.name
+    if postcard is not None:
+        label = 'Animation' if folder == 'animated_cp' else folder
+        if folder == 'animated_cp':
+            ext, upload_error = _admin_validate_video(file, label)
+        else:
+            ext, upload_error = _admin_validate_image(file, label)
+        if upload_error:
+            return JsonResponse({'error': upload_error}, status=400)
+        filename = f'{postcard.get_padded_number()}{ext}'
+    else:
+        filename = file.name
 
     try:
-        with open(dest_path, 'wb+') as destination:
-            for chunk in file.chunks():
-                destination.write(chunk)
-
-        return JsonResponse({
-            'success': True,
-            'filename': file.name,
-            'path': str(dest_path)
-        })
+        saved_rel_path = _admin_save_media_file(file, folder, filename)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+    response = {
+        'success': True,
+        'filename': filename,
+        'path': str(_admin_media_dest_dir(folder) / filename),
+    }
+
+    if postcard is not None:
+        postcard.refresh_media_cache()
+        response.update({
+            'saved': saved_rel_path,
+            'postcard_id': postcard.id,
+            'has_images': postcard.has_images,
+            'has_animation': postcard.has_animation,
+            'video_count': postcard.video_count,
+        })
+
+    return JsonResponse(response)
 
 
 @user_passes_test(is_admin)
@@ -3596,15 +3715,27 @@ def debug_email(request):
 @user_passes_test(is_admin)
 @require_http_methods(["POST"])
 def admin_add_postcard(request):
-    """Admin endpoint to manually add a postcard"""
-    try:
-        data = json.loads(request.body)
+    """Admin endpoint to manually add a postcard.
 
-        number = data.get('number', '').strip()
-        title = data.get('title', '').strip()
-        description = data.get('description', '').strip()
-        keywords = data.get('keywords', '').strip()
-        rarity = data.get('rarity', 'common')
+    Accepte le JSON historique (champs texte seuls) OU un envoi
+    multipart/form-data avec fichiers optionnels : vignette, grande, dos,
+    zoom (images validées par Pillow) et animation (mp4/webm ≤ 200 Mo).
+    Les fichiers sont enregistrés sous <numéro paddé><ext minuscule> via les
+    mêmes helpers que admin_upload_media, puis le cache média de la carte
+    est rafraîchi pour qu'elle soit visible immédiatement.
+    """
+    try:
+        is_multipart = 'multipart/form-data' in (request.content_type or '')
+        if is_multipart:
+            data = request.POST
+        else:
+            data = json.loads(request.body)
+
+        number = (data.get('number') or '').strip()
+        title = (data.get('title') or '').strip()
+        description = (data.get('description') or '').strip()
+        keywords = (data.get('keywords') or '').strip()
+        rarity = data.get('rarity') or 'common'
 
         if not number:
             return JsonResponse({'error': 'Le numéro est requis'}, status=400)
@@ -3616,6 +3747,26 @@ def admin_add_postcard(request):
         if Postcard.objects.filter(number=number).exists():
             return JsonResponse({'error': f'Une carte avec le numéro {number} existe déjà'}, status=400)
 
+        # Validate EVERY upload before creating anything (all optional)
+        uploads = []  # (folder, upload, ext)
+        if is_multipart:
+            for field, folder in (('vignette', 'Vignette'), ('grande', 'Grande'),
+                                  ('dos', 'Dos'), ('zoom', 'Zoom')):
+                upload = request.FILES.get(field)
+                if not upload:
+                    continue
+                ext, upload_error = _admin_validate_image(upload, folder)
+                if upload_error:
+                    return JsonResponse({'error': upload_error}, status=400)
+                uploads.append((folder, upload, ext))
+
+            animation = request.FILES.get('animation')
+            if animation:
+                ext, upload_error = _admin_validate_video(animation, 'Animation')
+                if upload_error:
+                    return JsonResponse({'error': upload_error}, status=400)
+                uploads.append(('animated_cp', animation, ext))
+
         # Create the postcard
         postcard = Postcard.objects.create(
             number=number,
@@ -3626,8 +3777,22 @@ def admin_add_postcard(request):
             created_by=request.user,
         )
 
-        # Check if images exist
-        postcard.update_image_flags()
+        # Save the validated files as <padded><ext> (overwriting duplicates)
+        files_saved = []
+        files_errors = []
+        for folder, upload, ext in uploads:
+            filename = f'{postcard.get_padded_number()}{ext}'
+            label = 'Animation' if folder == 'animated_cp' else folder
+            try:
+                files_saved.append({
+                    'label': label,
+                    'path': _admin_save_media_file(upload, folder, filename),
+                })
+            except Exception as exc:
+                files_errors.append(f"{label} : échec de l'enregistrement ({exc})")
+
+        # Rescan this card so it is immediately visible
+        postcard.refresh_media_cache()
 
         return JsonResponse({
             'success': True,
@@ -3636,7 +3801,10 @@ def admin_add_postcard(request):
                 'number': postcard.number,
                 'title': postcard.title,
                 'has_images': postcard.has_images,
+                'has_animation': postcard.has_animation,
             },
+            'files_saved': files_saved,
+            'files_errors': files_errors,
             'message': f'Carte N°{number} créée avec succès!'
         })
 
