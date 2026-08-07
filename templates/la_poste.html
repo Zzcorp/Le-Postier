@@ -187,6 +187,104 @@
                     <circle cx="22" cy="15" r="2.2" stroke="#ffc168" stroke-width="0.9"/>
                 </g>
             </svg>
+
+            {% comment %} Enveloppes solides : vraies enveloppes de papier
+               (aplats blanc-papier chaud, jamais de blanc pur) posées PAR-DESSUS
+               les esquisses — plis en X en triangles plus sombres, rabat fermé
+               ou ouvert, timbre ocre perforé, cachet ondulé. Chacune porte une
+               ombre floutée (feGaussianBlur) décalée vers le bas-droite, dans
+               le sens de la lumière du haut-gauche : elles reposent sur le
+               bois. Objets pesants : aucune animation. {% endcomment %}
+            <!-- Enveloppe solide fermée, empilée sur le groupe nord-ouest -->
+            <svg class="props-solide-no" viewBox="0 0 150 84" focusable="false">
+                <defs>
+                    <filter id="props-flou-no" x="-30%" y="-30%" width="160%" height="160%">
+                        <feGaussianBlur stdDeviation="2.6"/>
+                    </filter>
+                </defs>
+                <!-- ombre portée sur le bois -->
+                <rect x="16" y="13" width="122" height="64" rx="3" fill="rgba(0, 0, 0, 0.28)" filter="url(#props-flou-no)"/>
+                <g opacity="0.93">
+                    <!-- dos de l'enveloppe -->
+                    <rect x="12" y="7" width="122" height="64" rx="2" fill="#f2ead9" stroke="#c9b995" stroke-width="0.8"/>
+                    <!-- plis latéraux du X -->
+                    <path d="M13 10 L60 40 L13 68 Z" fill="#e4d7bd"/>
+                    <path d="M133 10 L86 40 L133 68 Z" fill="#e4d7bd"/>
+                    <path d="M13 10 L60 40 L13 68 M133 10 L86 40 L133 68" fill="none" stroke="#c9b995" stroke-width="0.6"/>
+                    <!-- pli inférieur -->
+                    <path d="M13 70 L73 46 L133 70 Z" fill="#e9ddc3"/>
+                    <path d="M13 70 L73 46 L133 70" fill="none" stroke="#c9b995" stroke-width="0.6"/>
+                    <!-- rabat fermé, pointe simple sans cachet de cire -->
+                    <path d="M12 8 L134 8 Q100 24 73 44 Q46 24 12 8 Z" fill="#ece1cc" stroke="#c9b995" stroke-width="0.7" stroke-linejoin="round"/>
+                    <!-- timbre ocre à cheval sur le rabat, perforations pointillées -->
+                    <rect x="104" y="13" width="18" height="21" fill="#c9821f" stroke="#f2ead9" stroke-width="1" stroke-dasharray="1.6 1.9"/>
+                    <rect x="107" y="16.5" width="12" height="14" fill="none" stroke="#f0dcb4" stroke-width="0.7" opacity="0.85"/>
+                    <path d="M109 27 q3 -4.5 6 0 q2 -3.5 5 0" fill="none" stroke="#f0dcb4" stroke-width="0.8"/>
+                    <circle cx="116" cy="20.5" r="1.7" fill="#f0dcb4"/>
+                    <!-- cachet ondulé traversant le timbre -->
+                    <circle cx="97" cy="23" r="7" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.55"/>
+                    <path d="M90 21 q4 -2.6 8 0 t8 0 t8 0 t8 0" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.7" stroke-linecap="round"/>
+                    <path d="M93 26 q4 -2.6 8 0 t8 0 t8 0" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.5" stroke-linecap="round"/>
+                </g>
+            </svg>
+            <!-- Enveloppe solide ouverte, bord de lettre visible ; élément
+                 signature : seule survivante sous 1024px, près du groupe sud-est -->
+            <svg class="props-solide-se" viewBox="0 0 170 78" focusable="false">
+                <defs>
+                    <filter id="props-flou-se" x="-30%" y="-30%" width="160%" height="160%">
+                        <feGaussianBlur stdDeviation="2.6"/>
+                    </filter>
+                </defs>
+                <!-- ombre portée (silhouette corps + rabat) -->
+                <path d="M22 36 Q52 13 86 9 Q120 13 150 36 L150 76 Q86 79 22 76 Z" fill="rgba(0, 0, 0, 0.28)" filter="url(#props-flou-se)"/>
+                <g opacity="0.94">
+                    <!-- rabat ouvert, face interne un peu plus sombre -->
+                    <path d="M18 31 Q46 8 82 4 Q118 8 146 31 Z" fill="#e7dcc2" stroke="#c9b995" stroke-width="0.7" stroke-linejoin="round"/>
+                    <!-- gorge ombrée de la gueule -->
+                    <path d="M18 31 Q82 23 146 31 L146 33 Q82 39 18 33 Z" fill="#d9cbae"/>
+                    <!-- bord de lettre qui dépasse -->
+                    <g transform="rotate(-2 80 26)">
+                        <rect x="42" y="15" width="78" height="18" rx="1" fill="#f6efe0" stroke="#cbb894" stroke-width="0.7"/>
+                        <path d="M50 21.5 h56" fill="none" stroke="#c3b28a" stroke-width="0.8" opacity="0.75" stroke-linecap="round"/>
+                    </g>
+                    <!-- corps de l'enveloppe, gueule légèrement affaissée -->
+                    <path d="M18 31 Q82 35 146 31 L146 71 Q82 74.5 18 71 Z" fill="#f2ead9" stroke="#c9b995" stroke-width="0.8" stroke-linejoin="round"/>
+                    <!-- plis en X -->
+                    <path d="M20 35 L62 51 L20 68 Z" fill="#e4d7bd"/>
+                    <path d="M144 35 L102 51 L144 68 Z" fill="#e4d7bd"/>
+                    <path d="M20 35 L62 51 L20 68 M144 35 L102 51 L144 68" fill="none" stroke="#c9b995" stroke-width="0.6"/>
+                    <path d="M19 70 L82 52 L145 70 Z" fill="#e9ddc3"/>
+                    <path d="M19 70 L82 52 L145 70" fill="none" stroke="#c9b995" stroke-width="0.6"/>
+                    <!-- timbre ocre, perforations pointillées -->
+                    <rect x="116" y="40" width="17" height="19" fill="#c07728" stroke="#f2ead9" stroke-width="1" stroke-dasharray="1.6 1.9"/>
+                    <rect x="119" y="43" width="11" height="13" fill="none" stroke="#f0dcb4" stroke-width="0.7" opacity="0.85"/>
+                    <path d="M121 52.5 q2.5 -4 5 0 q2 -3 4 0" fill="none" stroke="#f0dcb4" stroke-width="0.8"/>
+                    <!-- cachet ondulé traversant le timbre -->
+                    <circle cx="110" cy="49" r="6.5" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.55"/>
+                    <path d="M100 47 q4 -2.6 8 0 t8 0 t8 0 t8 0" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.7" stroke-linecap="round"/>
+                    <path d="M103 52 q4 -2.6 8 0 t8 0 t8 0" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.5" stroke-linecap="round"/>
+                </g>
+            </svg>
+            <!-- Petite enveloppe solide, face adresse, glissée sous le bord gauche -->
+            <svg class="props-solide-bord" viewBox="0 0 118 66" focusable="false">
+                <defs>
+                    <filter id="props-flou-bord" x="-30%" y="-30%" width="160%" height="160%">
+                        <feGaussianBlur stdDeviation="2.4"/>
+                    </filter>
+                </defs>
+                <rect x="9" y="9" width="98" height="54" rx="2.5" fill="rgba(0, 0, 0, 0.28)" filter="url(#props-flou-bord)"/>
+                <g opacity="0.92">
+                    <!-- face avant, adresse esquissée -->
+                    <rect x="6" y="5" width="98" height="54" rx="1.5" fill="#efe6d2" stroke="#c9b995" stroke-width="0.8"/>
+                    <path d="M34 32 h44 M34 39 h34 M34 46 h24" fill="none" stroke="#bfae86" stroke-width="1" opacity="0.7" stroke-linecap="round"/>
+                    <!-- timbre + cachet ondulé -->
+                    <rect x="82" y="10" width="15" height="17" fill="#c9821f" stroke="#f2ead9" stroke-width="1" stroke-dasharray="1.5 1.8"/>
+                    <path d="M85 21.5 q2.5 -4 5 0 q2 -3 4 0" fill="none" stroke="#f0dcb4" stroke-width="0.8"/>
+                    <circle cx="76" cy="18" r="6" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.55"/>
+                    <path d="M68 16 q4 -2.6 8 0 t8 0 t8 0 t8 0" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.7" stroke-linecap="round"/>
+                    <path d="M70 21 q4 -2.6 8 0 t8 0" fill="none" stroke="#6f5a3c" stroke-width="0.9" opacity="0.5" stroke-linecap="round"/>
+                </g>
+            </svg>
         </div>
 
         <!-- Tabs -->
@@ -225,6 +323,8 @@
                     <div class="postcard-item flip-wrap {% if not postcard.is_read %}unread{% endif %}"
                          data-id="{{ postcard.id }}"
                          data-flip-id="{{ postcard.id }}"
+                         {# Dos authentique de la carte ancienne (champ DB en cache) ; vide si carte personnalisée ou scan absent #}
+                         data-dos="{% if postcard.postcard %}{{ postcard.postcard.get_dos_url }}{% endif %}"
                          data-is-animated="{{ postcard.is_animated|yesno:'true,false' }}"
                          role="button" tabindex="0" aria-pressed="false"
                          aria-label="Retourner la carte de {{ postcard.sender.get_display_name }} pour lire le message">
@@ -288,6 +388,8 @@
                                 </div>
                             </div>
                             <div class="flip-face flip-verso" aria-hidden="true">
+                                {# Scan du dos d'origine : src posé par JS au premier retournement (chargement paresseux) #}
+                                <img class="verso-dos" alt="" aria-hidden="true">
                                 <div class="verso-entete">Carte postale</div>
                                 <div class="verso-corps">
                                     <div class="verso-gauche">
@@ -335,6 +437,7 @@
                     <div class="postcard-item flip-wrap"
                          data-id="{{ postcard.id }}"
                          data-flip-id="{{ postcard.id }}"
+                         data-dos="{% if postcard.postcard %}{{ postcard.postcard.get_dos_url }}{% endif %}"
                          data-is-animated="{{ postcard.is_animated|yesno:'true,false' }}"
                          role="button" tabindex="0" aria-pressed="false"
                          aria-label="Retourner la carte pour relire votre message">
@@ -405,6 +508,7 @@
                                 </div>
                             </div>
                             <div class="flip-face flip-verso" aria-hidden="true">
+                                <img class="verso-dos" alt="" aria-hidden="true">
                                 <div class="verso-entete">Carte postale</div>
                                 <div class="verso-corps">
                                     <div class="verso-gauche">
@@ -476,6 +580,7 @@
                         </div>
 
                         <div class="post-flip flip-wrap" data-flip-id="{{ postcard.id }}"
+                             data-dos="{% if postcard.postcard %}{{ postcard.postcard.get_dos_url }}{% endif %}"
                              role="button" tabindex="0" aria-pressed="false"
                              aria-label="Retourner la carte de {{ postcard.sender.get_display_name }} pour lire le message">
                             <div class="flip-inner">
@@ -507,6 +612,7 @@
                                     </div>
                                 </div>
                                 <div class="flip-face flip-verso" aria-hidden="true">
+                                    <img class="verso-dos" alt="" aria-hidden="true">
                                     <div class="verso-entete">Carte postale</div>
                                     <div class="verso-corps">
                                         <div class="verso-gauche">
@@ -1373,12 +1479,52 @@ function closeViewImageModal() {
 // Cache des messages déjà chargés : id -> données JSON de /api/la-poste/<id>/message/
 const versoMessageCache = new Map();
 
+// Dos générique : repli statique quand la carte n'a pas de scan authentique
+const VERSO_DOS_GENERIQUE = "{% static 'images/Verso.png' %}";
+
 function toggleCardFlip(wrap) {
     const flipped = wrap.classList.toggle('flipped');
     wrap.setAttribute('aria-pressed', flipped ? 'true' : 'false');
     const verso = wrap.querySelector('.flip-verso');
     if (verso) verso.setAttribute('aria-hidden', flipped ? 'false' : 'true');
-    if (flipped) loadVersoMessage(wrap);
+    if (flipped) {
+        loadVersoMessage(wrap);
+        chargerVersoDos(wrap);
+    }
+}
+
+// Pose paresseusement le dos scanné sur le verso : rien n'est téléchargé
+// tant que la carte n'a pas été retournée une première fois (évite de
+// rapatrier une trentaine de scans au chargement de la page).
+function chargerVersoDos(wrap) {
+    const verso = wrap.querySelector('.flip-verso');
+    const dos = verso ? verso.querySelector('.verso-dos') : null;
+    if (!verso || !dos || dos.dataset.dosInitialise) return;
+    dos.dataset.dosInitialise = 'true';
+
+    // Chaîne de repli : scan authentique → dos générique → fond crème
+    // (la couche crème sous-jacente reste toujours en place).
+    const urlScan = (wrap.dataset.dos || '').trim();
+
+    dos.addEventListener('load', () => {
+        // Un dos est affiché : on privilégie ses graphismes d'époque
+        // (beaucoup portent déjà leur propre séparateur imprimé) — la
+        // classe masque l'en-tête et le trait synthétiques et pose le
+        // voile parchemin sous l'écriture moderne.
+        verso.classList.add('avec-dos');
+        dos.classList.add('est-charge');
+    });
+
+    dos.addEventListener('error', () => {
+        if (!dos.dataset.dosRepli && dos.getAttribute('src') !== VERSO_DOS_GENERIQUE) {
+            // Scan introuvable : on tente le dos générique avant d'abandonner
+            dos.dataset.dosRepli = 'true';
+            dos.src = VERSO_DOS_GENERIQUE;
+        }
+        // Dernier échec : le fond crème d'origine reste visible tel quel
+    });
+
+    dos.src = urlScan || VERSO_DOS_GENERIQUE;
 }
 
 async function loadVersoMessage(wrap) {
@@ -2040,6 +2186,41 @@ document.addEventListener('DOMContentLoaded', () => {
     transform: rotate(7deg);
 }
 
+/* ————— Enveloppes solides —————
+   Vraies enveloppes de papier posées sur la table, par-dessus les
+   esquisses (rendues après elles dans .panneau-props) : aplats
+   blanc-papier chaud, opacité interne 0.92-0.94, ombre portée floutée.
+   Objets pesants : statiques, aucune animation. Elles occupent les mêmes
+   marges libres que la nature morte — coin nord-ouest, bord de table
+   sud-est, bord gauche — jamais sous les onglets ni les cartes. */
+
+/* Fermée, empilée sur l'enveloppe esquissée du nord-ouest ; l'esquisse
+   (lettre, rabat) dépasse au-dessus comme des papiers glissés dessous */
+.props-solide-no {
+    top: 44px;
+    left: 12px;
+    width: 96px;
+    transform: rotate(-9deg);
+}
+
+/* Ouverte, chevauchant le bord gauche du groupe esquissé sud-est ;
+   c'est l'élément signature qui survit à toutes les largeurs */
+.props-solide-se {
+    bottom: 5px;
+    right: 182px;
+    width: 134px;
+    transform: rotate(4deg);
+}
+
+/* Petite, face adresse, qui pointe du bord gauche du panneau
+   (le débord négatif est rogné par l'overflow du panneau) */
+.props-solide-bord {
+    bottom: 6px;
+    left: -18px;
+    width: 92px;
+    transform: rotate(12deg);
+}
+
 /* Balancement ultra-lent du rabat sud-est : transform seul, ±0.8deg / 8s,
    charnière au bord inférieur du rabat (transform-box: fill-box). */
 .props-flap-sway {
@@ -2256,6 +2437,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
 .flip-wrap .flip-face.flip-verso {
     border-color: rgba(74, 55, 40, 0.35);
+}
+
+/* ————— Dos authentique scanné —————
+   Le scan d'origine (champ dos en cache) est posé en couche au-dessus du
+   fond crème — qui reste le repli ultime — et sous tout le contenu.
+   Chargé paresseusement au premier retournement (voir chargerVersoDos). */
+.verso-dos {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+}
+
+.verso-dos.est-charge {
+    opacity: 1;
+}
+
+/* Le contenu du verso passe devant la couche du scan */
+.flip-verso > .verso-entete,
+.flip-verso > .verso-corps {
+    position: relative;
+    z-index: 1;
+}
+
+/* Quand un dos scanné est visible, on privilégie ses graphismes d'époque :
+   l'en-tête synthétique et le trait vertical s'effacent sans bouger la
+   mise en page (visibility / fond transparent, pas de display:none). */
+.flip-verso.avec-dos .verso-entete {
+    visibility: hidden;
+}
+
+.flip-verso.avec-dos .verso-separateur {
+    background: transparent;
+}
+
+/* Voile parchemin : les tons crème existants à ~0.84 d'opacité, bords
+   adoucis au box-shadow, sous la zone message/date/signature — l'écriture
+   moderne reste lisible, le dos authentique reste visible autour. */
+.flip-verso.avec-dos .verso-gauche::before {
+    content: '';
+    position: absolute;
+    inset: 2px 4px 2px 0;
+    border-radius: 10px;
+    background: rgba(239, 227, 200, 0.84);
+    box-shadow: 0 0 16px 10px rgba(239, 227, 200, 0.80);
+    pointer-events: none;
+}
+
+/* L'écriture, la date et la signature flottent au-dessus du voile ;
+   le chatoiement de chargement garde son positionnement absolu. */
+.flip-verso.avec-dos .verso-gauche > :not(.verso-chargement) {
+    position: relative;
+    z-index: 1;
+}
+
+.flip-verso.avec-dos .verso-chargement {
+    z-index: 1;
+}
+
+/* Zone adresse (De/À) : voile plus discret pour rester lisible sans
+   masquer le scan ; le timbre, lui, se pose directement sur le scan. */
+.flip-verso.avec-dos .verso-adresse {
+    position: relative;
+}
+
+.flip-verso.avec-dos .verso-adresse::before {
+    content: '';
+    position: absolute;
+    inset: -4px -6px 2px;
+    border-radius: 8px;
+    background: rgba(239, 227, 200, 0.58);
+    box-shadow: 0 0 12px 8px rgba(239, 227, 200, 0.55);
+    pointer-events: none;
+}
+
+.flip-verso.avec-dos .verso-adresse-ligne {
+    position: relative;
+    z-index: 1;
 }
 
 .verso-entete {
@@ -3880,6 +4143,13 @@ document.addEventListener('DOMContentLoaded', () => {
         display: none;
     }
 
+    /* Des enveloppes solides, seule celle du bord de table sud-est
+       demeure : c'est l'élément signature du panneau. */
+    .props-solide-no,
+    .props-solide-bord {
+        display: none;
+    }
+
     /* Onglets : défilement horizontal dans leur propre conteneur */
     .poste-tabs {
         flex-direction: row;
@@ -3939,6 +4209,13 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 170px;
         right: 14px;
         bottom: 6px;
+    }
+
+    /* L'enveloppe solide signature se resserre avec le bord de table
+       (bande basse de 70px) et garde son chevauchement sur l'esquisse */
+    .props-solide-se {
+        width: 118px;
+        right: 158px;
     }
 
     /* Cartes reçues / envoyées : 2 par rangée */
@@ -4012,6 +4289,13 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 148px;
         right: 10px;
         bottom: 6px;
+    }
+
+    /* L'enveloppe signature rétrécit mais demeure (bande basse de 62px) */
+    .props-solide-se {
+        width: 102px;
+        right: 136px;
+        bottom: 4px;
     }
 
     .poste-header h1 {
