@@ -1298,9 +1298,41 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     createDustParticles();
     initVideoHovers();
-    
+
     // Auto-select stamp on load
     selectStamp('10c');
+
+    // Liens profonds : ?open= (lire une carte reçue), ?postcard= (carte présélectionnée), ?to= (destinataire)
+    const deepLinkParams = new URLSearchParams(window.location.search);
+
+    const openReceivedId = parseInt(deepLinkParams.get('open'), 10);
+    if (!isNaN(openReceivedId)) {
+        switchTab('received');
+        viewPostcardMessage(openReceivedId);
+    }
+
+    const recipientParam = deepLinkParams.get('to');
+    const hasPreselectedCard = {% if preselected_postcard %}deepLinkParams.has('postcard'){% else %}false{% endif %};
+
+    if (hasPreselectedCard || recipientParam) {
+        openComposeModal();
+        if (userHasSignature) {
+            {% if preselected_postcard %}
+            if (hasPreselectedCard) {
+                {% if preselected_postcard.has_animation and preselected_postcard.get_first_video_url %}
+                setCardType('animated');
+                selectPostcard({{ preselected_postcard.id }}, '{{ preselected_postcard.get_vignette_url }}', '{{ preselected_postcard.title|escapejs }}', '{{ preselected_postcard.number }}', true, '{{ preselected_postcard.get_first_video_url }}');
+                {% else %}
+                selectPostcard({{ preselected_postcard.id }}, '{{ preselected_postcard.get_vignette_url }}', '{{ preselected_postcard.title|escapejs }}', '{{ preselected_postcard.number }}', false);
+                {% endif %}
+            }
+            {% endif %}
+            if (recipientParam) {
+                setVisibility('private');
+                document.getElementById('recipientInput').value = recipientParam;
+            }
+        }
+    }
 });
 </script>
 

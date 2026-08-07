@@ -47,7 +47,7 @@
     <!-- Header -->
     <header class="gallery-header amb-contenu">
         <div class="header-content">
-            <h1 class="animate-fade-in-down"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg> Cartes Postales Animées</h1>
+            <h1 class="animate-fade-in-down">Cartes Postales Animées</h1>
             <p class="animate-fade-in-up delay-1">Découvrez notre collection de cartes postales prenant vie</p>
             <div class="header-stats animate-fade-in-up delay-2">
                 <span class="stat-item">
@@ -90,13 +90,16 @@
     <!-- Gallery Grid -->
     <div class="animated-grid amb-contenu" id="animated-grid">
         {% for postcard in postcards %}
-        <div class="animated-card" 
+        <div class="animated-card"
              data-id="{{ postcard.id }}"
              data-number="{{ postcard.number }}"
              data-likes="{{ postcard.likes_count }}"
+             data-created="{{ postcard.created_at|date:'U' }}"
              data-title="{{ postcard.title }}"
              data-vignette="{{ postcard.get_grande_url }}"
-             data-video-url="{{ postcard.get_first_video_url }}">
+             data-video-url="{{ postcard.get_first_video_url }}"
+             tabindex="0"
+             aria-label="Voir l'animation : {{ postcard.title }}">
             
             <div class="card-video-container">
                 <!-- Poster/Thumbnail Image -->
@@ -121,7 +124,7 @@
                 
                 <!-- Play overlay -->
                 <div class="video-overlay">
-                    <button class="play-btn" aria-label="Voir l'animation" onclick="openAnimatedModal({{ postcard.id }})">
+                    <button class="play-btn" aria-label="Voir l'animation" onclick="event.stopPropagation(); openAnimatedModal({{ postcard.id }})">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="white" aria-hidden="true">
                             <polygon points="5 3 19 12 5 21 5 3"/>
                         </svg>
@@ -154,7 +157,7 @@
                         <span class="like-count">{{ postcard.likes_count }}</span>
                     </button>
                     
-                    <button class="suggest-btn" onclick="openSuggestModal({{ postcard.id }}, '{{ postcard.number }}')">
+                    <button class="suggest-btn" onclick="event.stopPropagation(); openSuggestModal({{ postcard.id }}, '{{ postcard.number }}')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M9 18h6"/>
                             <path d="M10 22h4"/>
@@ -480,6 +483,9 @@ function sortGallery(sortBy) {
     cards.sort((a, b) => {
         if (sortBy === 'popular') {
             return parseInt(b.dataset.likes) - parseInt(a.dataset.likes);
+        } else if (sortBy === 'recent') {
+            // Plus récentes d'abord (data-created = horodatage Unix)
+            return (parseInt(b.dataset.created, 10) || 0) - (parseInt(a.dataset.created, 10) || 0);
         } else if (sortBy === 'number') {
             // Tri numérique : les numéros sont du texte (localeCompare
             // donnerait 1, 10, 100, 1000, 2…)
@@ -489,6 +495,32 @@ function sortGallery(sortBy) {
     });
     
     cards.forEach(card => grid.appendChild(card));
+}
+
+// ===========================================
+// CARTE CLIQUABLE — toute la carte ouvre la modale
+// ===========================================
+function initCardClicks() {
+    const grid = document.getElementById('animated-grid');
+    if (!grid) return;
+
+    grid.addEventListener('click', (e) => {
+        const card = e.target.closest('.animated-card');
+        if (!card) return;
+        // Les éléments interactifs internes (J'aime, lecture, Suggérer, liens)
+        // gardent leur propre comportement.
+        if (e.target.closest('button, a')) return;
+        openAnimatedModal(parseInt(card.dataset.id, 10));
+    });
+
+    // Accès clavier : Entrée ou Espace sur la carte focalisée
+    grid.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const card = e.target.closest('.animated-card');
+        if (!card || e.target !== card) return;
+        e.preventDefault();
+        openAnimatedModal(parseInt(card.dataset.id, 10));
+    });
 }
 
 // ===========================================
@@ -801,7 +833,10 @@ function checkHighlight() {
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize video hover manager
     window.videoHoverManager = new VideoHoverManager();
-    
+
+    // Whole-card click/keyboard opening
+    initCardClicks();
+
     // Check for highlight
     checkHighlight();
     
@@ -1029,6 +1064,7 @@ footer {
     overflow: hidden;
     border: 1px solid rgba(181, 96, 11, 0.2);
     transition: all 0.2s ease;
+    cursor: pointer;
 }
 
 .animated-card:hover {
@@ -1593,12 +1629,8 @@ footer {
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* Icon alignment in the header title */
-.header-content h1 svg {
-    vertical-align: -2px;
-}
-
 /* Visible keyboard focus */
+.animated-card:focus-visible,
 .sort-btn:focus-visible,
 .play-btn:focus-visible,
 .like-btn:focus-visible,

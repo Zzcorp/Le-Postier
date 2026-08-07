@@ -36,7 +36,16 @@
         
         <!-- Video indicator dots -->
         <div class="video-indicators" id="video-indicators"></div>
-        
+
+        <!-- Carte en cours de diffusion — lien vers la collection -->
+        <a class="video-caption" id="video-caption" href="#" hidden aria-label="Voir cette carte dans la collection">
+            <span class="video-caption-number" id="video-caption-number"></span>
+            <span class="video-caption-title" id="video-caption-title"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </a>
+
         <div class="hero-content">
             <h1 class="hero-title animate-fade-in-down">
                 « Embarquez pour la belle époque ! »
@@ -112,16 +121,20 @@
     </section>
 </div>
 
+{{ videos_accueil|json_script:'videos-accueil-data' }}
 <script>
-// All animated videos passed from the view
-const animatedVideos = [
-    {% for url in animated_videos %}
-    "{{ url }}"{% if not forloop.last %},{% endif %}
-    {% endfor %}
-];
+// Toutes les cartes animées du site, émises par la vue via json_script :
+// [{id, number, title, video_url, poster_url}], triées par likes puis numéro.
+const animatedVideos = JSON.parse(document.getElementById('videos-accueil-data').textContent);
 
-// Fallback static video if no animated ones
-const fallbackVideo = "{% static 'video/Annimate_CPA_optimized.mp4' %}";
+// Vidéo statique de secours si aucune carte animée n'est disponible
+const fallbackVideo = {
+    id: null,
+    number: '',
+    title: '',
+    video_url: "{% static 'video/Annimate_CPA_optimized.mp4' %}",
+    poster_url: ''
+};
 
 class VideoCarousel {
     constructor() {
@@ -130,8 +143,11 @@ class VideoCarousel {
         this.transition = document.getElementById('video-transition');
         this.indicatorsContainer = document.getElementById('video-indicators');
         this.videoPoster = document.getElementById('video-poster');
-        
-        // Use all available videos from animated_cp folder
+        this.caption = document.getElementById('video-caption');
+        this.captionNumber = document.getElementById('video-caption-number');
+        this.captionTitle = document.getElementById('video-caption-title');
+
+        // Toutes les cartes animées du site (ordre likes puis numéro, fourni par la vue)
         this.videos = animatedVideos.length > 0 ? animatedVideos : [fallbackVideo];
         this.currentIndex = 0;
         this.isTransitioning = false;
@@ -147,12 +163,9 @@ class VideoCarousel {
     }
     
     init() {
-        // Shuffle videos for variety
-        this.shuffleVideos();
-        
-        // Limit to reasonable number for performance
-        this.videos = this.videos.slice(0, 50);
-        
+        // La liste arrive déjà triée (likes desc puis numéro) : pas de mélange.
+        // Une seule balise <video> existe : seule la vidéo active se charge
+        // (preload="none" au repos), donc pas besoin de plafonner la liste.
         console.log(`VideoCarousel: ${this.videos.length} videos available`);
         
         // Create indicators
@@ -189,13 +202,6 @@ class VideoCarousel {
         document.addEventListener('scroll', startVideo, { once: true });
     }
     
-    shuffleVideos() {
-        for (let i = this.videos.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [this.videos[i], this.videos[j]] = [this.videos[j], this.videos[i]];
-        }
-    }
-    
     createIndicators() {
         if (this.videos.length <= 1) return;
         
@@ -224,8 +230,21 @@ class VideoCarousel {
     }
     
     onVideoLoaded() {
-        console.log('Video data loaded:', this.videos[this.currentIndex]);
+        console.log('Video data loaded:', this.videos[this.currentIndex].video_url);
         this.videoLoaded = true;
+    }
+
+    updateCaption(video) {
+        if (!this.caption) return;
+        if (!video || !video.id) {
+            // Vidéo de secours : pas de carte à ouvrir
+            this.caption.hidden = true;
+            return;
+        }
+        this.caption.href = `/parcourir/?carte=${video.id}`;
+        this.captionNumber.textContent = `N° ${video.number}`;
+        this.captionTitle.textContent = video.title;
+        this.caption.hidden = false;
     }
     
     onVideoCanPlay() {
@@ -290,9 +309,9 @@ class VideoCarousel {
         if (this.isTransitioning) return;
         
         this.currentIndex = index;
-        const videoUrl = this.videos[index];
-        
-        console.log(`Loading video ${index + 1}/${this.videos.length}: ${videoUrl}`);
+        const video = this.videos[index];
+
+        console.log(`Loading video ${index + 1}/${this.videos.length}: ${video.video_url}`);
         
         this.clearAutoAdvance();
         this.videoLoaded = false;
@@ -313,12 +332,20 @@ class VideoCarousel {
                 clearTimeout(loadTimeout);
             };
             
-            // Set preload to auto only when loading this specific video
+            // Seule la vidéo active passe en preload auto ; les autres
+            // restent hors DOM (preload="none" au repos). La vignette de la
+            // carte sert d'affiche pendant le chargement.
             this.videoElement.preload = 'auto';
-            this.videoSource.src = videoUrl;
+            if (video.poster_url) {
+                this.videoElement.poster = video.poster_url;
+            } else {
+                this.videoElement.removeAttribute('poster');
+            }
+            this.videoSource.src = video.video_url;
             this.videoElement.load();
-            
+
             this.updateIndicators();
+            this.updateCaption(video);
         }, this.transitionDuration / 2);
     }
     
@@ -370,7 +397,7 @@ class VideoCarousel {
     
     handleError(e) {
         console.error('Video error:', e);
-        console.log('Skipping problematic video:', this.videos[this.currentIndex]);
+        console.log('Skipping problematic video:', this.videos[this.currentIndex].video_url);
         
         this.transition.classList.remove('active');
         this.isTransitioning = false;
@@ -521,6 +548,53 @@ document.addEventListener('DOMContentLoaded', () => {
     background: #b5600b;
     border-color: #b5600b;
     transform: scale(1.3);
+}
+
+/* Carte en cours de diffusion — lien vers /parcourir/?carte=<id> */
+.video-caption {
+    position: absolute;
+    bottom: 132px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(80vw, 480px);
+    padding: 9px 18px;
+    background: rgba(26, 18, 8, 0.55);
+    border: 1px solid rgba(209, 135, 44, 0.35);
+    border-radius: 50px;
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.video-caption[hidden] {
+    display: none;
+}
+
+.video-caption:hover {
+    background: rgba(26, 18, 8, 0.75);
+    border-color: #d1872c;
+}
+
+.video-caption-number {
+    color: #d1872c;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.video-caption-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.video-caption svg {
+    flex-shrink: 0;
+    opacity: 0.8;
 }
 
 /* Hero Content */
@@ -720,7 +794,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Focus visibility */
 .hero-cta:focus-visible,
-.video-dot:focus-visible {
+.video-dot:focus-visible,
+.video-caption:focus-visible {
     outline: 2px solid #d1872c;
     outline-offset: 3px;
 }
@@ -755,6 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     .video-indicators { bottom: 80px; }
     .video-dot { width: 8px; height: 8px; }
+    .video-caption { bottom: 110px; font-size: 0.78rem; padding: 8px 16px; max-width: 84vw; }
     
     .welcome-actions { flex-direction: column; align-items: center; }
     .btn { width: 100%; max-width: 280px; justify-content: center; }

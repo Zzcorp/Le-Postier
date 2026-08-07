@@ -1205,20 +1205,34 @@ def home(request):
         if should_show_intro(request):
             return redirect(f'/intro/?next=/')
 
-        video_urls = []
-        postcards_with_videos = Postcard.objects.filter(
-            has_images=True
-        ).order_by('?')[:30]
+        # Toutes les cartes animées du site — champs média en cache
+        # (animation_files / vignette_file), aucun scan disque.
+        def _cle_numero(p):
+            chiffres = ''.join(ch for ch in str(p.number) if ch.isdigit())
+            return (int(chiffres) if chiffres else float('inf'), str(p.number))
 
-        for postcard in postcards_with_videos:
-            urls = postcard.get_animated_urls()
-            if urls:
-                video_urls.append(urls[0])
-                if len(video_urls) >= 15:
-                    break
+        animated_cards = Postcard.objects.filter(has_animation=True).only(
+            'id', 'number', 'title', 'likes_count', 'animation_files', 'vignette_file'
+        )
+        animated_cards = sorted(
+            animated_cards,
+            key=lambda p: (-p.likes_count, _cle_numero(p))
+        )
+
+        videos_accueil = []
+        for postcard in animated_cards:
+            video_url = postcard.get_first_video_url()
+            if video_url:
+                videos_accueil.append({
+                    'id': postcard.id,
+                    'number': postcard.number,
+                    'title': postcard.title,
+                    'video_url': video_url,
+                    'poster_url': postcard.get_vignette_url(),
+                })
 
         return render(request, 'home.html', {
-            'animated_videos': video_urls[:15]
+            'videos_accueil': videos_accueil
         })
     except Exception as e:
         return HttpResponse(f"<h1>Home Error</h1><pre>{traceback.format_exc()}</pre>")

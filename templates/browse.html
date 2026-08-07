@@ -191,9 +191,7 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
                     </svg>
-                    {% if current_rarity or current_animated or current_sort != 'number' %}
-                    <span class="filter-active-dot"></span>
-                    {% endif %}
+                    <span class="filter-active-dot" id="filterActiveDot" style="display: none;"></span>
                 </button>
                 
                 <input type="text"
@@ -487,6 +485,12 @@
                 </svg>
                 <h3>Désolé, aucune carte postale trouvée</h3>
                 <p>Modifiez vos critères de recherche ou parcourez les mots-clés ci-dessus.</p>
+                <button type="button" class="reset-btn" onclick="resetSearchAndFilters()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                    Effacer la recherche
+                </button>
             </div>
             {% endfor %}
         </div>
@@ -494,16 +498,6 @@
         <!-- Pagination -->
         <div class="pagination-container" id="pagination-container">
             <!-- Pagination will be populated by JS -->
-        </div>
-       
-        <div class="no-results" id="noResults" style="display:none;">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-            </svg>
-            <h3>Désolé, aucune carte postale trouvée</h3>
-            <p>Essayez d'autres mots-clés ou modifiez votre recherche</p>
-            <button class="reset-btn" onclick="clearSearch()">Réinitialiser la recherche</button>
         </div>
     </div>
    
@@ -667,6 +661,10 @@ const ITEMS_PER_PAGE = 50;
 let currentPage = 1;
 let loadingStartTime = Date.now();
 const MIN_LOADING_TIME = {% if query %}1800{% else %}2500{% endif %}; // 1.8s for search, 2.5s otherwise
+
+// Recherche traitée côté serveur pour cette page (le payload ci-dessous ne
+// contient alors QUE les résultats de cette recherche, pas tout le catalogue).
+const serverQuery = '{{ query|default:""|escapejs }}';
  
 // Catalogue émis une seule fois via json_script (id="cards-data"),
 // remappé vers le format historique utilisé par tout le JS de la page.
@@ -676,6 +674,8 @@ const allPostcardsData = JSON.parse(document.getElementById('cards-data').textCo
         number: c.number == null ? '' : String(c.number),
         title: c.title || '',
         keywords: (c.keywords || '').toLowerCase(),
+        rarity: c.rarity || '',
+        views_count: c.views || 0,
         grande_url: c.grande || '',
         dos_url: c.dos || '',
         zoom_url: c.zoom || '',
@@ -686,6 +686,10 @@ const allPostcardsData = JSON.parse(document.getElementById('cards-data').textCo
         video_url: c.video || ''
     };
 });
+
+// Accès direct par id (les résultats de recherche client sont ramenés aux
+// objets d'origine pour que les likes restent synchronisés partout).
+const cardById = new Map(allPostcardsData.map(p => [p.id, p]));
 
 // Likes de l'utilisateur courant (les cartes rendues côté serveur reçoivent
 // la classe "liked" via {% templatetag openblock %} if postcard.id in user_likes {% templatetag closeblock %} ;
@@ -801,12 +805,43 @@ function resetFilters() {
     setAnimated('');
 }
 
-function applyFilters() {
+function syncHiddenFilterFields() {
     document.getElementById('hiddenSort').value = currentSort;
     document.getElementById('hiddenOrder').value = currentOrder;
     document.getElementById('hiddenRarity').value = currentRarity;
     document.getElementById('hiddenAnimated').value = currentAnimated;
-    document.getElementById('searchForm').submit();
+}
+
+// Le serveur ignore sort/order/rarity/animated : tout est appliqué ici,
+// sur le payload complet (allPostcardsData), puis rendu via renderCard().
+function applyFilters() {
+    syncHiddenFilterFields();
+    closeFilterPanel();
+    updateUrlParams();
+    applyCatalogueState();
+}
+
+// Pastille verte du bouton Filtres : pilotée en JS (l'état des filtres
+// n'existe que côté client).
+function updateFilterDot() {
+    const dot = document.getElementById('filterActiveDot');
+    if (!dot) return;
+    const active = !!currentRarity || !!currentAnimated || currentSort !== 'number' || currentOrder !== 'asc';
+    dot.style.display = active ? '' : 'none';
+}
+
+// Reflète l'état appliqué (recherche + filtres) dans l'URL, sans recharger,
+// pour garder des liens partageables ; ne touche pas aux autres paramètres.
+function updateUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const appliedQuery = serverQuery ? serverQuery : document.getElementById('searchInput').value.trim();
+    if (appliedQuery) { params.set('keywords_input', appliedQuery); } else { params.delete('keywords_input'); }
+    if (currentSort !== 'number') { params.set('sort', currentSort); } else { params.delete('sort'); }
+    if (currentOrder !== 'asc') { params.set('order', currentOrder); } else { params.delete('order'); }
+    if (currentRarity) { params.set('rarity', currentRarity); } else { params.delete('rarity'); }
+    if (currentAnimated) { params.set('animated', currentAnimated); } else { params.delete('animated'); }
+    const qs = params.toString();
+    history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
 }
 
 // =============================================
@@ -925,61 +960,7 @@ function calculateTitleRelevance(title, queryTokens, fullQuery) {
 }
 
 /**
- * Client-side search function (for live filtering if needed)
- */
-function searchPostcardsClient(postcards, query) {
-    if (!query || !query.trim()) {
-        return postcards;
-    }
-    
-    const normalizedQuery = normalizeForSearch(query);
-    const cleanQuery = normalizedQuery.replace(/['"]/g, '').trim();
-    const queryTokens = tokenizeQuery(query);
-    
-    console.log('[CLIENT SEARCH] Query tokens (ALL must match):', queryTokens);
-    
-    const results = postcards.map(postcard => {
-        let score = 0;
-        const matchTypes = [];
-        
-        // Title search (ALL tokens must match)
-        if (queryTokens.length > 0) {
-            const titleScore = calculateTitleRelevance(postcard.title, queryTokens, cleanQuery);
-            if (titleScore > 0) {
-                score += titleScore;
-                matchTypes.push('title');
-            }
-        }
-        
-        // Keywords search (full query)
-        const normalizedKeywords = normalizeForSearch(postcard.keywords);
-        if (normalizedKeywords && (normalizedKeywords.includes(normalizedQuery) || normalizedKeywords.includes(cleanQuery))) {
-            score += 40;
-            matchTypes.push('keywords');
-        }
-        
-        // Number search
-        const normalizedNumber = normalizeForSearch(postcard.number);
-        if (normalizedNumber && (normalizedNumber.includes(normalizedQuery) || normalizedNumber.includes(cleanQuery))) {
-            score += 60;
-            matchTypes.push('number');
-        }
-        
-        return {
-            ...postcard,
-            searchScore: score,
-            matchTypes
-        };
-    });
-    
-    // Filter and sort by score
-    return results
-        .filter(r => r.searchScore > 0)
-        .sort((a, b) => b.searchScore - a.searchScore);
-}
-
-/**
- * Client-side search function (for live filtering if needed)
+ * Client-side search function (live filtering on the full payload)
  */
 function searchPostcardsClient(postcards, query) {
     if (!query || !query.trim()) {
@@ -1031,6 +1012,146 @@ function searchPostcardsClient(postcards, query) {
 }
 
 // =============================================
+// CLIENT-SIDE SORT & FILTER PIPELINE
+// (opère toujours sur le payload complet, jamais sur les 50 nœuds DOM serveur)
+// =============================================
+
+// Clé numérique d'un numéro de carte (colonne texte : « 1, 10, 100… » sinon)
+function numericCardKey(number) {
+    const digits = String(number == null ? '' : number).replace(/\D/g, '');
+    return digits ? parseInt(digits, 10) : Infinity;
+}
+
+function compareByNumber(a, b) {
+    const ka = numericCardKey(a.number);
+    const kb = numericCardKey(b.number);
+    if (ka !== kb) return ka - kb;
+    return String(a.number).localeCompare(String(b.number), 'fr');
+}
+
+// Tri du panneau Filtres ; en cas d'égalité, repli stable sur le numéro croissant
+function sortPostcards(list, sort, order) {
+    const dir = order === 'desc' ? -1 : 1;
+    const sorted = [...list];
+    if (sort === 'title') {
+        sorted.sort((a, b) => dir * (a.title || '').localeCompare(b.title || '', 'fr', { sensitivity: 'base' }) || compareByNumber(a, b));
+    } else if (sort === 'likes') {
+        sorted.sort((a, b) => dir * ((a.likes_count || 0) - (b.likes_count || 0)) || compareByNumber(a, b));
+    } else if (sort === 'views') {
+        sorted.sort((a, b) => dir * ((a.views_count || 0) - (b.views_count || 0)) || compareByNumber(a, b));
+    } else {
+        sorted.sort((a, b) => dir * compareByNumber(a, b));
+    }
+    return sorted;
+}
+
+// Réordonne les résultats serveur par pertinence (le serveur les renvoie par
+// numéro) SANS jamais en écarter : les scores nuls restent en fin de liste.
+function sortByRelevance(postcards, query) {
+    const normalizedQuery = normalizeForSearch(query);
+    const cleanQuery = normalizedQuery.replace(/['"]/g, '').trim();
+    const queryTokens = tokenizeQuery(query);
+    return postcards
+        .map((postcard, idx) => {
+            let score = 0;
+            if (queryTokens.length > 0) {
+                score += calculateTitleRelevance(postcard.title, queryTokens, cleanQuery);
+            }
+            const normalizedKeywords = normalizeForSearch(postcard.keywords);
+            if (normalizedKeywords && (normalizedKeywords.includes(normalizedQuery) || normalizedKeywords.includes(cleanQuery))) {
+                score += 40;
+            }
+            const normalizedNumber = normalizeForSearch(postcard.number);
+            if (normalizedNumber && (normalizedNumber.includes(normalizedQuery) || normalizedNumber.includes(cleanQuery))) {
+                score += 60;
+            }
+            return { postcard, score, idx };
+        })
+        .sort((a, b) => (b.score - a.score) || (a.idx - b.idx))
+        .map(entry => entry.postcard);
+}
+
+// Point d'entrée unique : recherche + rareté + animation + tri sur le payload,
+// puis re-rendu complet via renderCurrentPage()/renderCard()/pagination.
+function applyCatalogueState() {
+    const input = document.getElementById('searchInput');
+    const appliedQuery = serverQuery ? serverQuery : input.value.trim();
+    const defaultSort = currentSort === 'number' && currentOrder === 'asc';
+
+    let list;
+    if (!serverQuery && appliedQuery) {
+        // Recherche live sur le catalogue complet (retour aux objets d'origine
+        // pour garder likes/compteurs synchronisés).
+        list = searchPostcardsClient(allPostcardsData, appliedQuery).map(r => cardById.get(r.id) || r);
+    } else if (serverQuery && defaultSort) {
+        // Résultats serveur : restaurer l'ordre « meilleure correspondance d'abord »
+        list = sortByRelevance(allPostcardsData, serverQuery);
+    } else {
+        list = [...allPostcardsData];
+    }
+
+    if (currentRarity) {
+        list = list.filter(p => p.rarity === currentRarity);
+    }
+    if (currentAnimated === 'true') {
+        list = list.filter(p => p.has_video);
+    } else if (currentAnimated === 'false') {
+        list = list.filter(p => !p.has_video);
+    }
+
+    // Avec une recherche et le tri par défaut, on préserve la pertinence ;
+    // sinon on applique le tri demandé.
+    if (!(appliedQuery && defaultSort)) {
+        list = sortPostcards(list, currentSort, currentOrder);
+    }
+
+    filteredPostcards = list;
+    currentPage = 1;
+    renderCurrentPage();
+    updateFilterDot();
+    updateSearchInfo(appliedQuery, filteredPostcards.length);
+
+    const riverSection = document.getElementById('river-keywords-section');
+    if (riverSection) {
+        riverSection.classList.toggle('searching', !!appliedQuery);
+    }
+}
+
+// Texte « N résultats pour "…" » (mêmes classes que le rendu serveur)
+function updateSearchInfo(query, count) {
+    const info = document.getElementById('searchInfo');
+    if (!info) return;
+    if (!query) {
+        info.innerHTML = '';
+        return;
+    }
+    info.innerHTML = `
+            <p class="search-results-text">
+                <span class="result-count">${count}</span> résultat${count === 1 ? '' : 's'} pour
+                "<span class="result-query">${escapeHtml(query)}</span>"
+            </p>`;
+}
+
+// Bouton « Effacer la recherche » de l'état vide : tout remettre à zéro puis
+// re-rendre la grille complète et redonner le focus à la recherche.
+function resetSearchAndFilters() {
+    if (serverQuery) {
+        // Le payload de cette page ne contient que les résultats serveur :
+        // repasser par l'URL propre pour retrouver le catalogue complet.
+        window.location.href = '{% url "browse" %}';
+        return;
+    }
+    const input = document.getElementById('searchInput');
+    input.value = '';
+    resetFilters();
+    syncHiddenFilterFields();
+    if (window.searchEngine) window.searchEngine.updateClearButton();
+    updateUrlParams();
+    applyCatalogueState();
+    input.focus();
+}
+
+// =============================================
 // SIMPLE EXACT PHRASE SEARCH (ACCENT INSENSITIVE)
 // =============================================
 class SimpleSearchEngine {
@@ -1043,10 +1164,20 @@ class SimpleSearchEngine {
     init() {
         this.searchInput.addEventListener('input', (e) => this.handleInput(e));
         this.updateClearButton();
+        this.liveTimer = null;
     }
-   
+
     handleInput(e) {
         this.updateClearButton();
+        // Recherche live (débouncée) sur le payload complet — uniquement quand
+        // la page n'est pas déjà une page de résultats serveur (dans ce cas le
+        // payload est un sous-ensemble : on garde la soumission classique).
+        if (serverQuery) return;
+        clearTimeout(this.liveTimer);
+        this.liveTimer = setTimeout(() => {
+            updateUrlParams();
+            applyCatalogueState();
+        }, 250);
     }
    
     updateClearButton() {
@@ -1094,6 +1225,12 @@ function renderCurrentPage() {
                 </svg>
                 <h3>Aucune carte postale trouvée</h3>
                 <p>Modifiez vos critères de recherche ou parcourez les mots-clés ci-dessus.</p>
+                <button type="button" class="reset-btn" onclick="resetSearchAndFilters()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                    Effacer la recherche
+                </button>
             </div>
         `;
         document.getElementById('pagination-container').innerHTML = '';
@@ -1459,10 +1596,20 @@ class FloatingKeywords {
         // Add pop animation to the keyword
         element.classList.add('popping');
         
-        // Wait for animation then redirect
+        // Wait for animation then search
         setTimeout(() => {
-            document.getElementById('searchInput').value = word;
-            document.getElementById('searchForm').submit();
+            const input = document.getElementById('searchInput');
+            input.value = word;
+            if (!serverQuery) {
+                // Payload complet disponible : recherche instantanée côté client
+                if (window.searchEngine) window.searchEngine.updateClearButton();
+                updateUrlParams();
+                applyCatalogueState();
+                const results = document.getElementById('results-section');
+                if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                document.getElementById('searchForm').submit();
+            }
         }, 400);
     }
 }
@@ -2828,9 +2975,30 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('river-keywords-section').classList.add('searching');
     }
 
-    // Le serveur ne rend que la première page (50 cartes) : afficher les
-    // contrôles de pagination pour atteindre les suivantes (rendues par renderCard()).
-    renderPagination();
+    // Filtres/tri depuis l'URL — le serveur les ignore : ils sont appliqués
+    // ici, sur le payload complet, via le pipeline renderCard()/pagination.
+    // Le semis synchronise aussi les puces du panneau et les champs cachés.
+    const initParams = new URLSearchParams(window.location.search);
+    const urlSort = initParams.get('sort');
+    const urlOrder = initParams.get('order');
+    const urlRarity = initParams.get('rarity');
+    const urlAnimated = initParams.get('animated');
+    setSort(['number', 'title', 'likes', 'views'].includes(urlSort) ? urlSort : 'number');
+    setOrder(urlOrder === 'desc' ? 'desc' : 'asc');
+    setRarity(['common', 'rare', 'very_rare'].includes(urlRarity) ? urlRarity : '');
+    setAnimated(urlAnimated === 'true' || urlAnimated === 'false' ? urlAnimated : '');
+    syncHiddenFilterFields();
+    updateFilterDot();
+
+    const filtersActive = currentSort !== 'number' || currentOrder !== 'asc' || currentRarity !== '' || currentAnimated !== '';
+    if (filtersActive || serverQuery) {
+        // Ré-application client (filtres + tri + pertinence de la recherche)
+        applyCatalogueState();
+    } else {
+        // Le serveur ne rend que la première page (50 cartes) : afficher les
+        // contrôles de pagination pour atteindre les suivantes (rendues par renderCard()).
+        renderPagination();
+    }
 
     // Lien profond ?carte= / ?postcard= : ouvrir le popup de la carte puis nettoyer l'URL
     const deepLinkParams = new URLSearchParams(window.location.search);
@@ -3867,6 +4035,18 @@ setTimeout(() => {
 
 .no-results-message p {
     color: rgba(255, 255, 255, 0.6);
+}
+
+.no-results-message .reset-btn {
+    margin-top: 22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.no-results-message .reset-btn svg {
+    stroke: currentColor;
+    flex-shrink: 0;
 }
  
 .browse-footer { text-align: center; padding: 30px; color: rgba(255,255,255,0.5); font-size: 0.85rem; }

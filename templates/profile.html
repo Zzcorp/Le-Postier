@@ -1015,38 +1015,6 @@ let selectedCoverPostcardUrl = null;
 let drawnSignatureData = null;
 
 // ============================================
-// STATS REFRESH
-// ============================================
-async function refreshStats() {
-    try {
-        const response = await fetch('/api/profile/stats/');
-        if (response.ok) {
-            const data = await response.json();
-            if (data.total_likes !== undefined) {
-                document.getElementById('totalLikes').textContent = data.total_likes;
-            }
-            if (data.sent_count !== undefined) {
-                document.getElementById('sentCount').textContent = data.sent_count;
-            }
-            if (data.received_count !== undefined) {
-                document.getElementById('receivedCount').textContent = data.received_count;
-            }
-            if (data.connections_count !== undefined) {
-                document.getElementById('connectionsCount').textContent = data.connections_count;
-            }
-            if (data.views_count !== undefined) {
-                document.getElementById('viewsCount').textContent = data.views_count;
-            }
-            if (data.suggestions_count !== undefined) {
-                document.getElementById('suggestionsCount').textContent = data.suggestions_count;
-            }
-        }
-    } catch (error) {
-        console.log('Could not refresh stats:', error);
-    }
-}
-
-// ============================================
 // TAB SWITCHING
 // ============================================
 function switchProfileTab(tabName) {
@@ -1058,11 +1026,6 @@ function switchProfileTab(tabName) {
         content.classList.remove('active');
     });
     document.getElementById(tabName + '-tab').classList.add('active');
-    
-    // Refresh stats when switching to activity tab
-    if (tabName === 'activity') {
-        refreshStats();
-    }
 }
 
 // ============================================
@@ -1620,11 +1583,11 @@ function useDrawnSignature() {
 // NAVIGATION FUNCTIONS
 // ============================================
 function viewPostcard(postcardId) {
-    window.location.href = `/parcourir/?highlight=${postcardId}`;
+    window.location.href = `/parcourir/?carte=${postcardId}`;
 }
 
 function viewReceivedPostcard(postcardId) {
-    window.location.href = `/la-poste/`;
+    window.location.href = `/la-poste/?open=${postcardId}`;
 }
 
 function sendCardTo(username) {
@@ -1656,14 +1619,6 @@ document.addEventListener('keydown', (e) => {
         closeSignatureModal();
         closeDrawModal();
     }
-});
-
-// ============================================
-// INITIALIZE
-// ============================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Refresh stats on page load
-    refreshStats();
 });
 </script>
 
