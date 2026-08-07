@@ -481,7 +481,9 @@ function sortGallery(sortBy) {
         if (sortBy === 'popular') {
             return parseInt(b.dataset.likes) - parseInt(a.dataset.likes);
         } else if (sortBy === 'number') {
-            return a.dataset.number.localeCompare(b.dataset.number);
+            // Tri numérique : les numéros sont du texte (localeCompare
+            // donnerait 1, 10, 100, 1000, 2…)
+            return (parseInt(a.dataset.number, 10) || 0) - (parseInt(b.dataset.number, 10) || 0);
         }
         return 0;
     });

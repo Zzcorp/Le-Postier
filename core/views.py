@@ -1253,11 +1253,14 @@ def browse(request):
         else:
             postcards = base_queryset
 
-        # Order results by number
-        postcards = postcards.order_by('number')
+        # Order results by card number — NUMERIC order. `number` is a text
+        # column, so order_by('number') would sort alphabetically
+        # (1, 10, 100, 1000, 2, 20…). Sort in Python on the digits instead.
+        def _cle_numero(p):
+            chiffres = ''.join(ch for ch in str(p.number) if ch.isdigit())
+            return (int(chiffres) if chiffres else float('inf'), str(p.number))
 
-        # Convert to list for template
-        postcards_list = list(postcards)
+        postcards_list = sorted(postcards, key=_cle_numero)
 
         # Get user likes
         user_likes = set()
@@ -1336,16 +1339,15 @@ def browse(request):
 def animated_gallery(request):
     """Animated postcards gallery page"""
     try:
-        all_postcards = Postcard.objects.all().order_by('-likes_count', 'number')
+        # Tri : likes décroissants puis NUMÉRO NUMÉRIQUE (`number` est du texte,
+        # un order_by donnerait 1, 10, 100, 1000, 2…).
+        def _cle_numero(p):
+            chiffres = ''.join(ch for ch in str(p.number) if ch.isdigit())
+            return (int(chiffres) if chiffres else float('inf'), str(p.number))
 
-        animated_postcards = []
-        for postcard in all_postcards:
-            video_urls = postcard.get_animated_urls()
-            if video_urls:
-                # video_count is served by the model property (same value)
-                animated_postcards.append(postcard)
-                if len(animated_postcards) >= 100:
-                    break
+        candidats = list(Postcard.objects.filter(has_animation=True))
+        candidats.sort(key=lambda p: (-p.likes_count, _cle_numero(p)))
+        animated_postcards = candidats[:100]
 
         user_likes = set()
         if request.user.is_authenticated:
