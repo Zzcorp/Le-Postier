@@ -41,6 +41,9 @@
         <a class="video-caption" id="video-caption" href="#" hidden aria-label="Voir cette carte dans la collection">
             <span class="video-caption-number" id="video-caption-number"></span>
             <span class="video-caption-title" id="video-caption-title"></span>
+            <span class="video-caption-videos" id="video-caption-videos" hidden></span>
+            <span class="video-caption-stars" id="video-caption-stars" role="img" hidden></span>
+            <span class="video-caption-public" id="video-caption-public" hidden></span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
@@ -123,8 +126,11 @@
 
 {{ videos_accueil|json_script:'videos-accueil-data' }}
 <script>
-// Toutes les cartes animées du site, émises par la vue via json_script :
-// [{id, number, title, video_url, poster_url}], triées par likes puis numéro.
+// Toutes les vidéos des cartes animées du site (une entrée PAR FICHIER vidéo),
+// émises par la vue via json_script :
+// [{id, number, title, video_url, poster_url, video_index, video_total,
+//   rating (note du créateur 0-5), public_avg, public_count}],
+// triées par likes puis numéro, vidéos d'une même carte consécutives.
 const animatedVideos = JSON.parse(document.getElementById('videos-accueil-data').textContent);
 
 // Vidéo statique de secours si aucune carte animée n'est disponible
@@ -133,8 +139,24 @@ const fallbackVideo = {
     number: '',
     title: '',
     video_url: "{% static 'video/Annimate_CPA_optimized.mp4' %}",
-    poster_url: ''
+    poster_url: '',
+    video_index: 1,
+    video_total: 1,
+    rating: 0,
+    public_avg: 0,
+    public_count: 0
 };
+
+// Étoiles inline (pleines = note, contours = reste), style Feather, ~12px
+const STAR_POINTS = '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2';
+function buildRatingStars(note) {
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        const fill = i <= note ? 'currentColor' : 'none';
+        html += `<svg width="12" height="12" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="${STAR_POINTS}"/></svg>`;
+    }
+    return html;
+}
 
 class VideoCarousel {
     constructor() {
@@ -146,6 +168,9 @@ class VideoCarousel {
         this.caption = document.getElementById('video-caption');
         this.captionNumber = document.getElementById('video-caption-number');
         this.captionTitle = document.getElementById('video-caption-title');
+        this.captionVideos = document.getElementById('video-caption-videos');
+        this.captionStars = document.getElementById('video-caption-stars');
+        this.captionPublic = document.getElementById('video-caption-public');
 
         // Toutes les cartes animées du site (ordre likes puis numéro, fourni par la vue)
         this.videos = animatedVideos.length > 0 ? animatedVideos : [fallbackVideo];
@@ -244,6 +269,40 @@ class VideoCarousel {
         this.caption.href = `/parcourir/?carte=${video.id}`;
         this.captionNumber.textContent = `N° ${video.number}`;
         this.captionTitle.textContent = video.title;
+
+        // « — vidéo k/n » seulement quand la carte a plusieurs vidéos
+        if (this.captionVideos) {
+            if (video.video_total > 1) {
+                this.captionVideos.textContent = `— vidéo ${video.video_index}/${video.video_total}`;
+                this.captionVideos.hidden = false;
+            } else {
+                this.captionVideos.hidden = true;
+            }
+        }
+
+        // Note de génération du créateur (5 étoiles), seulement si notée (>= 1)
+        if (this.captionStars) {
+            const note = video.rating || 0;
+            if (note >= 1) {
+                this.captionStars.innerHTML = buildRatingStars(note);
+                this.captionStars.setAttribute('aria-label', `Note de génération : ${note} sur 5`);
+                this.captionStars.hidden = false;
+            } else {
+                this.captionStars.hidden = true;
+            }
+        }
+
+        // Note publique moyenne, seulement s'il y a des votes
+        if (this.captionPublic) {
+            if (video.public_count > 0) {
+                const moyenne = Number(video.public_avg).toFixed(1).replace('.', ',');
+                this.captionPublic.textContent = `Public ${moyenne}/5 (${video.public_count})`;
+                this.captionPublic.hidden = false;
+            } else {
+                this.captionPublic.hidden = true;
+            }
+        }
+
         this.caption.hidden = false;
     }
     
@@ -509,7 +568,8 @@ document.addEventListener('DOMContentLoaded', () => {
     opacity: 1;
 }
 
-/* Video Indicators */
+/* Video Indicators — la rangée de points est plafonnée en largeur :
+   au-delà, elle se rogne proprement (le JS limite déjà à 10 points). */
 .video-indicators {
     position: absolute;
     bottom: 100px;
@@ -518,6 +578,8 @@ document.addEventListener('DOMContentLoaded', () => {
     display: flex;
     gap: 10px;
     z-index: 10;
+    max-width: min(80vw, 480px);
+    overflow: hidden;
 }
 
 .video-dot {
@@ -590,6 +652,29 @@ document.addEventListener('DOMContentLoaded', () => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* « — vidéo k/n » et « Public x,x/5 (n) » : mêmes tons que la pilule */
+.video-caption-videos,
+.video-caption-public {
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Étoiles de la note de génération (créateur) */
+.video-caption-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: #d1872c;
+    flex-shrink: 0;
+}
+
+.video-caption-videos[hidden],
+.video-caption-stars[hidden],
+.video-caption-public[hidden] {
+    display: none;
 }
 
 .video-caption svg {

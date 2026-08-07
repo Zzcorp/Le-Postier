@@ -91,6 +91,13 @@
             </button>
         </div>
 
+        {% comment %} Panneau postal immergé : meuble d'affichage en bois au fond
+           de la rivière, derrière les onglets et les cartes. Il vit dans
+           .poste-container (.amb-contenu) : au-dessus de l'ambiance aquatique,
+           sous le contenu (voir styles .poste-panneau). {% endcomment %}
+        <div class="poste-panneau">
+        <div class="panneau-bulles" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
         <!-- Tabs -->
         <div class="poste-tabs animate-fade-in delay-2">
             <button class="tab-btn active" data-tab="received" onclick="switchTab('received')">
@@ -358,6 +365,7 @@
                 </div>
             </div>
         </div>
+        </div>{# /.poste-panneau #}
     </div>
 </div>
 
@@ -1539,6 +1547,117 @@ document.addEventListener('DOMContentLoaded', () => {
 .action-btn.disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* ————— Panneau postal immergé —————
+   Meuble d'affichage en bois englouti, posé derrière les onglets et les
+   cartes : surface de lattes chaudes (dégradés), voile froid de profondeur
+   (teintes de l'ambiance aquatique), bords adoucis, et deux nappes de
+   lumière caustique qui dérivent très lentement (transform/opacity
+   uniquement, opacité ≤ 0.08). Le contenu garde ses fonds au-dessus. */
+.poste-panneau {
+    position: relative;
+    overflow: hidden;
+    padding: 30px 28px 26px;
+    border-radius: 26px;
+    border: 1px solid rgba(181, 96, 11, 0.16);
+    background:
+        linear-gradient(180deg, rgba(20, 38, 34, 0.22) 0%, rgba(20, 38, 34, 0.07) 32%, rgba(20, 38, 34, 0) 62%),
+        repeating-linear-gradient(90deg,
+            rgba(0, 0, 0, 0.09) 0, rgba(0, 0, 0, 0.09) 2px,
+            rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0) 118px,
+            rgba(240, 224, 195, 0.022) 118px, rgba(240, 224, 195, 0.022) 120px),
+        repeating-linear-gradient(180deg,
+            rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 26px,
+            rgba(0, 0, 0, 0.045) 26px, rgba(0, 0, 0, 0.045) 27px),
+        linear-gradient(165deg, rgba(58, 40, 22, 0.92), rgba(41, 28, 15, 0.95) 55%, rgba(30, 20, 11, 0.96));
+    box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(209, 135, 44, 0.10),
+        inset 0 0 90px rgba(13, 22, 20, 0.35);
+}
+
+/* Deux nappes caustiques : grandes taches de lumière douces qui se
+   superposent et dérivent en sens contraires (28s / 38s). */
+.poste-panneau::before,
+.poste-panneau::after {
+    content: "";
+    position: absolute;
+    inset: -25%;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 26% 18% at 22% 28%, rgba(240, 224, 195, 0.9), transparent 65%),
+        radial-gradient(ellipse 22% 15% at 64% 18%, rgba(209, 135, 44, 0.8), transparent 70%),
+        radial-gradient(ellipse 30% 20% at 45% 62%, rgba(240, 224, 195, 0.7), transparent 65%),
+        radial-gradient(ellipse 20% 14% at 84% 74%, rgba(209, 135, 44, 0.75), transparent 70%);
+    opacity: 0.05;
+    animation: poste-caustique 28s ease-in-out infinite alternate;
+}
+
+.poste-panneau::after {
+    animation: poste-caustique-2 38s ease-in-out infinite alternate;
+}
+
+@keyframes poste-caustique {
+    0%   { transform: translate3d(-3%, -2%, 0) rotate(-1.2deg) scale(1); opacity: 0.035; }
+    50%  { opacity: 0.075; }
+    100% { transform: translate3d(3%, 2%, 0) rotate(1.2deg) scale(1.06); opacity: 0.04; }
+}
+
+@keyframes poste-caustique-2 {
+    0%   { transform: translate3d(3%, 1.5%, 0) rotate(1deg) scale(1.05); opacity: 0.03; }
+    50%  { opacity: 0.065; }
+    100% { transform: translate3d(-3%, -2.5%, 0) rotate(-1deg) scale(1); opacity: 0.045; }
+}
+
+/* Micro-bulles fines qui montent le long des bords du panneau (4 nœuds) */
+.panneau-bulles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.panneau-bulles i {
+    position: absolute;
+    bottom: 5%;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(240, 224, 195, 0.55), rgba(240, 224, 195, 0.06) 70%);
+    opacity: 0;
+    animation: panneau-bulle-monte 18s linear infinite;
+}
+
+.panneau-bulles i:nth-child(1) { left: 3.5%; }
+.panneau-bulles i:nth-child(2) { left: 6%; width: 3px; height: 3px; animation-duration: 23s; animation-delay: 7s; }
+.panneau-bulles i:nth-child(3) { right: 4%; animation-duration: 21s; animation-delay: 3s; }
+.panneau-bulles i:nth-child(4) { right: 6.5%; width: 3px; height: 3px; animation-duration: 26s; animation-delay: 12s; }
+
+@keyframes panneau-bulle-monte {
+    0%   { transform: translate3d(0, 0, 0); opacity: 0; }
+    8%   { opacity: 0.35; }
+    45%  { transform: translate3d(4px, -46vh, 0); opacity: 0.18; }
+    60%  { transform: translate3d(-2px, -62vh, 0); opacity: 0; }
+    100% { transform: translate3d(-2px, -62vh, 0); opacity: 0; }
+}
+
+/* Lisibilité intouchable : onglets et contenu s'empilent au-dessus
+   des nappes caustiques du panneau. */
+.poste-panneau > .poste-tabs,
+.poste-panneau > .poste-content {
+    position: relative;
+    z-index: 1;
+}
+
+/* Mouvement réduit : le panneau devient une pièce de mobilier immobile */
+@media (prefers-reduced-motion: reduce) {
+    .poste-panneau::before,
+    .poste-panneau::after {
+        animation: none;
+        opacity: 0.05;
+    }
+
+    .panneau-bulles { display: none; }
 }
 
 /* Tabs */
@@ -3071,6 +3190,12 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 @media (max-width: 768px) {
+    /* Le panneau immergé s'amincit avec l'écran */
+    .poste-panneau {
+        padding: 22px 14px 20px;
+        border-radius: 20px;
+    }
+
     /* Cartes reçues / envoyées : 2 par rangée */
     .postcards-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -3104,6 +3229,12 @@ document.addEventListener('DOMContentLoaded', () => {
 @media (max-width: 480px) {
     .la-poste-page {
         padding: 70px 12px 50px;
+    }
+
+    /* Panneau discret sur mobile étroit : jamais de défilement horizontal */
+    .poste-panneau {
+        padding: 16px 10px;
+        border-radius: 16px;
     }
 
     .poste-header h1 {

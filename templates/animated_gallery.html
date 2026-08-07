@@ -232,7 +232,36 @@
                         Suggérer une animation
                     </button>
                 </div>
-                
+
+                <!-- Notes de l'animation : créateur (lecture seule) + vote public -->
+                <div class="modal-ratings" id="modalRatings">
+                    <div class="rating-row" id="creatorRatingRow" hidden>
+                        <span class="rating-label">Note du créateur</span>
+                        <span class="rating-stars" id="creatorRatingStars" role="img"></span>
+                    </div>
+                    <div class="rating-row">
+                        <span class="rating-label">Votre note</span>
+                        <div class="rating-vote" id="publicRatingVote" role="radiogroup" aria-label="Noter cette animation de 1 à 5">
+                            <button type="button" class="rate-star" data-value="1" aria-pressed="false" aria-label="Noter 1 sur 5">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </button>
+                            <button type="button" class="rate-star" data-value="2" aria-pressed="false" aria-label="Noter 2 sur 5">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </button>
+                            <button type="button" class="rate-star" data-value="3" aria-pressed="false" aria-label="Noter 3 sur 5">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </button>
+                            <button type="button" class="rate-star" data-value="4" aria-pressed="false" aria-label="Noter 4 sur 5">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </button>
+                            <button type="button" class="rate-star" data-value="5" aria-pressed="false" aria-label="Noter 5 sur 5">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </button>
+                        </div>
+                        <span class="rating-summary" id="publicRatingSummary"></span>
+                    </div>
+                </div>
+
                 <!-- Suggestion Form -->
                 <div class="suggest-form-container" id="suggestFormContainer" style="display:none;">
                     <h4>Proposer une idée d'animation</h4>
@@ -260,6 +289,16 @@
         <p>Votre idée a été enregistrée et sera examinée par notre équipe.</p>
         <button onclick="closeSuccessModal()">Fermer</button>
     </div>
+</div>
+
+<!-- Avis « connexion requise » (likes, suggestions, notes) -->
+<div class="login-notice" id="loginNotice" role="alert" hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+    <span id="loginNoticeText"></span>
+    <a href="{% url 'login' %}">Se connecter</a>
 </div>
 
 <script>
@@ -560,13 +599,19 @@ async function openAnimatedModal(postcardId) {
     document.getElementById('modalLikeCount').textContent = likeCount;
     document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn && likeBtn.classList.contains('liked'));
     
+    // Reset ratings display while fetching
+    setModalRatings({});
+
     // Fetch full postcard data to get all video URLs
     try {
         const response = await fetch(`/api/postcard/${postcardId}/`);
         const data = await response.json();
-        
+
         currentAnimatedUrls = data.animated_urls || [];
         currentVideoIndex = 0;
+
+        // Notes de l'animation (créateur + public) fournies par l'API
+        setModalRatings(data);
         
         // If no animated URLs from API, use the card's data
         if (currentAnimatedUrls.length === 0 && card.dataset.videoUrl) {
@@ -709,7 +754,12 @@ async function toggleLike(event, postcardId, isAnimated = true) {
         });
         
         const data = await response.json();
-        
+
+        if (response.status === 401 || data.login_required) {
+            showLoginNotice("Connectez-vous pour aimer les cartes");
+            return;
+        }
+
         if (data.success) {
             // Update card
             const card = document.querySelector(`[data-id="${postcardId}"]`);
@@ -742,6 +792,102 @@ function toggleModalLike() {
         toggleLike({ stopPropagation: () => {} }, currentPostcardId, true);
     }
 }
+
+// ===========================================
+// LOGIN REQUIRED NOTICE
+// ===========================================
+let loginNoticeTimer = null;
+
+function showLoginNotice(message) {
+    const notice = document.getElementById('loginNotice');
+    if (!notice) return;
+    document.getElementById('loginNoticeText').textContent = message;
+    notice.hidden = false;
+    if (loginNoticeTimer) clearTimeout(loginNoticeTimer);
+    loginNoticeTimer = setTimeout(() => { notice.hidden = true; }, 6000);
+}
+
+// ===========================================
+// ANIMATION RATINGS (créateur + public)
+// ===========================================
+const RATE_STAR_POINTS = '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2';
+
+function buildRatingStars(note, size) {
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        const fill = i <= note ? 'currentColor' : 'none';
+        html += `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="${RATE_STAR_POINTS}"/></svg>`;
+    }
+    return html;
+}
+
+function updatePublicRatingUI(avg, count, userRating) {
+    document.querySelectorAll('#publicRatingVote .rate-star').forEach((btn) => {
+        const value = parseInt(btn.dataset.value, 10);
+        const filled = userRating >= value;
+        btn.classList.toggle('filled', filled);
+        btn.setAttribute('aria-pressed', filled ? 'true' : 'false');
+        btn.querySelector('svg').setAttribute('fill', filled ? 'currentColor' : 'none');
+    });
+
+    const summary = document.getElementById('publicRatingSummary');
+    if (count > 0) {
+        const moyenne = Number(avg).toFixed(1).replace('.', ',');
+        summary.textContent = `Moyenne ${moyenne}/5 (${count} vote${count > 1 ? 's' : ''})`;
+    } else {
+        summary.textContent = "Aucune note pour l'instant";
+    }
+}
+
+function setModalRatings(data) {
+    // Note du créateur (lecture seule), affichée seulement si notée (>= 1)
+    const row = document.getElementById('creatorRatingRow');
+    const stars = document.getElementById('creatorRatingStars');
+    const note = data.generation_rating || 0;
+    if (note >= 1) {
+        stars.innerHTML = buildRatingStars(note, 14);
+        stars.setAttribute('aria-label', `Note du créateur : ${note} sur 5`);
+        row.hidden = false;
+    } else {
+        row.hidden = true;
+        stars.innerHTML = '';
+    }
+
+    // Vote public : moyenne, nombre de votes et vote du membre
+    updatePublicRatingUI(data.public_avg || 0, data.public_count || 0, data.user_rating || 0);
+}
+
+async function rateAnimation(value) {
+    if (!currentPostcardId) return;
+
+    try {
+        const formData = new FormData();
+        formData.append('rating', value);
+
+        const response = await fetch(`/api/postcard/${currentPostcardId}/rate/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.status === 401 || data.login_required) {
+            showLoginNotice("Connectez-vous pour noter les animations");
+            return;
+        }
+
+        if (data.success) {
+            updatePublicRatingUI(data.avg, data.count, data.user_rating);
+        }
+    } catch (error) {
+        console.error('Rating error:', error);
+    }
+}
+
+document.querySelectorAll('#publicRatingVote .rate-star').forEach((btn) => {
+    btn.addEventListener('click', () => rateAnimation(parseInt(btn.dataset.value, 10)));
+});
 
 // ===========================================
 // SUGGESTION FUNCTIONALITY
@@ -781,7 +927,12 @@ async function submitSuggestion() {
         });
         
         const data = await response.json();
-        
+
+        if (response.status === 401 || data.login_required) {
+            showLoginNotice("Connectez-vous pour proposer une animation");
+            return;
+        }
+
         if (data.success) {
             hideSuggestForm();
             document.getElementById('successModal').classList.add('active');
@@ -1474,6 +1625,70 @@ footer {
     transform: translateY(-2px);
 }
 
+/* Notes de l'animation : créateur (lecture seule) + vote public */
+.modal-ratings {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.rating-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.rating-row[hidden] {
+    display: none;
+}
+
+.rating-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem;
+}
+
+.rating-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: #d1872c;
+}
+
+.rating-vote {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.rate-star {
+    background: none;
+    border: none;
+    padding: 6px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.rate-star:hover {
+    color: #d1872c;
+    transform: scale(1.15);
+}
+
+.rate-star.filled {
+    color: #d1872c;
+}
+
+.rating-summary {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+}
+
 /* Suggest Form */
 .suggest-form-container {
     margin-top: 25px;
@@ -1595,6 +1810,41 @@ footer {
     font-size: 1rem;
 }
 
+/* Avis « connexion requise » — simple lien vers /connexion/, aucune redirection */
+.login-notice {
+    position: fixed;
+    left: 50%;
+    bottom: 30px;
+    transform: translateX(-50%);
+    z-index: 7000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(90vw, 480px);
+    padding: 12px 20px;
+    background: linear-gradient(165deg, #2d1f0d, #1a1208);
+    border: 1px solid #b5600b;
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+}
+
+.login-notice[hidden] {
+    display: none;
+}
+
+.login-notice svg {
+    color: #d1872c;
+    flex-shrink: 0;
+}
+
+.login-notice a {
+    color: #ffc168;
+    font-weight: 600;
+    text-decoration: underline;
+    white-space: nowrap;
+}
+
 /* No Results */
 .no-results {
     grid-column: 1 / -1;
@@ -1639,6 +1889,8 @@ footer {
 .video-tab:focus-visible,
 .modal-like-btn:focus-visible,
 .modal-suggest-btn:focus-visible,
+.rate-star:focus-visible,
+.login-notice a:focus-visible,
 .cancel-btn:focus-visible,
 .submit-btn:focus-visible,
 .video-fallback-link:focus-visible,
@@ -1683,6 +1935,7 @@ footer {
     .video-tab { min-height: 40px; padding: 8px 18px; font-size: 0.875rem; }
     .cancel-btn, .submit-btn { min-height: 44px; }
     .success-content button { min-height: 44px; }
+    .rate-star { min-width: 40px; min-height: 40px; }
 
     /* Lisibilité : tailles effectives >= 14px */
     .card-number { font-size: 0.875rem; }

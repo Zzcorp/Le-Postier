@@ -15,7 +15,8 @@ from .models import (
 
 
 class PostcardAdmin(admin.ModelAdmin):
-    list_display = ['number', 'title', 'rarity', 'has_images', 'has_animation', 'views_count', 'likes_count']
+    list_display = ['number', 'title', 'rarity', 'has_images', 'has_animation', 'views_count', 'likes_count', 'generation_rating']
+    list_editable = ['generation_rating']
     list_filter = ['rarity', 'has_images', 'has_animation']
     search_fields = ['number', 'title', 'keywords']
     readonly_fields = [

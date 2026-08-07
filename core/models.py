@@ -8,6 +8,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -207,6 +208,9 @@ class Postcard(models.Model):
     animation_files = models.JSONField(default=list, blank=True)
     has_animation = models.BooleanField(default=False, db_index=True, verbose_name="Animation présente")
     media_synced_at = models.DateTimeField(null=True, blank=True)
+
+    # Note de qualité (0-5) donnée par le propriétaire à l'animation générée (0 = non notée)
+    generation_rating = models.PositiveSmallIntegerField(default=0, verbose_name="Note de génération (0-5)")
 
     # Accent-stripped lowercase of number + title + keywords, maintained on save
     search_blob = models.TextField(blank=True, default='')
@@ -429,6 +433,25 @@ class AnimationSuggestion(models.Model):
         ordering = ['-created_at']
         verbose_name = "Suggestion d'animation"
         verbose_name_plural = "Suggestions d'animation"
+
+
+class AnimationRating(models.Model):
+    """Note publique (1-5) donnée par un membre connecté à l'animation d'une carte"""
+    postcard = models.ForeignKey(Postcard, on_delete=models.CASCADE, related_name='animation_ratings')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name="Note (1-5)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['postcard', 'user']
+        verbose_name = "Note d'animation"
+        verbose_name_plural = "Notes d'animation"
+
+    def __str__(self):
+        return f"{self.postcard.number} — {self.rating}/5"
 
 
 class Theme(models.Model):

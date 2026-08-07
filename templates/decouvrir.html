@@ -35,6 +35,10 @@
 
     <!-- Paintings Gallery -->
     <section class="paintings-gallery amb-contenu">
+        {% comment %} Mur d'accrochage de palais : grand panneau mouluré derrière
+           les six cadres. Il vit dans .amb-contenu (au-dessus de l'ambiance
+           aquatique) ; la grille reste la couche interactive au-dessus. {% endcomment %}
+        <div class="palace-wall">
         <div class="paintings-grid">
             {% for painting in paintings %}
             <div class="painting-item animate-fade-in-up" 
@@ -58,6 +62,7 @@
             </div>
             {% endfor %}
         </div>
+        </div>{# /.palace-wall #}
     </section>
 
     <!-- Video Modal -->
@@ -180,6 +185,42 @@ footer {
     max-width: 1400px;
     margin: 0 auto;
     padding: 0 20px;
+}
+
+/* ————— Mur d'accrochage de palais —————
+   Grand panneau mouluré derrière les six cadres, façon mur du Louvre :
+   - triple filet doré en moulure (box-shadows, aucun décalage de mise en page) ;
+   - damas tissé fait main (SVG en data URI, aucune requête externe) ;
+   - éclairage vertical d'appliques (trois dégradés radiaux en haut) ;
+   - lueur bordeaux profonde en bas, vignettage intérieur.
+   Contraste volontairement bas : les tableaux dominent. */
+.palace-wall {
+    position: relative;
+    padding: 56px 48px;
+    border-radius: 3px;
+    border: 1px solid rgba(209, 135, 44, 0.30);
+    background:
+        radial-gradient(ellipse 34% 40% at 17% 0%, rgba(209, 135, 44, 0.10), transparent 75%),
+        radial-gradient(ellipse 34% 40% at 50% 0%, rgba(209, 135, 44, 0.085), transparent 75%),
+        radial-gradient(ellipse 34% 40% at 83% 0%, rgba(209, 135, 44, 0.10), transparent 75%),
+        radial-gradient(ellipse 120% 70% at 50% 100%, rgba(74, 24, 18, 0.28), transparent 70%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23d1872c' stroke-width='1' stroke-opacity='.05'%3E%3Cpath d='M48 22q8 13 0 26q-8-13 0-26z'/%3E%3Cpath d='M48 74q8-13 0-26q-8 13 0 26z'/%3E%3Cpath d='M22 48q13 8 26 0q-13-8-26 0z'/%3E%3Cpath d='M74 48q-13 8-26 0q13-8 26 0z'/%3E%3Ccircle cx='48' cy='48' r='3.5'/%3E%3Cpath d='M30 30q9 3 12 12'/%3E%3Cpath d='M66 30q-9 3-12 12'/%3E%3Cpath d='M30 66q9-3 12-12'/%3E%3Cpath d='M66 66q-9-3-12-12'/%3E%3Ccircle cx='0' cy='0' r='9'/%3E%3Ccircle cx='96' cy='0' r='9'/%3E%3Ccircle cx='0' cy='96' r='9'/%3E%3Ccircle cx='96' cy='96' r='9'/%3E%3C/g%3E%3Cg fill='%23d1872c' fill-opacity='.04'%3E%3Ccircle cx='0' cy='48' r='2'/%3E%3Ccircle cx='96' cy='48' r='2'/%3E%3Ccircle cx='48' cy='0' r='2'/%3E%3Ccircle cx='48' cy='96' r='2'/%3E%3C/g%3E%3C/svg%3E"),
+        linear-gradient(180deg, #2c1710 0%, #26150c 45%, #1d0f08 100%);
+    background-size: auto, auto, auto, auto, 96px 96px, auto;
+    box-shadow:
+        0 0 0 4px #1a1208,
+        0 0 0 5px rgba(181, 96, 11, 0.38),
+        0 0 0 10px #201309,
+        0 0 0 11px rgba(209, 135, 44, 0.18),
+        0 26px 70px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(209, 135, 44, 0.12),
+        inset 0 0 90px rgba(0, 0, 0, 0.38);
+}
+
+/* Les cadres restent la couche interactive au-dessus du mur */
+.palace-wall > .paintings-grid {
+    position: relative;
+    z-index: 1;
 }
 
 .paintings-grid {
@@ -402,6 +443,10 @@ footer {
         grid-template-columns: repeat(2, 1fr);
         gap: 30px;
     }
+
+    .palace-wall {
+        padding: 40px 30px;
+    }
 }
 
 @media (max-width: 600px) {
@@ -409,7 +454,11 @@ footer {
         grid-template-columns: 1fr;
         gap: 25px;
     }
-    
+
+    .palace-wall {
+        padding: 30px 18px;
+    }
+
     .page-header {
         padding: 100px 20px 40px;
     }
@@ -490,6 +539,10 @@ footer {
     .modal-content h2 { margin-bottom: 18px; }
 
     .paintings-gallery { padding: 0 15px; }
+
+    /* La moulure extérieure (11px d'ombres) reste dans les 15px de marge :
+       jamais de défilement horizontal */
+    .palace-wall { padding: 24px 12px; }
 
     .page-header { padding: 90px 15px 35px; }
 }

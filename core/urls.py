@@ -88,6 +88,7 @@ urlpatterns = [
     path('api/postcard/<int:postcard_id>/zoom/', views.zoom_postcard, name='postcard_zoom'),
     path('api/postcard/<int:postcard_id>/like/', views.like_postcard, name='postcard_like'),
     path('api/postcard/<int:postcard_id>/suggest/', views.suggest_animation, name='suggest_animation'),
+    path('api/postcard/<int:postcard_id>/rate/', views.rate_animation, name='rate_animation'),
     path('api/postcards/for-cover/', views.get_postcards_for_cover, name='postcards_for_cover'),
 
     # Admin Dashboard

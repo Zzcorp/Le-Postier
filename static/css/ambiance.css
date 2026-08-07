@@ -42,6 +42,7 @@
 /* Chaque couche occupe tout le conteneur. */
 .amb-fond,
 .amb-rayons,
+.amb-algues,
 .amb-vagues,
 .amb-poissons,
 .amb-bulles,
@@ -90,7 +91,38 @@
 }
 
 /* --------------------------------------------------------------------------
-   3. Vagues — deux nappes d'eau profonde épinglées en bas, sens opposés
+   3. Algues — touffes vert-sarcelle sombres enracinées au bord bas
+   Silhouettes SVG (rubans de kelp ou touffe branchue) posées en background,
+   pied ancré sous le bord (bottom négatif). L'ondulation pivote et cisaille
+   autour de la BASE (transform-origin en bas) : l'algue reste enracinée et
+   tend vers la surface. La couche vit SOUS les nappes de vagues (ordre DOM) :
+   la houle passe devant et les voile légèrement.
+   -------------------------------------------------------------------------- */
+.amb-algue {
+    position: absolute;
+    bottom: -1vh;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: bottom center;
+    filter: blur(var(--flou, 2px));
+    transform-origin: 50% 100%;
+}
+
+/* Ondulation lente (6 à 12 s l'aller, alternate) — classe posée par
+   ambiance.js seulement hors prefers-reduced-motion. */
+.amb-algue--onde {
+    animation: amb-algue-ondulation var(--duree, 9s) ease-in-out infinite alternate;
+    animation-delay: var(--retard, 0s);
+    will-change: transform;
+}
+
+@keyframes amb-algue-ondulation {
+    from { transform: rotate(var(--pencheA, -3deg)) skewX(var(--skewA, -2deg)) translate3d(0, 0, 0); }
+    to   { transform: rotate(var(--pencheB, 3deg)) skewX(var(--skewB, 2deg)) translate3d(0, 0, 0); }
+}
+
+/* --------------------------------------------------------------------------
+   4. Vagues — deux nappes d'eau profonde épinglées en bas, sens opposés
    Chaque nappe fait 200% de large ; son motif SVG (background-size 50%)
    se répète exactement deux fois, donc un glissement de 50% boucle sans
    couture.
@@ -131,9 +163,12 @@
 }
 
 /* --------------------------------------------------------------------------
-   4. Poissons — grandes ombres fuselées glissant à différentes profondeurs
+   5. Poissons — ombres fuselées glissant à différentes profondeurs
    Silhouette SVG en background ; flou doux pour l'effet "ombre dans l'eau".
-   La traversée dure 40 à 90 s (jamais moins de 25 s, règle de lenteur).
+   La traversée dure 40 à 95 s (jamais moins de 25 s, règle de lenteur).
+   IMPORTANT : la tête du SVG pointe vers la GAUCHE (nez en x=6, queue
+   fourchue en x=208). Le poisson doit toujours regarder dans le sens de
+   sa nage : retourné (scaleX(-1)) vers la droite, naturel vers la gauche.
    -------------------------------------------------------------------------- */
 .amb-poisson {
     position: absolute;
@@ -145,34 +180,36 @@
     will-change: transform;
 }
 
-/* Traversée gauche -> droite, avec une lente dérive verticale. */
+/* Traversée gauche -> droite : silhouette retournée (scaleX(-1)) pour que
+   la tête mène la nage, avec une lente dérive verticale. */
 .amb-poisson--droite {
     animation: amb-nage-droite var(--duree, 60s) linear infinite;
 }
 
 @keyframes amb-nage-droite {
-    0%   { transform: translate3d(-22vw, 0, 0); }
-    30%  { transform: translate3d(20vw, -2.5vh, 0); }
-    55%  { transform: translate3d(55vw, 1.5vh, 0); }
-    80%  { transform: translate3d(90vw, -1.5vh, 0); }
-    100% { transform: translate3d(118vw, 0, 0); }
+    0%   { transform: translate3d(-22vw, 0, 0) scaleX(-1); }
+    30%  { transform: translate3d(20vw, -2.5vh, 0) scaleX(-1); }
+    55%  { transform: translate3d(55vw, 1.5vh, 0) scaleX(-1); }
+    80%  { transform: translate3d(90vw, -1.5vh, 0) scaleX(-1); }
+    100% { transform: translate3d(118vw, 0, 0) scaleX(-1); }
 }
 
-/* Traversée droite -> gauche : silhouette retournée (scaleX(-1)). */
+/* Traversée droite -> gauche : silhouette dans son sens naturel
+   (la tête du SVG pointe déjà vers la gauche). */
 .amb-poisson--gauche {
     animation: amb-nage-gauche var(--duree, 60s) linear infinite;
 }
 
 @keyframes amb-nage-gauche {
-    0%   { transform: translate3d(118vw, 0, 0) scaleX(-1); }
-    30%  { transform: translate3d(78vw, 2vh, 0) scaleX(-1); }
-    55%  { transform: translate3d(45vw, -2vh, 0) scaleX(-1); }
-    80%  { transform: translate3d(8vw, 1.5vh, 0) scaleX(-1); }
-    100% { transform: translate3d(-22vw, 0, 0) scaleX(-1); }
+    0%   { transform: translate3d(118vw, 0, 0); }
+    30%  { transform: translate3d(78vw, 2vh, 0); }
+    55%  { transform: translate3d(45vw, -2vh, 0); }
+    80%  { transform: translate3d(8vw, 1.5vh, 0); }
+    100% { transform: translate3d(-22vw, 0, 0); }
 }
 
 /* --------------------------------------------------------------------------
-   5. Bulles — remontée pleine hauteur avec ondulation sinusoïdale
+   6. Bulles — remontée pleine hauteur avec ondulation sinusoïdale
    --sx est l'amplitude d'ondulation, --sxn son opposé (précalculés en JS
    car calc() ne sait pas nier une variable de façon portable).
    -------------------------------------------------------------------------- */
@@ -202,7 +239,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   6. Particules — poussières d'eau dérivant lentement en diagonale montante
+   7. Particules — poussières d'eau dérivant lentement en diagonale montante
    -------------------------------------------------------------------------- */
 .amb-particule {
     position: absolute;
@@ -223,8 +260,9 @@
 
 /* --------------------------------------------------------------------------
    Mouvement réduit : plus aucune animation. ambiance.js ne construit alors
-   que les couches statiques (fond, rayons, vagues) ; ce filet de sécurité
-   CSS immobilise tout, même si le JS a construit davantage.
+   que les couches statiques (fond, rayons, algues sans ondulation, vagues) ;
+   ce filet de sécurité CSS immobilise tout, même si le JS a construit
+   davantage.
    -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
     .ambiance,

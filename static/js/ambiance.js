@@ -3,14 +3,14 @@
    --------------------------------------------------------------------------
    Script différé (defer). Trouve le conteneur .ambiance posé par
    templates/partials/ambiance.html et construit les couches sous-marines :
-   fond, rayons de lumière, vagues, poissons, bulles, particules.
+   fond, rayons de lumière, algues, vagues, poissons, bulles, particules.
 
    - Densité pilotée par data-ambiance : 'riche' | 'douce' | 'calme'.
    - Comptes réduits de moitié sous 768px, minimaux sous 480px.
    - prefers-reduced-motion : couches statiques uniquement, aucun mouvement.
    - Onglet masqué : classe .amb-pause (les animations CSS se figent).
    - Aucun émoji, aucune bibliothèque : SVG inline encodés en data URI.
-   - Budget DOM : ~45 nœuds maximum, toutes couches confondues.
+   - Budget DOM : ~55 nœuds maximum toutes couches confondues (plafond : 70).
    ========================================================================== */
 (function () {
     'use strict';
@@ -39,12 +39,12 @@
     /* Comptes de base par mode ('douce' = 'riche' moins ~30 %). */
     var comptes;
     if (mode === 'riche') {
-        comptes = { rayons: 3, poissons: 3, bulles: 16, particules: 14 };
+        comptes = { rayons: 3, poissons: 5, bulles: 16, particules: 14, algues: 6 };
     } else if (mode === 'calme') {
-        /* calme : vagues + quelques bulles + lumière seulement, pas de poisson */
-        comptes = { rayons: 2, poissons: 0, bulles: 6, particules: 0 };
+        /* calme : vagues + algues + quelques bulles + lumière, pas de poisson */
+        comptes = { rayons: 2, poissons: 0, bulles: 6, particules: 0, algues: 2 };
     } else {
-        comptes = { rayons: 2, poissons: 2, bulles: 12, particules: 10 };
+        comptes = { rayons: 2, poissons: 3, bulles: 12, particules: 10, algues: 4 };
     }
 
     /* ---------------------------------------------------------------------
@@ -106,6 +106,39 @@
         '</svg>'
     );
 
+    /* Algue "ruban" : trois longues lanières de kelp effilées, enracinées au
+       bas de la tuile, chacune montant à sa propre hauteur. Vert-sarcelle
+       profond, même famille que la nappe d'eau. */
+    var SVG_ALGUE_RUBAN = 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 260">' +
+        '<path fill="#2a4a42" d="' +
+        'M18 260 C26 208 6 168 20 122 C30 88 14 52 26 8 ' +
+        'C31 50 44 90 34 126 C22 168 40 210 30 260 Z ' +
+        'M58 260 C50 200 72 160 60 112 C52 76 70 40 62 2 ' +
+        'C74 44 58 80 70 116 C80 162 58 202 70 260 Z ' +
+        'M96 260 C104 214 86 180 98 140 C106 112 92 84 102 48 ' +
+        'C108 86 118 116 108 146 C98 182 112 218 104 260 Z' +
+        '"/></svg>'
+    );
+
+    /* Algue "touffe" : buisson branchu plus trapu, cinq frondes rayonnant
+       depuis le pied et tendues vers la surface. */
+    var SVG_ALGUE_TOUFFE = 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 180">' +
+        '<path fill="#264540" d="' +
+        'M52 180 C44 140 34 110 24 78 C20 64 12 56 8 44 ' +
+        'C22 60 34 88 44 116 C50 134 54 158 58 180 Z ' +
+        'M64 180 C58 146 48 120 40 94 C36 82 28 72 26 60 ' +
+        'C36 78 48 102 56 128 C60 146 62 162 64 180 Z ' +
+        'M66 180 C64 130 70 90 68 44 C66 30 72 16 70 6 ' +
+        'C76 40 74 90 76 132 C77 150 74 166 74 180 Z ' +
+        'M76 180 C82 144 92 118 100 92 C104 80 112 70 114 58 ' +
+        'C104 76 92 100 84 126 C80 144 78 162 76 180 Z ' +
+        'M88 180 C96 140 106 110 116 78 C120 64 128 56 132 44 ' +
+        'C118 60 106 88 96 116 C90 134 86 158 82 180 Z' +
+        '"/></svg>'
+    );
+
     /* ---------------------------------------------------------------------
        1. Fond — voile d'eau (purement statique, stylé en CSS)
        --------------------------------------------------------------------- */
@@ -127,7 +160,45 @@
     }
 
     /* ---------------------------------------------------------------------
-       3. Vagues de fond (deux nappes, sens opposés)
+       3. Algues — touffes ancrées au bord bas, tendues vers la surface.
+       Couche construite AVANT les vagues : dans l'ordre d'empilement, les
+       nappes de houle passent devant les algues et les voilent légèrement
+       (illusion de profondeur). Toujours construite, y compris en mouvement
+       réduit : la classe d'ondulation amb-algue--onde n'est alors pas posée
+       et les silhouettes restent statiques.
+       --------------------------------------------------------------------- */
+    var algues = couche('amb-algues');
+    var nbAlgues = nb(comptes.algues);
+    for (var a = 0; a < nbAlgues; a++) {
+        var hauteurAlgue = alea(8, 20);                 /* hauteur en vh */
+        var ruban = (a % 2 === 0);                      /* alternance stricte des deux silhouettes */
+        var ratioAlgue = ruban ? (120 / 260) : (140 / 180);
+        var dureeAlgue = alea(6, 12);
+        var amplitude = alea(2, 5);                     /* inclinaison max en degrés */
+        element(
+            'amb-algue' + (mouvementReduit ? '' : ' amb-algue--onde'),
+            algues,
+            {
+                /* un créneau par touffe + jitter : réparties sur toute la largeur */
+                left: ((a + alea(0.12, 0.88)) * (100 / nbAlgues)).toFixed(1) + 'vw',
+                height: hauteurAlgue.toFixed(1) + 'vh',
+                width: (hauteurAlgue * ratioAlgue).toFixed(1) + 'vh',
+                backgroundImage: 'url("' + (ruban ? SVG_ALGUE_RUBAN : SVG_ALGUE_TOUFFE) + '")',
+                opacity: alea(0.10, 0.20).toFixed(3),
+                /* petites touffes = plus lointaines = plus floues (3px -> 1px) */
+                '--flou': (3 - (hauteurAlgue - 8) / 6).toFixed(1) + 'px',
+                '--duree': dureeAlgue.toFixed(1) + 's',
+                '--retard': (-alea(0, dureeAlgue)).toFixed(1) + 's',
+                '--pencheA': (-amplitude).toFixed(2) + 'deg',
+                '--pencheB': (amplitude * alea(0.55, 1)).toFixed(2) + 'deg',
+                '--skewA': (-alea(1, 3)).toFixed(2) + 'deg',
+                '--skewB': alea(1, 3).toFixed(2) + 'deg'
+            }
+        );
+    }
+
+    /* ---------------------------------------------------------------------
+       4. Vagues de fond (deux nappes, sens opposés)
        --------------------------------------------------------------------- */
     var vagues = couche('amb-vagues');
     element('amb-vague amb-vague--arriere', vagues, {
@@ -144,16 +215,17 @@
     if (!mouvementReduit) {
 
         /* -----------------------------------------------------------------
-           4. Poissons — grandes ombres à différentes profondeurs
-           Les plus proches sont grands, sombres et nets ; les plus lointains
-           petits, pâles et plus flous. Traversée : 40 à 90 s.
+           5. Poissons — de l'alevin (40 px) au grand poisson (200 px)
+           Les plus proches sont grands, plus présents, plus nets et un peu
+           plus vifs ; les plus lointains petits, pâles, flous et lents.
+           Traversée : 40 à 95 s.
            ----------------------------------------------------------------- */
         var poissons = couche('amb-poissons');
         var nbPoissons = nb(comptes.poissons);
         for (var p = 0; p < nbPoissons; p++) {
-            var taille = alea(60, 140);              /* largeur en px */
-            var proche = (taille - 60) / 80;         /* 0 = lointain, 1 = proche */
-            var duree = alea(40, 90);
+            var taille = alea(40, 200);              /* largeur en px */
+            var proche = (taille - 40) / 160;        /* 0 = lointain, 1 = proche */
+            var duree = alea(60, 95) - proche * 20;  /* grands : 40-75 s, petits : 60-95 s */
             var versLaDroite = Math.random() < 0.5;
             element(
                 'amb-poisson ' + (versLaDroite ? 'amb-poisson--droite' : 'amb-poisson--gauche'),
@@ -163,8 +235,8 @@
                     width: taille.toFixed(0) + 'px',
                     height: (taille * 70 / 220).toFixed(0) + 'px',
                     backgroundImage: 'url("' + SVG_POISSON + '")',
-                    opacity: (0.16 + proche * 0.10).toFixed(3),
-                    '--flou': (8 - proche * 3).toFixed(1) + 'px',
+                    opacity: (0.12 + proche * 0.14).toFixed(3),
+                    '--flou': (9 - proche * 5).toFixed(1) + 'px',
                     '--duree': duree.toFixed(1) + 's',
                     /* retard négatif : certains poissons sont déjà en traversée */
                     animationDelay: (-alea(0, duree)).toFixed(1) + 's'
@@ -173,7 +245,7 @@
         }
 
         /* -----------------------------------------------------------------
-           5. Bulles — remontée pleine hauteur, ondulation sinusoïdale
+           6. Bulles — remontée pleine hauteur, ondulation sinusoïdale
            ----------------------------------------------------------------- */
         var bulles = couche('amb-bulles');
         var nbBulles = nb(comptes.bulles);
@@ -195,7 +267,7 @@
         }
 
         /* -----------------------------------------------------------------
-           6. Particules — poussières d'eau en dérive diagonale montante
+           7. Particules — poussières d'eau en dérive diagonale montante
            ----------------------------------------------------------------- */
         var particules = couche('amb-particules');
         var nbParticules = nb(comptes.particules);

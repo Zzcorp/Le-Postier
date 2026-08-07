@@ -20,9 +20,9 @@ from collections import defaultdict
 from .utils import get_client_ip, get_location_from_ip, parse_user_agent_string, get_country_flag_emoji, format_duration
 
 from .models import (
-    CustomUser, Postcard, PostcardLike, AnimationSuggestion, Theme,
-    ContactMessage, SearchLog, PageView, UserActivity, SystemLog, IntroSeen,
-    SentPostcard, PostcardComment, UserConnection, VisitorSession,
+    CustomUser, Postcard, PostcardLike, AnimationSuggestion, AnimationRating,
+    Theme, ContactMessage, SearchLog, PageView, UserActivity, SystemLog,
+    IntroSeen, SentPostcard, PostcardComment, UserConnection, VisitorSession,
     RealTimeVisitor, PostcardInteraction, DailyAnalytics, IPLocation
 )
 from .forms import (
@@ -1212,23 +1212,37 @@ def home(request):
             return (int(chiffres) if chiffres else float('inf'), str(p.number))
 
         animated_cards = Postcard.objects.filter(has_animation=True).only(
-            'id', 'number', 'title', 'likes_count', 'animation_files', 'vignette_file'
+            'id', 'number', 'title', 'likes_count', 'animation_files',
+            'vignette_file', 'generation_rating'
+        ).annotate(
+            note_publique_moy=Avg('animation_ratings__rating'),
+            note_publique_nb=Count('animation_ratings'),
         )
         animated_cards = sorted(
             animated_cards,
             key=lambda p: (-p.likes_count, _cle_numero(p))
         )
 
+        # Une entrée par FICHIER vidéo (les vidéos d'une même carte restent
+        # consécutives, indexées 1..n), avec les deux notes : celle du
+        # créateur (generation_rating) et la moyenne publique agrégée.
         videos_accueil = []
         for postcard in animated_cards:
-            video_url = postcard.get_first_video_url()
-            if video_url:
+            urls_videos = postcard.get_animated_urls()
+            total = len(urls_videos)
+            moyenne = round(float(postcard.note_publique_moy), 1) if postcard.note_publique_moy else 0
+            for index, video_url in enumerate(urls_videos, start=1):
                 videos_accueil.append({
                     'id': postcard.id,
                     'number': postcard.number,
                     'title': postcard.title,
                     'video_url': video_url,
                     'poster_url': postcard.get_vignette_url(),
+                    'video_index': index,
+                    'video_total': total,
+                    'rating': postcard.generation_rating,
+                    'public_avg': moyenne,
+                    'public_count': postcard.note_publique_nb,
                 })
 
         return render(request, 'home.html', {
@@ -1513,6 +1527,21 @@ def get_postcard_detail(request, postcard_id):
             elif hasattr(request.user, 'can_view_very_rare') and not request.user.can_view_very_rare():
                 can_view_full = False
 
+        # Notes de l'animation : note du créateur + moyenne publique + vote du membre
+        note_publique_moy = 0
+        note_publique_nb = 0
+        note_utilisateur = 0
+        if postcard.has_animation:
+            agg_notes = AnimationRating.objects.filter(postcard=postcard).aggregate(
+                avg=Avg('rating'), nb=Count('id')
+            )
+            note_publique_moy = round(float(agg_notes['avg']), 1) if agg_notes['avg'] else 0
+            note_publique_nb = agg_notes['nb'] or 0
+            if request.user.is_authenticated:
+                note_utilisateur = AnimationRating.objects.filter(
+                    postcard=postcard, user=request.user
+                ).values_list('rating', flat=True).first() or 0
+
         if not can_view_full:
             member_card_url = '/static/images/Carte_Membre_4.jpeg'
             data = {
@@ -1547,6 +1576,10 @@ def get_postcard_detail(request, postcard_id):
                 'likes_count': postcard.likes_count,
                 'has_liked': has_liked,
                 'is_restricted': False,
+                'generation_rating': postcard.generation_rating,
+                'public_avg': note_publique_moy,
+                'public_count': note_publique_nb,
+                'user_rating': note_utilisateur,
             }
 
         return JsonResponse(data)
@@ -1582,13 +1615,17 @@ def zoom_postcard(request, postcard_id):
 
 @require_http_methods(["POST"])
 def like_postcard(request, postcard_id):
-    """API endpoint to like/unlike a postcard with full tracking"""
+    """API endpoint to like/unlike a postcard with full tracking (connexion requise)"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'login_required': True,
+            'error': "Connectez-vous pour aimer les cartes"
+        }, status=401)
+
     try:
         postcard = get_object_or_404(Postcard, id=postcard_id)
         is_animated = request.POST.get('is_animated', 'false').lower() == 'true'
-
-        if not request.session.session_key:
-            request.session.create()
 
         ip_address = get_client_ip(request)
         user_agent = request.META.get('HTTP_USER_AGENT', '')
@@ -1600,12 +1637,8 @@ def like_postcard(request, postcard_id):
         like_kwargs = {
             'postcard': postcard,
             'is_animated_like': is_animated,
+            'user': request.user,
         }
-
-        if request.user.is_authenticated:
-            like_kwargs['user'] = request.user
-        else:
-            like_kwargs['session_key'] = request.session.session_key
 
         existing_like = PostcardLike.objects.filter(**like_kwargs).first()
 
@@ -1618,8 +1651,7 @@ def like_postcard(request, postcard_id):
             # Create like with full tracking info
             PostcardLike.objects.create(
                 postcard=postcard,
-                user=request.user if request.user.is_authenticated else None,
-                session_key=request.session.session_key if not request.user.is_authenticated else '',
+                user=request.user,
                 is_animated_like=is_animated,
                 ip_address=ip_address,
                 country=location.get('country', ''),
@@ -1644,7 +1676,14 @@ def like_postcard(request, postcard_id):
 
 @require_http_methods(["POST"])
 def suggest_animation(request, postcard_id):
-    """API endpoint to submit animation suggestion"""
+    """API endpoint to submit animation suggestion (connexion requise)"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'login_required': True,
+            'error': "Connectez-vous pour proposer une animation"
+        }, status=401)
+
     try:
         postcard = get_object_or_404(Postcard, id=postcard_id)
         description = request.POST.get('description', '').strip()
@@ -1657,7 +1696,7 @@ def suggest_animation(request, postcard_id):
 
         AnimationSuggestion.objects.create(
             postcard=postcard,
-            user=request.user if request.user.is_authenticated else None,
+            user=request.user,
             description=description,
             ip_address=get_client_ip(request)
         )
@@ -1665,6 +1704,60 @@ def suggest_animation(request, postcard_id):
         return JsonResponse({
             'success': True,
             'message': 'Suggestion enregistrée avec succès!'
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@require_http_methods(["POST"])
+def rate_animation(request, postcard_id):
+    """API endpoint : note publique (1-5) de l'animation d'une carte (connexion requise)"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'login_required': True,
+            'error': "Connectez-vous pour noter les animations"
+        }, status=401)
+
+    try:
+        postcard = get_object_or_404(Postcard, id=postcard_id)
+
+        if not postcard.has_animation:
+            return JsonResponse({
+                'success': False,
+                'error': "Cette carte n'a pas d'animation à noter"
+            }, status=400)
+
+        try:
+            rating = int(request.POST.get('rating', ''))
+        except (TypeError, ValueError):
+            return JsonResponse({
+                'success': False,
+                'error': "Note invalide (entier de 1 à 5 attendu)"
+            }, status=400)
+
+        if rating < 1 or rating > 5:
+            return JsonResponse({
+                'success': False,
+                'error': "Note invalide (entier de 1 à 5 attendu)"
+            }, status=400)
+
+        AnimationRating.objects.update_or_create(
+            postcard=postcard,
+            user=request.user,
+            defaults={'rating': rating},
+        )
+
+        agg = AnimationRating.objects.filter(postcard=postcard).aggregate(
+            avg=Avg('rating'), nb=Count('id')
+        )
+
+        return JsonResponse({
+            'success': True,
+            'avg': round(float(agg['avg']), 1) if agg['avg'] else 0,
+            'count': agg['nb'] or 0,
+            'user_rating': rating,
         })
 
     except Exception as e:
