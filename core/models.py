@@ -229,8 +229,18 @@ class Postcard(models.Model):
     has_animation = models.BooleanField(default=False, db_index=True, verbose_name="Animation présente")
     media_synced_at = models.DateTimeField(null=True, blank=True)
 
-    # Note de qualité (0-5) donnée par le propriétaire à l'animation générée (0 = non notée)
+    # Note de qualité (0-5) donnée par le propriétaire à l'animation générée (0 = non notée).
+    # CONSERVÉE comme colonne de commodité : elle reflète toujours la note de la
+    # PREMIÈRE vidéo (index 1). La source de vérité est generation_ratings.
     generation_rating = models.PositiveSmallIntegerField(default=0, verbose_name="Note de génération (0-5)")
+
+    # Notes du créateur PAR VIDÉO : {"1": 4, "2": 5} — clé = index 1-based dans
+    # get_animated_urls(), valeur = entier 0-5 (0/absent = non notée).
+    generation_ratings = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Notes de génération par vidéo"
+    )
 
     # Accent-stripped lowercase of number + title + keywords, maintained on save
     search_blob = models.TextField(blank=True, default='')
@@ -325,6 +335,77 @@ class Postcard(models.Model):
     @property
     def video_count(self):
         return len(self.animation_files or [])
+
+    # ---- Notes du créateur, par vidéo ----
+
+    def get_generation_rating(self, index=1):
+        """
+        Note du créateur (0-5) pour la vidéo `index` (1-based).
+        Repli hérité : pour l'index 1, la colonne plate sert de source quand le
+        dictionnaire est encore vide (lignes d'avant la migration 0014).
+        """
+        try:
+            index = int(index)
+        except (TypeError, ValueError):
+            return 0
+        notes = self.generation_ratings
+        if isinstance(notes, dict):
+            valeur = notes.get(str(index))
+            if valeur is not None:
+                try:
+                    return int(valeur)
+                except (TypeError, ValueError):
+                    return 0
+        if index == 1:
+            try:
+                return int(self.generation_rating or 0)
+            except (TypeError, ValueError):
+                return 0
+        return 0
+
+    def set_generation_rating(self, index, value, save=False):
+        """
+        Écrit la note du créateur (0-5) pour la vidéo `index` (1-based) dans
+        generation_ratings ET rafraîchit la colonne plate generation_rating
+        (= note de l'index 1, ou 0). Lève ValueError si l'entrée est invalide.
+        Ne sauvegarde qu'avec save=True (sinon l'appelant sauvegarde lui-même).
+        """
+        try:
+            index = int(index)
+            value = int(value)
+        except (TypeError, ValueError):
+            raise ValueError("Note de génération invalide")
+        if index < 1:
+            raise ValueError("Index de vidéo invalide")
+        if not 0 <= value <= 5:
+            raise ValueError("Note de génération invalide")
+
+        notes = dict(self.generation_ratings) if isinstance(self.generation_ratings, dict) else {}
+        # Reprise héritée : la colonne plate devient l'entrée "1" si absente
+        if '1' not in notes and self.generation_rating:
+            notes['1'] = int(self.generation_rating)
+
+        if value:
+            notes[str(index)] = value
+        else:
+            notes.pop(str(index), None)
+
+        self.generation_ratings = notes
+        try:
+            self.generation_rating = int(notes.get('1', 0) or 0)
+        except (TypeError, ValueError):
+            self.generation_rating = 0
+
+        if save:
+            self.save(update_fields=['generation_ratings', 'generation_rating'])
+        return self
+
+    def get_generation_ratings_list(self):
+        """[{'index': 1, 'rating': 4}, ...] — une entrée par vidéo existante."""
+        return [
+            {'index': i, 'rating': self.get_generation_rating(i)}
+            for i in range(1, self.video_count + 1)
+        ]
 
     # ---- Media cache maintenance ----
 
@@ -461,8 +542,13 @@ class AnimationSuggestion(models.Model):
 
 
 class AnimationRating(models.Model):
-    """Note publique (1-5) donnée par un membre connecté à l'animation d'une carte"""
+    """
+    Note publique (1-5) donnée par un membre connecté à UNE vidéo d'une carte.
+    video_index est 1-based et suit l'ordre de Postcard.get_animated_urls().
+    Les notes d'avant la migration 0014 portent l'index 1.
+    """
     postcard = models.ForeignKey(Postcard, on_delete=models.CASCADE, related_name='animation_ratings')
+    video_index = models.PositiveSmallIntegerField(default=1, verbose_name="Index de la vidéo")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     rating = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)],
@@ -471,12 +557,12 @@ class AnimationRating(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ['postcard', 'user']
+        unique_together = ['postcard', 'video_index', 'user']
         verbose_name = "Note d'animation"
         verbose_name_plural = "Notes d'animation"
 
     def __str__(self):
-        return f"{self.postcard.number} — {self.rating}/5"
+        return f"{self.postcard.number} #{self.video_index} — {self.rating}/5"
 
 
 class Theme(models.Model):

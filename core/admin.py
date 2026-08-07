@@ -23,7 +23,23 @@ class PostcardAdmin(admin.ModelAdmin):
         'views_count', 'zoom_count', 'likes_count', 'created_at', 'updated_at',
         'vignette_file', 'grande_file', 'dos_file', 'zoom_file',
         'animation_files', 'media_synced_at', 'search_blob',
+        # Notes par vidéo : lecture seule ici, tenues à jour par le helper du
+        # modèle (l'API du tableau de bord les édite vidéo par vidéo).
+        'generation_ratings',
     ]
+
+    def save_model(self, request, obj, form, change):
+        """
+        La colonne plate generation_rating reste éditable (liste + fiche) et
+        représente la note de la PREMIÈRE vidéo : on repasse par le helper pour
+        que generation_ratings ne se désynchronise jamais.
+        """
+        try:
+            note = int(obj.generation_rating or 0)
+        except (TypeError, ValueError):
+            note = 0
+        obj.set_generation_rating(1, max(0, min(5, note)))
+        super().save_model(request, obj, form, change)
 
     def get_urls(self):
         urls = super().get_urls()

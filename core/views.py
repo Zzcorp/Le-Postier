@@ -1232,10 +1232,7 @@ def home(request):
 
         animated_cards = Postcard.objects.filter(has_animation=True).only(
             'id', 'number', 'title', 'likes_count', 'animation_files',
-            'vignette_file', 'generation_rating'
-        ).annotate(
-            note_publique_moy=Avg('animation_ratings__rating'),
-            note_publique_nb=Count('animation_ratings'),
+            'vignette_file', 'generation_rating', 'generation_ratings'
         )
         # Ordre MÉLANGÉ à chaque chargement (demande du propriétaire : ne pas
         # revoir toujours les mêmes vidéos en premier). Les vidéos d'une même
@@ -1244,26 +1241,44 @@ def home(request):
         animated_cards = list(animated_cards)
         _random.shuffle(animated_cards)
 
+        # Notes publiques agrégées PAR VIDÉO — une seule requête groupée pour
+        # toutes les cartes animées (aucun N+1).
+        notes_par_video = {
+            (ligne['postcard_id'], ligne['video_index']): ligne
+            for ligne in (
+                AnimationRating.objects
+                .filter(postcard_id__in=[p.id for p in animated_cards])
+                .values('postcard_id', 'video_index')
+                .annotate(moyenne=Avg('rating'), nb=Count('id'))
+            )
+        }
+
         # Une entrée par FICHIER vidéo (les vidéos d'une même carte restent
-        # consécutives, indexées 1..n), avec les deux notes : celle du
-        # créateur (generation_rating) et la moyenne publique agrégée.
+        # consécutives, indexées 1..n), avec les deux notes DE CETTE VIDÉO :
+        # celle du créateur et la moyenne publique agrégée.
         videos_accueil = []
         for postcard in animated_cards:
             urls_videos = postcard.get_animated_urls()
             total = len(urls_videos)
-            moyenne = round(float(postcard.note_publique_moy), 1) if postcard.note_publique_moy else 0
+            poster_url = postcard.get_vignette_url()
             for index, video_url in enumerate(urls_videos, start=1):
+                stats = notes_par_video.get((postcard.id, index))
+                moyenne = 0
+                nb_votes = 0
+                if stats:
+                    moyenne = round(float(stats['moyenne']), 1) if stats['moyenne'] else 0
+                    nb_votes = stats['nb'] or 0
                 videos_accueil.append({
                     'id': postcard.id,
                     'number': postcard.number,
                     'title': postcard.title,
                     'video_url': video_url,
-                    'poster_url': postcard.get_vignette_url(),
+                    'poster_url': poster_url,
                     'video_index': index,
                     'video_total': total,
-                    'rating': postcard.generation_rating,
+                    'rating': postcard.get_generation_rating(index),
                     'public_avg': moyenne,
-                    'public_count': postcard.note_publique_nb,
+                    'public_count': nb_votes,
                 })
 
         return render(request, 'home.html', {
@@ -1549,20 +1564,49 @@ def get_postcard_detail(request, postcard_id):
             elif hasattr(request.user, 'can_view_very_rare') and not request.user.can_view_very_rare():
                 can_view_full = False
 
-        # Notes de l'animation : note du créateur + moyenne publique + vote du membre
+        # Notes de l'animation PAR VIDÉO : note du créateur + moyenne publique +
+        # vote du membre, pour chaque fichier de get_animated_urls().
+        # Agrégation en UNE requête groupée par video_index (aucun N+1).
+        videos_notes = []
         note_publique_moy = 0
         note_publique_nb = 0
         note_utilisateur = 0
         if postcard.has_animation:
-            agg_notes = AnimationRating.objects.filter(postcard=postcard).aggregate(
-                avg=Avg('rating'), nb=Count('id')
-            )
-            note_publique_moy = round(float(agg_notes['avg']), 1) if agg_notes['avg'] else 0
-            note_publique_nb = agg_notes['nb'] or 0
+            agg_par_video = {
+                ligne['video_index']: ligne
+                for ligne in (
+                    AnimationRating.objects.filter(postcard=postcard)
+                    .values('video_index')
+                    .annotate(moyenne=Avg('rating'), nb=Count('id'))
+                )
+            }
+            notes_membre = {}
             if request.user.is_authenticated:
-                note_utilisateur = AnimationRating.objects.filter(
-                    postcard=postcard, user=request.user
-                ).values_list('rating', flat=True).first() or 0
+                notes_membre = dict(
+                    AnimationRating.objects
+                    .filter(postcard=postcard, user=request.user)
+                    .values_list('video_index', 'rating')
+                )
+            for index, url_video in enumerate(postcard.get_animated_urls(), start=1):
+                stats = agg_par_video.get(index)
+                moyenne = 0
+                nb_votes = 0
+                if stats:
+                    moyenne = round(float(stats['moyenne']), 1) if stats['moyenne'] else 0
+                    nb_votes = stats['nb'] or 0
+                videos_notes.append({
+                    'index': index,
+                    'url': url_video,
+                    'generation_rating': postcard.get_generation_rating(index),
+                    'public_avg': moyenne,
+                    'public_count': nb_votes,
+                    'user_rating': notes_membre.get(index, 0),
+                })
+            # Clés plates conservées (rétrocompatibles) = valeurs de la vidéo 1
+            if videos_notes:
+                note_publique_moy = videos_notes[0]['public_avg']
+                note_publique_nb = videos_notes[0]['public_count']
+                note_utilisateur = videos_notes[0]['user_rating']
 
         if not can_view_full:
             member_card_url = '/static/images/Carte_Membre_4.jpeg'
@@ -1584,6 +1628,7 @@ def get_postcard_detail(request, postcard_id):
                 'likes_count': postcard.likes_count,
                 'has_liked': has_liked,
                 'is_restricted': True,
+                'videos': [],
             }
         else:
             data = {
@@ -1602,10 +1647,13 @@ def get_postcard_detail(request, postcard_id):
                 'likes_count': postcard.likes_count,
                 'has_liked': has_liked,
                 'is_restricted': False,
-                'generation_rating': postcard.generation_rating,
+                # Clés plates historiques = vidéo 1 (rien ne casse côté UI)
+                'generation_rating': postcard.get_generation_rating(1),
                 'public_avg': note_publique_moy,
                 'public_count': note_publique_nb,
                 'user_rating': note_utilisateur,
+                # Notes par vidéo (additif)
+                'videos': videos_notes,
             }
 
         return JsonResponse(data)
@@ -1738,7 +1786,11 @@ def suggest_animation(request, postcard_id):
 
 @require_http_methods(["POST"])
 def rate_animation(request, postcard_id):
-    """API endpoint : note publique (1-5) de l'animation d'une carte (connexion requise)"""
+    """API : note publique (1-5) d'UNE vidéo d'une carte (connexion requise).
+
+    POST 'rating' (1-5) et 'video_index' (entier >= 1, défaut 1). La moyenne et
+    le nombre de votes renvoyés sont ceux de CETTE vidéo uniquement.
+    """
     if not request.user.is_authenticated:
         return JsonResponse({
             'success': False,
@@ -1769,21 +1821,42 @@ def rate_animation(request, postcard_id):
                 'error': "Note invalide (entier de 1 à 5 attendu)"
             }, status=400)
 
+        # Index de la vidéo notée (1-based, défaut : la première)
+        brut_index = request.POST.get('video_index', 1)
+        if brut_index in (None, ''):
+            brut_index = 1
+        try:
+            video_index = int(brut_index)
+        except (TypeError, ValueError):
+            return JsonResponse({
+                'success': False,
+                'error': "Index de vidéo invalide"
+            }, status=400)
+
+        nb_videos = postcard.video_count
+        if video_index < 1 or video_index > nb_videos:
+            return JsonResponse({
+                'success': False,
+                'error': "Index de vidéo invalide pour cette carte"
+            }, status=400)
+
         AnimationRating.objects.update_or_create(
             postcard=postcard,
+            video_index=video_index,
             user=request.user,
             defaults={'rating': rating},
         )
 
-        agg = AnimationRating.objects.filter(postcard=postcard).aggregate(
-            avg=Avg('rating'), nb=Count('id')
-        )
+        agg = AnimationRating.objects.filter(
+            postcard=postcard, video_index=video_index
+        ).aggregate(avg=Avg('rating'), nb=Count('id'))
 
         return JsonResponse({
             'success': True,
             'avg': round(float(agg['avg']), 1) if agg['avg'] else 0,
             'count': agg['nb'] or 0,
             'user_rating': rating,
+            'video_index': video_index,
         })
 
     except Exception as e:
@@ -2936,12 +3009,34 @@ def admin_postcard_analytics(request, postcard_id):
         .order_by('-count')
     )
 
-    # Notes de l'animation : moyenne publique + nombre de votes (additif)
-    rating_agg = AnimationRating.objects.filter(postcard=postcard).aggregate(
-        avg=Avg('rating'), nb=Count('id')
-    )
-    public_avg = round(float(rating_agg['avg']), 1) if rating_agg['avg'] else 0
-    public_count = rating_agg['nb'] or 0
+    # Notes de l'animation PAR VIDÉO — une requête groupée (aucun N+1).
+    agg_par_video = {
+        ligne['video_index']: ligne
+        for ligne in (
+            AnimationRating.objects.filter(postcard=postcard)
+            .values('video_index')
+            .annotate(moyenne=Avg('rating'), nb=Count('id'))
+        )
+    }
+    videos_notes = []
+    for index, url_video in enumerate(postcard.get_animated_urls(), start=1):
+        stats = agg_par_video.get(index)
+        moyenne = 0
+        nb_votes = 0
+        if stats:
+            moyenne = round(float(stats['moyenne']), 1) if stats['moyenne'] else 0
+            nb_votes = stats['nb'] or 0
+        videos_notes.append({
+            'index': index,
+            'url': url_video,
+            'generation_rating': postcard.get_generation_rating(index),
+            'public_avg': moyenne,
+            'public_count': nb_votes,
+        })
+
+    # Clés plates conservées (rétrocompatibles) = valeurs de la vidéo 1
+    public_avg = videos_notes[0]['public_avg'] if videos_notes else 0
+    public_count = videos_notes[0]['public_count'] if videos_notes else 0
 
     return JsonResponse({
         'postcard': {
@@ -2955,10 +3050,12 @@ def admin_postcard_analytics(request, postcard_id):
             'has_animation': bool(postcard.has_animation),
             'video_count': postcard.video_count,
             'vignette_url': postcard.get_vignette_url(),
-            'generation_rating': postcard.generation_rating,
+            'generation_rating': postcard.get_generation_rating(1),
             'public_avg': public_avg,
             'public_count': public_count,
         },
+        # Notes par vidéo pour la modale du tableau de bord (additif)
+        'videos': videos_notes,
         'likes_total': likes.count(),
         'likes_by_country': likes_by_country,
         'likes_by_device': likes_by_device,
@@ -3139,20 +3236,105 @@ def admin_user_detail(request, user_id):
 
 @user_passes_test(is_admin)
 def admin_postcards_api(request):
-    """API for postcard management"""
+    """API for postcard management.
+
+    GET : liste filtrable, triée et paginée pour l'onglet « Cartes Postales »
+    du tableau de bord. Tous les paramètres sont optionnels et additifs :
+      - search    : numéro ou titre (contient)
+      - rarity    : common | rare | very_rare
+      - animated  : '1' pour ne garder que les cartes animées
+      - rated     : '1' notées par le créateur, '0' non notées
+      - sort      : number (défaut) | views | likes | rating
+      - page / per_page : pagination (per_page borné 10-200, défaut 50)
+
+    Le tri par numéro est NUMÉRIQUE : `number` est une colonne texte, donc
+    order_by('number') classerait 1, 10, 100, 2… On trie en Python sur les
+    chiffres, exactement comme les pages publiques.
+    """
     if request.method == 'GET':
-        postcards = Postcard.objects.all().order_by('number')[:100]
+        queryset = Postcard.objects.all()
+
+        recherche = (request.GET.get('search') or '').strip()
+        if recherche:
+            queryset = queryset.filter(
+                Q(number__icontains=recherche) | Q(title__icontains=recherche)
+            )
+
+        rarete = (request.GET.get('rarity') or '').strip()
+        if rarete in ('common', 'rare', 'very_rare'):
+            queryset = queryset.filter(rarity=rarete)
+
+        if (request.GET.get('animated') or '') == '1':
+            queryset = queryset.filter(has_animation=True)
+
+        notees = (request.GET.get('rated') or '').strip()
+        if notees == '1':
+            queryset = queryset.exclude(generation_rating=0)
+        elif notees == '0':
+            queryset = queryset.filter(generation_rating=0)
+
+        tri = (request.GET.get('sort') or 'number').strip()
+        if tri not in ('number', 'views', 'likes', 'rating'):
+            tri = 'number'
+
+        # `animation_files` et `generation_ratings` sont chargés d'office pour
+        # éviter tout accès différé (N+1) dans la boucle de sérialisation.
+        queryset = queryset.only(
+            'id', 'number', 'title', 'rarity', 'views_count', 'likes_count',
+            'has_images', 'has_animation', 'animation_files',
+            'generation_rating', 'generation_ratings',
+        )
+
+        if tri == 'views':
+            cartes = list(queryset.order_by('-views_count', 'number'))
+        elif tri == 'likes':
+            cartes = list(queryset.order_by('-likes_count', 'number'))
+        elif tri == 'rating':
+            cartes = list(queryset.order_by('-generation_rating', 'number'))
+        else:
+            def _cle_numero(p):
+                chiffres = ''.join(ch for ch in str(p.number) if ch.isdigit())
+                return (int(chiffres) if chiffres else float('inf'), str(p.number))
+            cartes = sorted(queryset, key=_cle_numero)
+
+        total_filtre = len(cartes)
+
+        try:
+            per_page = int(request.GET.get('per_page', 50))
+        except (TypeError, ValueError):
+            per_page = 50
+        per_page = max(10, min(per_page, 200))
+
+        try:
+            page = int(request.GET.get('page', 1))
+        except (TypeError, ValueError):
+            page = 1
+        total_pages = max(1, (total_filtre + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+        debut = (page - 1) * per_page
+
         data = [{
             'id': p.id,
             'number': p.number,
-            'title': p.title[:50],
+            'title': p.title[:80],
             'rarity': p.rarity,
             'views_count': p.views_count,
             'likes_count': p.likes_count,
             'has_vignette': p.has_images,
-            'generation_rating': p.generation_rating,
-        } for p in postcards]
-        return JsonResponse({'postcards': data, 'total': Postcard.objects.count()})
+            'has_animation': bool(p.has_animation),
+            'video_count': p.video_count,
+            'generation_rating': p.get_generation_rating(1),
+        } for p in cartes[debut:debut + per_page]]
+
+        return JsonResponse({
+            'postcards': data,
+            'total': Postcard.objects.count(),
+            'filtered_total': total_filtre,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages,
+            'sort': tri,
+        })
 
     elif request.method == 'POST':
         try:
@@ -3201,7 +3383,8 @@ def admin_postcard_detail(request, postcard_id):
             for field in ['number', 'title', 'description', 'keywords', 'rarity']:
                 if field in data:
                     setattr(postcard, field, data[field])
-            # Note de génération (0-5) — ignorée quand absente (rétrocompatible)
+            # Note de génération (0-5) — ignorée quand absente (rétrocompatible).
+            # Clé plate = vidéo 1 ; 'generation_ratings' note chaque vidéo.
             if 'generation_rating' in data:
                 try:
                     rating = int(data['generation_rating'])
@@ -3215,9 +3398,48 @@ def admin_postcard_detail(request, postcard_id):
                         {'error': 'generation_rating doit être un entier entre 0 et 5'},
                         status=400,
                     )
-                postcard.generation_rating = rating
+                postcard.set_generation_rating(1, rating)
+
+            if 'generation_ratings' in data:
+                notes_brutes = data['generation_ratings']
+                if not isinstance(notes_brutes, dict):
+                    return JsonResponse(
+                        {'error': 'generation_ratings doit être un objet {"<index>": note}'},
+                        status=400,
+                    )
+                nb_videos = postcard.video_count
+                notes_valides = {}
+                for cle, valeur in notes_brutes.items():
+                    try:
+                        index = int(cle)
+                        note = int(valeur)
+                    except (TypeError, ValueError):
+                        return JsonResponse(
+                            {'error': "generation_ratings : index et note doivent être des entiers"},
+                            status=400,
+                        )
+                    if index < 1 or index > nb_videos:
+                        return JsonResponse(
+                            {'error': f"generation_ratings : index de vidéo {index} invalide pour cette carte"},
+                            status=400,
+                        )
+                    if not 0 <= note <= 5:
+                        return JsonResponse(
+                            {'error': f"generation_ratings : la note de la vidéo {index} doit être un entier entre 0 et 5"},
+                            status=400,
+                        )
+                    notes_valides[index] = note
+                # Tout est validé avant d'écrire (pas de mise à jour partielle)
+                for index, note in sorted(notes_valides.items()):
+                    postcard.set_generation_rating(index, note)
+
             postcard.save()
-            return JsonResponse({'success': True, 'generation_rating': postcard.generation_rating})
+            return JsonResponse({
+                'success': True,
+                'generation_rating': postcard.get_generation_rating(1),
+                'generation_ratings': postcard.generation_ratings,
+                'videos': postcard.get_generation_ratings_list(),
+            })
 
         elif request.method == 'DELETE':
             postcard.delete()
@@ -3366,6 +3588,49 @@ def _admin_save_media_file(upload, folder, filename):
     return f'postcards/{folder}/{filename}'
 
 
+# Extensions réellement reconnues par Postcard.refresh_media_cache() (casse incluse)
+ADMIN_ANIMATION_SCAN_EXTENSIONS = ('.mp4', '.webm', '.MP4', '.WEBM')
+ADMIN_ANIMATION_MAX_SLOTS = 21  # 1 emplacement de base + 20 suffixes _0.._19
+
+
+def _admin_animation_slot_taken(animated_dir, stems, suffixe):
+    """Un fichier occupe-t-il déjà cet emplacement vidéo (toutes extensions) ?"""
+    for stem in stems:
+        for extension in ADMIN_ANIMATION_SCAN_EXTENSIONS:
+            if (animated_dir / f'{stem}{suffixe}{extension}').exists():
+                return True
+    return False
+
+
+def _admin_next_animation_filename(postcard, ext):
+    """Nom du PROCHAIN emplacement vidéo libre pour cette carte.
+
+    L'ordre reproduit exactement la découverte de
+    `Postcard.refresh_media_cache()` : `<numéro>.mp4` (vidéo 1), puis
+    `<numéro>_0.mp4`, `<numéro>_1.mp4`… (vidéos 2, 3…). Sans cela, chaque
+    envoi réutilisait `<numéro>.mp4` et ÉCRASAIT la vidéo précédente : c'est
+    pourquoi il était impossible d'ajouter une seconde animation à une carte
+    existante. Renvoie None quand la carte a atteint le plafond.
+    """
+    animated_dir = _admin_media_dest_dir('animated_cp')
+    padded = postcard.get_padded_number()
+    raw = str(postcard.number).strip()
+    stems = [padded] if raw == padded else [padded, raw]
+
+    base_libre = not _admin_animation_slot_taken(animated_dir, stems, '')
+    premier_suffixe_libre = _admin_animation_slot_taken(animated_dir, stems, '_0')
+    # L'emplacement de base ne se réutilise que si aucune vidéo suivante
+    # n'existe : sinon on insérerait la nouvelle vidéo AVANT les anciennes et
+    # les notes par index se décaleraient.
+    if base_libre and not premier_suffixe_libre:
+        return f'{padded}{ext}'
+
+    for i in range(ADMIN_ANIMATION_MAX_SLOTS - 1):
+        if not _admin_animation_slot_taken(animated_dir, stems, f'_{i}'):
+            return f'{padded}_{i}{ext}'
+    return None
+
+
 @user_passes_test(is_admin)
 @require_http_methods(["POST"])
 def admin_upload_media(request):
@@ -3404,7 +3669,18 @@ def admin_upload_media(request):
             ext, upload_error = _admin_validate_image(file, label)
         if upload_error:
             return JsonResponse({'error': upload_error}, status=400)
-        filename = f'{postcard.get_padded_number()}{ext}'
+        if folder == 'animated_cp':
+            # Chaque envoi occupe un NOUVEL emplacement : on n'écrase jamais
+            # une animation déjà en place.
+            filename = _admin_next_animation_filename(postcard, ext)
+            if filename is None:
+                return JsonResponse(
+                    {'error': "Animation : nombre maximal de vidéos atteint "
+                              f"pour cette carte ({ADMIN_ANIMATION_MAX_SLOTS})"},
+                    status=400,
+                )
+        else:
+            filename = f'{postcard.get_padded_number()}{ext}'
     else:
         filename = file.name
 
@@ -3427,6 +3703,9 @@ def admin_upload_media(request):
             'has_images': postcard.has_images,
             'has_animation': postcard.has_animation,
             'video_count': postcard.video_count,
+            # Additif : permet au tableau de bord de réafficher la liste des
+            # vidéos (et leurs notes) sans second appel.
+            'animated_urls': postcard.get_animated_urls(),
         })
 
     return JsonResponse(response)

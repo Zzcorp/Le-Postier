@@ -136,8 +136,11 @@
 // Toutes les vidéos des cartes animées du site (une entrée PAR FICHIER vidéo),
 // émises par la vue via json_script :
 // [{id, number, title, video_url, poster_url, video_index, video_total,
-//   rating (note du créateur 0-5), public_avg, public_count}],
-// triées par likes puis numéro, vidéos d'une même carte consécutives.
+//   rating, public_avg, public_count}].
+// Les notes sont PAR VIDÉO : « rating » est la note du créateur pour CETTE
+// vidéo (0-5) et public_avg / public_count la moyenne et le nombre de votes
+// du public pour CETTE vidéo — pas pour l'ensemble de la carte.
+// Ordre mélangé à chaque chargement, vidéos d'une même carte consécutives.
 const animatedVideos = JSON.parse(document.getElementById('videos-accueil-data').textContent);
 
 // Vidéo statique de secours si aucune carte animée n'est disponible
@@ -387,9 +390,21 @@ class VideoCarousel {
         this.captionNumber.textContent = `N° ${video.number}`;
         this.captionTitle.textContent = video.title;
 
+        // Les notes affichées sont celles de CETTE vidéo. Quand la carte en
+        // compte plusieurs, le contexte « vidéo k/n » lève l'ambiguïté et les
+        // libellés d'accessibilité rappellent de quelle vidéo il s'agit.
+        const plusieurs = video.video_total > 1;
+        const contexte = plusieurs
+            ? ` de la vidéo ${video.video_index} sur ${video.video_total}`
+            : '';
+        const morceauxAria = [`Carte n° ${video.number}, ${video.title}`];
+        if (plusieurs) {
+            morceauxAria.push(`vidéo ${video.video_index} sur ${video.video_total}`);
+        }
+
         // « — vidéo k/n » seulement quand la carte a plusieurs vidéos
         if (this.captionVideos) {
-            if (video.video_total > 1) {
+            if (plusieurs) {
                 this.captionVideos.textContent = `— vidéo ${video.video_index}/${video.video_total}`;
                 this.captionVideos.hidden = false;
             } else {
@@ -397,28 +412,40 @@ class VideoCarousel {
             }
         }
 
-        // Note de génération du créateur (5 étoiles), seulement si notée (>= 1)
+        // Note du créateur pour cette vidéo (5 étoiles), seulement si notée (>= 1)
         if (this.captionStars) {
             const note = video.rating || 0;
             if (note >= 1) {
                 this.captionStars.innerHTML = buildRatingStars(note);
-                this.captionStars.setAttribute('aria-label', `Note de génération : ${note} sur 5`);
+                this.captionStars.setAttribute('aria-label', `Note du créateur${contexte} : ${note} sur 5`);
+                this.captionStars.title = `Note du créateur${contexte} : ${note}/5`;
                 this.captionStars.hidden = false;
+                morceauxAria.push(`note du créateur ${note} sur 5`);
             } else {
                 this.captionStars.hidden = true;
             }
         }
 
-        // Note publique moyenne, seulement s'il y a des votes
+        // Note publique moyenne de cette vidéo, seulement s'il y a des votes
         if (this.captionPublic) {
-            if (video.public_count > 0) {
+            const nbVotes = video.public_count || 0;
+            if (nbVotes > 0) {
                 const moyenne = Number(video.public_avg).toFixed(1).replace('.', ',');
-                this.captionPublic.textContent = `Public ${moyenne}/5 (${video.public_count})`;
+                this.captionPublic.textContent = `Public ${moyenne}/5 (${nbVotes})`;
+                this.captionPublic.title = `Note du public${contexte} : ${moyenne}/5 — ${nbVotes} vote${nbVotes > 1 ? 's' : ''}`;
                 this.captionPublic.hidden = false;
+                morceauxAria.push(`note du public ${moyenne} sur 5, ${nbVotes} vote${nbVotes > 1 ? 's' : ''}`);
             } else {
                 this.captionPublic.hidden = true;
             }
         }
+
+        // L'aria-label du lien remplace tout son contenu pour les lecteurs
+        // d'écran : il doit donc porter lui-même numéro, titre et notes.
+        this.caption.setAttribute(
+            'aria-label',
+            `${morceauxAria.join(' — ')}. Voir cette carte dans la collection`
+        );
 
         this.caption.hidden = false;
     }

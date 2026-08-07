@@ -1065,6 +1065,85 @@
                     <span class="rarity-stat">{{ rarity_stats.very_rare.total_views }} vues</span>
                 </div>
             </div>
+
+            <!-- Toutes les cartes : liste ordonnée par numéro + filtres -->
+            <div class="pc-list-section">
+                <div class="pc-list-head">
+                    <h4>Toutes les cartes</h4>
+                    <span class="pc-list-count" id="pcListCount">Chargement…</span>
+                </div>
+
+                <div class="pc-filters">
+                    <div class="pc-field pc-field-search">
+                        <label for="pcSearch">Recherche</label>
+                        <input type="search" id="pcSearch" placeholder="Numéro ou titre…" autocomplete="off">
+                    </div>
+                    <div class="pc-field">
+                        <label for="pcRarity">Rareté</label>
+                        <select id="pcRarity">
+                            <option value="">Toutes</option>
+                            <option value="common">Commune</option>
+                            <option value="rare">Rare</option>
+                            <option value="very_rare">Très rare</option>
+                        </select>
+                    </div>
+                    <div class="pc-field">
+                        <label for="pcSort">Trier par</label>
+                        <select id="pcSort">
+                            <option value="number">Numéro</option>
+                            <option value="views">Vues</option>
+                            <option value="likes">Likes</option>
+                            <option value="rating">Note</option>
+                        </select>
+                    </div>
+                    <div class="pc-field">
+                        <span class="pc-field-label" id="pcRatedLabel">Note du créateur</span>
+                        <div class="pc-segment" role="group" aria-labelledby="pcRatedLabel" id="pcRatedGroup">
+                            <button type="button" class="pc-seg-btn is-on" data-rated="" aria-pressed="true">Toutes</button>
+                            <button type="button" class="pc-seg-btn" data-rated="1" aria-pressed="false">Notées</button>
+                            <button type="button" class="pc-seg-btn" data-rated="0" aria-pressed="false">Non notées</button>
+                        </div>
+                    </div>
+                    <div class="pc-field pc-field-actions">
+                        <button type="button" class="pc-toggle" id="pcAnimated" aria-pressed="false">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                                <line x1="7" y1="2" x2="7" y2="22"/>
+                                <line x1="17" y1="2" x2="17" y2="22"/>
+                                <line x1="2" y1="12" x2="22" y2="12"/>
+                            </svg>
+                            Animées seulement
+                        </button>
+                        <button type="button" class="pc-reset" id="pcReset">Réinitialiser</button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper pc-table-wrapper">
+                    <table class="data-table pc-table">
+                        <thead>
+                            <tr>
+                                <th>N°</th>
+                                <th>Titre</th>
+                                <th>Rareté</th>
+                                <th class="num">Vues</th>
+                                <th class="num">Likes</th>
+                                <th>Note</th>
+                                <th>Animation</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="pcTableBody">
+                            <tr><td colspan="8" class="no-data">Chargement…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pc-pagination" id="pcPagination" hidden>
+                    <button type="button" class="pc-page-btn" id="pcPrev">Précédent</button>
+                    <span class="pc-page-state" id="pcPageState" aria-live="polite">—</span>
+                    <button type="button" class="pc-page-btn" id="pcNext">Suivant</button>
+                </div>
+            </div>
         </div>
 
         <!-- Messages Tab -->
@@ -1475,7 +1554,10 @@ const ICON_GLOBE = svgIcon('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12"
 const ICON_PAGE = svgIcon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', 12);
 const ICON_CHECK = svgIcon('<path d="M20 6L9 17l-5-5"/>', 16);
 const ICON_ALERT = svgIcon('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>', 16);
-const ICON_STAR = svgIcon('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>', 16);
+const STAR_POLYGON = '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>';
+const ICON_STAR = svgIcon(STAR_POLYGON, 16);
+const ICON_STAR_LG = svgIcon(STAR_POLYGON, 24);
+const ICON_UPLOAD = svgIcon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>', 14);
 
 // — Safe DOM helpers: every dynamic string goes through textContent, never innerHTML —
 function el(tag, className, text) {
@@ -1555,6 +1637,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         
         btn.classList.add('active');
         document.getElementById('tab-' + tab).classList.add('active');
+
+        // La liste complète des cartes ne se charge qu'à la première ouverture
+        if (tab === 'postcards' && !pcState.loaded) {
+            loadAdminPostcards(true);
+        }
     });
 });
 
@@ -1956,18 +2043,50 @@ function closeCountryModal() {
     document.getElementById('countryModal').classList.remove('active');
 }
 
-// — Gestion de la carte (note de génération + animation) dans la modale —
-function paintGenerationStars(stars, rating) {
-    stars.dataset.rating = String(rating);
-    Array.from(stars.children).forEach((btn, index) => {
-        btn.classList.toggle('filled', index < rating);
-    });
+// ==========================================================================
+// GESTION DE LA CARTE DANS LA MODALE — animations et NOTES PAR VIDÉO
+// Chaque vidéo d'une carte se note indépendamment : note du créateur
+// (PUT generation_ratings) + moyenne publique en lecture seule.
+// ==========================================================================
+
+function noteTexte(valeur) {
+    const note = Number(valeur) || 0;
+    return note > 0 ? note + '/5' : 'Non notée';
 }
 
-async function saveGenerationRating(postcardId, rating, stars) {
-    const previous = Number(stars.dataset.rating) || 0;
-    if (rating === previous) return;
-    paintGenerationStars(stars, rating); // optimiste
+// Peint une rangée d'étoiles. `preview` = survol/clavier, ne touche pas la
+// valeur enregistrée (conservée dans dataset.rating).
+function repaintStars(stars, valeur, preview) {
+    const note = Math.max(0, Math.min(5, Number(valeur) || 0));
+    const enregistree = Math.max(0, Math.min(5, Number(stars.dataset.rating) || 0));
+    const boutons = Array.from(stars.children);
+    boutons.forEach((btn, i) => {
+        btn.classList.toggle('filled', i < note);
+        btn.setAttribute('aria-checked', String(i + 1 === enregistree));
+        btn.tabIndex = (i + 1 === (enregistree || 1)) ? 0 : -1;
+    });
+    stars.classList.toggle('is-preview', !!preview);
+    if (stars.readoutNode) {
+        stars.readoutNode.textContent = preview ? noteTexte(note) : noteTexte(enregistree);
+        stars.readoutNode.classList.toggle('is-preview', !!preview);
+    }
+}
+
+function setStarsValue(stars, valeur) {
+    stars.dataset.rating = String(Math.max(0, Math.min(5, Number(valeur) || 0)));
+    repaintStars(stars, stars.dataset.rating, false);
+}
+
+async function saveVideoRating(postcardId, videoIndex, note, stars) {
+    const precedente = Number(stars.dataset.rating) || 0;
+    if (note === precedente || stars.dataset.busy === '1') return;
+
+    stars.dataset.busy = '1';
+    stars.classList.add('is-saving');
+    setStarsValue(stars, note); // optimiste
+
+    const notes = {};
+    notes[String(videoIndex)] = note;
 
     try {
         const response = await fetch(`/api/admin/postcard/${postcardId}/`, {
@@ -1976,58 +2095,169 @@ async function saveGenerationRating(postcardId, rating, stars) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrfToken
             },
-            body: JSON.stringify({ generation_rating: rating })
+            body: JSON.stringify({ generation_ratings: notes })
         });
         const result = await response.json();
         if (!response.ok || !result.success) {
             throw new Error(result.error || 'Erreur');
         }
-        showNotification(rating > 0 ? 'Note de génération enregistrée' : 'Note de génération effacée', 'success');
+        // Le serveur fait foi (0 supprime la clé)
+        const confirmees = result.generation_ratings || {};
+        const cle = String(videoIndex);
+        setStarsValue(stars, Object.prototype.hasOwnProperty.call(confirmees, cle) ? confirmees[cle] : 0);
+        if (videoIndex === 1) {
+            updatePostcardRowMeta(postcardId, { rating: Number(result.generation_rating) || 0 });
+        }
+        showNotification(
+            note > 0
+                ? 'Vidéo ' + videoIndex + ' — note ' + note + '/5 enregistrée'
+                : 'Vidéo ' + videoIndex + ' — note effacée',
+            'success'
+        );
     } catch (error) {
-        paintGenerationStars(stars, previous); // retour arrière
-        showNotification("Erreur lors de l'enregistrement de la note", 'error');
+        setStarsValue(stars, precedente); // retour arrière
+        showNotification('Vidéo ' + videoIndex + " — erreur lors de l'enregistrement de la note", 'error');
+    } finally {
+        stars.dataset.busy = '0';
+        stars.classList.remove('is-saving');
     }
 }
 
-function buildGenerationRatingSection(pc) {
-    const section = el('div', 'detail-section manage-section');
-    section.appendChild(el('h4', '', 'Note de génération'));
-    const row = el('div', 'gen-rating-row');
+// Sélecteur cinq étoiles : clic, survol (aperçu), flèches (déplacent la
+// sélection), Entrée/Espace (valident), Suppr (efface).
+function buildStarSelector(postcardId, videoIndex, valeur) {
+    const stars = el('div', 'vr-stars');
+    stars.setAttribute('role', 'radiogroup');
+    stars.setAttribute('aria-label', 'Note du créateur pour la vidéo ' + videoIndex);
+    stars.dataset.rating = String(Number(valeur) || 0);
+    stars.dataset.busy = '0';
 
-    const stars = el('div', 'gen-stars');
-    stars.dataset.rating = String(pc.generation_rating || 0);
     for (let i = 1; i <= 5; i++) {
-        const btn = el('button', 'gen-star');
+        const btn = el('button', 'vr-star');
         btn.type = 'button';
+        btn.setAttribute('role', 'radio');
         btn.title = i + '/5';
-        btn.setAttribute('aria-label', 'Noter ' + i + ' sur 5');
-        btn.appendChild(iconNode(ICON_STAR));
-        btn.addEventListener('click', () => saveGenerationRating(pc.id, i, stars));
+        btn.setAttribute('aria-label', i + ' étoile' + (i > 1 ? 's' : '') + ' sur 5');
+        btn.appendChild(iconNode(ICON_STAR_LG));
+        btn.addEventListener('click', () => saveVideoRating(postcardId, videoIndex, i, stars));
+        btn.addEventListener('mouseenter', () => repaintStars(stars, i, true));
+        btn.addEventListener('focus', () => repaintStars(stars, i, true));
+        btn.addEventListener('blur', () => repaintStars(stars, stars.dataset.rating, false));
         stars.appendChild(btn);
     }
-    paintGenerationStars(stars, pc.generation_rating || 0);
-    row.appendChild(stars);
 
-    const clearBtn = el('button', 'gen-clear', 'Effacer');
-    clearBtn.type = 'button';
-    clearBtn.title = 'Remettre la note à zéro';
-    clearBtn.addEventListener('click', () => saveGenerationRating(pc.id, 0, stars));
-    row.appendChild(clearBtn);
+    stars.addEventListener('mouseleave', () => repaintStars(stars, stars.dataset.rating, false));
 
-    if (Number(pc.public_count) > 0) {
-        const publicText = 'Public : ' + pc.public_avg + '/5 (' + pc.public_count +
-            ' vote' + (pc.public_count > 1 ? 's' : '') + ')';
-        row.appendChild(el('span', 'gen-public', publicText));
+    stars.addEventListener('keydown', (event) => {
+        const boutons = Array.from(stars.children);
+        const courant = boutons.indexOf(document.activeElement);
+        let cible = null;
+
+        if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+            cible = Math.min(4, (courant < 0 ? -1 : courant) + 1);
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+            cible = Math.max(0, (courant < 0 ? 5 : courant) - 1);
+        } else if (event.key === 'Home') {
+            cible = 0;
+        } else if (event.key === 'End') {
+            cible = 4;
+        } else if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+            if (courant >= 0) {
+                event.preventDefault();
+                saveVideoRating(postcardId, videoIndex, courant + 1, stars);
+            }
+            return;
+        } else if (event.key === 'Delete' || event.key === 'Backspace') {
+            event.preventDefault();
+            saveVideoRating(postcardId, videoIndex, 0, stars);
+            return;
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        boutons[cible].focus();
+    });
+
+    return stars;
+}
+
+function buildCreatorRating(postcardId, video) {
+    const bloc = el('div', 'vr-creator');
+    bloc.appendChild(el('span', 'vr-label', 'Ma note'));
+
+    const ligne = el('div', 'vr-star-line');
+    const stars = buildStarSelector(postcardId, video.index, video.generation_rating);
+    ligne.appendChild(stars);
+
+    const readout = el('span', 'vr-readout');
+    stars.readoutNode = readout;
+    ligne.appendChild(readout);
+
+    const effacer = el('button', 'vr-clear', 'Effacer');
+    effacer.type = 'button';
+    effacer.title = 'Retirer la note de cette vidéo';
+    effacer.setAttribute('aria-label', 'Effacer la note de la vidéo ' + video.index);
+    effacer.addEventListener('click', () => saveVideoRating(postcardId, video.index, 0, stars));
+    ligne.appendChild(effacer);
+
+    bloc.appendChild(ligne);
+    repaintStars(stars, stars.dataset.rating, false);
+    return bloc;
+}
+
+function buildPublicRating(video) {
+    const bloc = el('div', 'vr-public');
+    bloc.appendChild(el('span', 'vr-label', 'Note du public'));
+    const nb = Number(video.public_count) || 0;
+    if (nb > 0) {
+        const moyenne = (Number(video.public_avg) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+        const valeur = el('span', 'vr-public-value');
+        valeur.appendChild(iconNode(ICON_STAR));
+        valeur.appendChild(document.createTextNode(' ' + moyenne + '/5'));
+        bloc.appendChild(valeur);
+        bloc.appendChild(el('span', 'vr-public-count', nb + ' vote' + (nb > 1 ? 's' : '')));
+    } else {
+        bloc.appendChild(el('span', 'vr-public-empty', 'Aucun vote'));
     }
+    return bloc;
+}
 
-    section.appendChild(row);
-    return section;
+function buildVideoRow(postcardId, video) {
+    const row = el('div', 'vr-row');
+
+    const entete = el('div', 'vr-head');
+    entete.appendChild(el('span', 'vr-index', 'Vidéo ' + video.index));
+    const nom = String(video.url || '').split('/').pop();
+    if (nom) entete.appendChild(el('span', 'vr-file', nom));
+    row.appendChild(entete);
+
+    const apercu = el('div', 'vr-preview');
+    if (video.url) {
+        const lecteur = document.createElement('video');
+        lecteur.src = video.url;
+        lecteur.muted = true;
+        lecteur.playsInline = true;
+        lecteur.controls = true;
+        lecteur.preload = 'metadata';
+        apercu.appendChild(lecteur);
+    } else {
+        apercu.appendChild(el('span', 'vr-nopreview', 'Aperçu indisponible'));
+    }
+    row.appendChild(apercu);
+
+    const controles = el('div', 'vr-controls');
+    controles.appendChild(buildCreatorRating(postcardId, video));
+    controles.appendChild(buildPublicRating(video));
+    row.appendChild(controles);
+
+    return row;
 }
 
 function paintAnimationState(state, hasAnimation, videoCount) {
     const count = Number(videoCount) || (hasAnimation ? 1 : 0);
-    if (hasAnimation) {
-        state.textContent = 'Animation présente — ' + count + ' vidéo' + (count > 1 ? 's' : '');
+    if (count > 0) {
+        state.textContent = count + ' vidéo' + (count > 1 ? 's' : '');
         state.classList.add('present');
     } else {
         state.textContent = 'Aucune animation';
@@ -2035,7 +2265,38 @@ function paintAnimationState(state, hasAnimation, videoCount) {
     }
 }
 
-async function uploadPostcardAnimation(postcardId, input, btn, state, feedback) {
+// Envoi avec progression réelle (XHR : fetch n'expose pas l'upload)
+function envoyerAnimation(postcardId, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'animated_cp');
+        formData.append('postcard_id', String(postcardId));
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/upload-media/');
+        xhr.setRequestHeader('X-CSRFToken', csrfToken);
+        xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+                onProgress(Math.round((event.loaded / event.total) * 100));
+            }
+        });
+        xhr.addEventListener('load', () => {
+            let result = null;
+            try { result = JSON.parse(xhr.responseText); } catch (e) { result = null; }
+            if (xhr.status >= 200 && xhr.status < 300 && result && result.success) {
+                resolve(result);
+            } else {
+                reject(new Error((result && result.error) || "Erreur lors de l'envoi (" + xhr.status + ')'));
+            }
+        });
+        xhr.addEventListener('error', () => reject(new Error('Erreur de connexion')));
+        xhr.addEventListener('abort', () => reject(new Error('Envoi interrompu')));
+        xhr.send(formData);
+    });
+}
+
+async function uploadPostcardAnimation(postcardId, input, btn, feedback, progress, bar) {
     const file = input.files && input.files[0];
     if (!file) return;
 
@@ -2046,71 +2307,108 @@ async function uploadPostcardAnimation(postcardId, input, btn, state, feedback) 
         return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('folder', 'animated_cp');
-    formData.append('postcard_id', postcardId);
-
     btn.disabled = true;
+    btn.classList.add('is-busy');
+    progress.hidden = false;
+    bar.style.width = '0%';
     feedback.textContent = 'Envoi de « ' + file.name + ' »…';
     feedback.className = 'anim-feedback is-sending';
 
     try {
-        const response = await fetch('/api/admin/upload-media/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            body: formData
+        const result = await envoyerAnimation(postcardId, file, (percent) => {
+            bar.style.width = percent + '%';
+            feedback.textContent = 'Envoi de « ' + file.name + ' » — ' + percent + ' %';
         });
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || "Erreur lors de l'envoi");
-        }
-        paintAnimationState(state, result.has_animation, result.video_count);
-        feedback.textContent = 'Vidéo enregistrée : ' + (result.saved || result.filename);
+        feedback.textContent = 'Vidéo enregistrée : ' + (result.saved || result.filename) +
+            ' — ' + (result.video_count || 1) + ' vidéo' + ((result.video_count || 1) > 1 ? 's' : '') + ' sur cette carte';
         feedback.className = 'anim-feedback is-success';
         showNotification('Animation ajoutée à la carte', 'success');
+        updatePostcardRowMeta(postcardId, { videoCount: Number(result.video_count) || 0 });
+        // Recharge la liste des vidéos (et leurs notes) sans fermer la modale
+        await refreshAnimationsSection(postcardId, feedback.textContent);
     } catch (error) {
         feedback.textContent = error.message || "Erreur lors de l'envoi";
         feedback.className = 'anim-feedback is-error';
         showNotification("Erreur lors de l'envoi de la vidéo", 'error');
     } finally {
         btn.disabled = false;
+        btn.classList.remove('is-busy');
+        progress.hidden = true;
         input.value = '';
     }
 }
 
-function buildAnimationUploadSection(pc) {
-    const section = el('div', 'detail-section manage-section');
-    section.appendChild(el('h4', '', 'Animation'));
-    const row = el('div', 'anim-upload-row');
+function buildAnimationsSection(pc, videos, messageInitial) {
+    const section = el('div', 'detail-section manage-section anim-section');
+    section.id = 'animSection';
+    section.dataset.postcardId = String(pc.id);
 
+    const entete = el('div', 'anim-head');
+    const titre = el('div', 'anim-title');
+    titre.appendChild(el('h4', '', 'Animations et notes'));
     const state = el('span', 'anim-state');
     paintAnimationState(state, pc.has_animation, pc.video_count);
-    row.appendChild(state);
+    titre.appendChild(state);
+    entete.appendChild(titre);
 
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'video/mp4,video/webm';
     input.hidden = true;
 
-    const btn = el('button', 'btn-secondary btn-compact');
+    const btn = el('button', 'btn-primary btn-compact anim-add');
     btn.type = 'button';
-    btn.appendChild(iconNode(ICON_FILM));
+    btn.appendChild(iconNode(ICON_UPLOAD));
     btn.appendChild(document.createTextNode(' Ajouter une vidéo'));
     btn.addEventListener('click', () => input.click());
+    entete.appendChild(btn);
+    entete.appendChild(input);
+    section.appendChild(entete);
+
+    const progress = el('div', 'anim-progress');
+    progress.hidden = true;
+    const bar = el('div', 'anim-progress-bar');
+    progress.appendChild(bar);
+    section.appendChild(progress);
 
     const feedback = el('span', 'anim-feedback');
-    feedback.textContent = 'mp4 ou webm, 200 Mo maximum';
+    if (messageInitial) {
+        feedback.textContent = messageInitial;
+        feedback.className = 'anim-feedback is-success';
+    } else {
+        feedback.textContent = 'mp4 ou webm, 200 Mo maximum — chaque envoi ajoute une nouvelle vidéo';
+    }
+    section.appendChild(feedback);
 
     input.addEventListener('change', () => {
-        uploadPostcardAnimation(pc.id, input, btn, state, feedback);
+        uploadPostcardAnimation(pc.id, input, btn, feedback, progress, bar);
     });
 
-    row.appendChild(btn);
-    row.appendChild(input);
-    section.appendChild(row);
-    section.appendChild(feedback);
+    const liste = el('div', 'vr-list');
+    if (Array.isArray(videos) && videos.length > 0) {
+        videos.forEach(video => liste.appendChild(buildVideoRow(pc.id, video)));
+    } else {
+        liste.appendChild(el('p', 'no-data', "Aucune animation pour cette carte — ajoutez une première vidéo."));
+    }
+    section.appendChild(liste);
+
     return section;
+}
+
+// Remplace la section « Animations et notes » après un envoi réussi.
+async function refreshAnimationsSection(postcardId, messageInitial) {
+    const ancienne = document.getElementById('animSection');
+    if (!ancienne || ancienne.dataset.postcardId !== String(postcardId)) return;
+    try {
+        const response = await fetch(`/api/admin/postcard-analytics/${postcardId}/`);
+        const data = await response.json();
+        const pc = data.postcard || {};
+        pc.id = postcardId;
+        const nouvelle = buildAnimationsSection(pc, data.videos || [], messageInitial);
+        ancienne.parentNode.replaceChild(nouvelle, ancienne);
+    } catch (error) {
+        /* la section existante reste affichée : rien à casser */
+    }
 }
 
 // Postcard Analytics Modal
@@ -2158,8 +2456,8 @@ async function showPostcardAnalytics(postcardId) {
             [data.likes_total, 'Likes']
         ]));
 
-        root.appendChild(buildGenerationRatingSection(pc));
-        root.appendChild(buildAnimationUploadSection(pc));
+        pc.id = pc.id || postcardId;
+        root.appendChild(buildAnimationsSection(pc, data.videos || [], ''));
 
         const grid2 = el('div', 'detail-grid-2');
 
@@ -2215,6 +2513,309 @@ async function showPostcardAnalytics(postcardId) {
 
 function closePostcardModal() {
     document.getElementById('postcardModal').classList.remove('active');
+}
+
+// ==========================================================================
+// ONGLET « CARTES POSTALES » — toutes les cartes, ordre NUMÉRIQUE + filtres
+// Le tri par numéro est fait côté serveur sur les chiffres (la colonne est du
+// texte), comme sur les pages publiques.
+// ==========================================================================
+const RARITY_LABELS = { common: 'Commune', rare: 'Rare', very_rare: 'Très rare' };
+
+const pcState = {
+    search: '',
+    rarity: '',
+    animated: false,
+    rated: '',        // '' toutes | '1' notées | '0' non notées
+    sort: 'number',
+    page: 1,
+    perPage: 50,
+    totalPages: 1,
+    loaded: false,
+    requete: 0
+};
+
+let pcSearchTimer = null;
+
+function pcNombre(valeur) {
+    return (Number(valeur) || 0).toLocaleString('fr-FR');
+}
+
+function pcNoteCell(note) {
+    const cellule = el('span', 'pc-note');
+    const valeur = Math.max(0, Math.min(5, Number(note) || 0));
+    if (valeur === 0) {
+        cellule.classList.add('is-empty');
+        cellule.textContent = '—';
+        cellule.title = 'Non notée';
+        return cellule;
+    }
+    cellule.appendChild(iconNode(ICON_STAR));
+    cellule.appendChild(document.createTextNode(' ' + valeur + '/5'));
+    cellule.title = 'Note du créateur (vidéo 1) : ' + valeur + '/5';
+    return cellule;
+}
+
+function pcAnimCell(hasAnimation, videoCount) {
+    const nb = Number(videoCount) || 0;
+    const cellule = el('span', 'pc-anim');
+    if (!hasAnimation && nb === 0) {
+        cellule.classList.add('is-empty');
+        cellule.textContent = '—';
+        return cellule;
+    }
+    cellule.appendChild(iconNode(ICON_FILM));
+    cellule.appendChild(document.createTextNode(' ' + (nb || 1) + ' vidéo' + ((nb || 1) > 1 ? 's' : '')));
+    return cellule;
+}
+
+// Rafraîchit une ligne du tableau après une action dans la modale.
+function updatePostcardRowMeta(postcardId, maj) {
+    const ligne = document.querySelector('#pcTableBody tr[data-postcard-id="' + postcardId + '"]');
+    if (!ligne) return;
+    if (Object.prototype.hasOwnProperty.call(maj, 'rating')) {
+        const cellule = ligne.querySelector('.pc-cell-note');
+        if (cellule) {
+            clearNode(cellule);
+            cellule.appendChild(pcNoteCell(maj.rating));
+        }
+    }
+    if (Object.prototype.hasOwnProperty.call(maj, 'videoCount')) {
+        const cellule = ligne.querySelector('.pc-cell-anim');
+        if (cellule) {
+            clearNode(cellule);
+            cellule.appendChild(pcAnimCell(maj.videoCount > 0, maj.videoCount));
+        }
+    }
+}
+
+function pcBuildRow(carte) {
+    const tr = document.createElement('tr');
+    tr.dataset.postcardId = String(carte.id);
+    tr.className = 'pc-row';
+
+    const numero = el('td', 'pc-cell-number');
+    numero.appendChild(el('strong', '', 'N°' + (carte.number || '?')));
+    tr.appendChild(numero);
+
+    tr.appendChild(el('td', 'truncate', carte.title || ''));
+
+    const rarete = el('td');
+    rarete.appendChild(el('span', 'rarity-badge ' + (carte.rarity || ''), RARITY_LABELS[carte.rarity] || carte.rarity || ''));
+    tr.appendChild(rarete);
+
+    tr.appendChild(el('td', 'num', pcNombre(carte.views_count)));
+    tr.appendChild(el('td', 'num', pcNombre(carte.likes_count)));
+
+    const note = el('td', 'pc-cell-note');
+    note.appendChild(pcNoteCell(carte.generation_rating));
+    tr.appendChild(note);
+
+    const anim = el('td', 'pc-cell-anim');
+    anim.appendChild(pcAnimCell(carte.has_animation, carte.video_count));
+    tr.appendChild(anim);
+
+    const actions = el('td', 'pc-cell-action');
+    const ouvrir = el('button', 'pc-open', 'Gérer');
+    ouvrir.type = 'button';
+    ouvrir.setAttribute('aria-label', 'Gérer la carte N°' + (carte.number || ''));
+    ouvrir.addEventListener('click', (event) => {
+        event.stopPropagation();
+        showPostcardAnalytics(carte.id);
+    });
+    actions.appendChild(ouvrir);
+    tr.appendChild(actions);
+
+    tr.addEventListener('click', () => showPostcardAnalytics(carte.id));
+    return tr;
+}
+
+function pcRenderRows(cartes) {
+    const corps = document.getElementById('pcTableBody');
+    if (!corps) return;
+    clearNode(corps);
+    if (!Array.isArray(cartes) || cartes.length === 0) {
+        const tr = document.createElement('tr');
+        const td = el('td', 'no-data', 'Aucune carte ne correspond aux filtres');
+        td.colSpan = 8;
+        tr.appendChild(td);
+        corps.appendChild(tr);
+        return;
+    }
+    cartes.forEach(carte => corps.appendChild(pcBuildRow(carte)));
+}
+
+function pcRenderPagination(data) {
+    const zone = document.getElementById('pcPagination');
+    const etat = document.getElementById('pcPageState');
+    const prev = document.getElementById('pcPrev');
+    const next = document.getElementById('pcNext');
+    if (!zone || !etat || !prev || !next) return;
+
+    const total = Number(data.filtered_total) || 0;
+    pcState.totalPages = Math.max(1, Number(data.total_pages) || 1);
+    pcState.page = Math.max(1, Number(data.page) || 1);
+
+    zone.hidden = total === 0;
+    etat.textContent = 'Page ' + pcState.page + ' sur ' + pcState.totalPages;
+    prev.disabled = pcState.page <= 1;
+    next.disabled = pcState.page >= pcState.totalPages;
+}
+
+function pcRenderCount(data) {
+    const compteur = document.getElementById('pcListCount');
+    if (!compteur) return;
+    const filtre = Number(data.filtered_total) || 0;
+    const total = Number(data.total) || 0;
+    compteur.textContent = (filtre === total)
+        ? pcNombre(total) + ' cartes'
+        : pcNombre(filtre) + ' carte' + (filtre > 1 ? 's' : '') + ' sur ' + pcNombre(total);
+}
+
+async function loadAdminPostcards(resetPage) {
+    if (resetPage) pcState.page = 1;
+
+    const corps = document.getElementById('pcTableBody');
+    if (!corps) return;
+
+    const monId = ++pcState.requete;
+    const params = new URLSearchParams();
+    if (pcState.search) params.set('search', pcState.search);
+    if (pcState.rarity) params.set('rarity', pcState.rarity);
+    if (pcState.animated) params.set('animated', '1');
+    if (pcState.rated !== '') params.set('rated', pcState.rated);
+    params.set('sort', pcState.sort);
+    params.set('page', String(pcState.page));
+    params.set('per_page', String(pcState.perPage));
+
+    const section = document.querySelector('.pc-list-section');
+    if (section) section.classList.add('is-loading');
+
+    try {
+        const response = await fetch('/api/admin/postcards/?' + params.toString());
+        const data = await response.json();
+        if (monId !== pcState.requete) return; // réponse obsolète
+        if (!response.ok) throw new Error(data.error || 'Erreur');
+        pcState.loaded = true;
+        pcRenderRows(data.postcards);
+        pcRenderCount(data);
+        pcRenderPagination(data);
+    } catch (error) {
+        if (monId !== pcState.requete) return;
+        clearNode(corps);
+        const tr = document.createElement('tr');
+        const td = el('td', 'no-data', 'Erreur de chargement des cartes');
+        td.colSpan = 8;
+        tr.appendChild(td);
+        corps.appendChild(tr);
+    } finally {
+        if (monId === pcState.requete && section) section.classList.remove('is-loading');
+    }
+}
+
+function pcBindFilters() {
+    const recherche = document.getElementById('pcSearch');
+    if (recherche) {
+        recherche.addEventListener('input', () => {
+            clearTimeout(pcSearchTimer);
+            pcSearchTimer = setTimeout(() => {
+                pcState.search = recherche.value.trim();
+                loadAdminPostcards(true);
+            }, 250);
+        });
+    }
+
+    const rarete = document.getElementById('pcRarity');
+    if (rarete) {
+        rarete.addEventListener('change', () => {
+            pcState.rarity = rarete.value;
+            loadAdminPostcards(true);
+        });
+    }
+
+    const tri = document.getElementById('pcSort');
+    if (tri) {
+        tri.addEventListener('change', () => {
+            pcState.sort = tri.value;
+            loadAdminPostcards(true);
+        });
+    }
+
+    const animees = document.getElementById('pcAnimated');
+    if (animees) {
+        animees.addEventListener('click', () => {
+            pcState.animated = !pcState.animated;
+            animees.setAttribute('aria-pressed', String(pcState.animated));
+            animees.classList.toggle('is-on', pcState.animated);
+            loadAdminPostcards(true);
+        });
+    }
+
+    const groupe = document.getElementById('pcRatedGroup');
+    if (groupe) {
+        Array.from(groupe.querySelectorAll('.pc-seg-btn')).forEach(btn => {
+            btn.addEventListener('click', () => {
+                pcState.rated = btn.dataset.rated || '';
+                Array.from(groupe.querySelectorAll('.pc-seg-btn')).forEach(autre => {
+                    const actif = autre === btn;
+                    autre.classList.toggle('is-on', actif);
+                    autre.setAttribute('aria-pressed', String(actif));
+                });
+                loadAdminPostcards(true);
+            });
+        });
+    }
+
+    const reset = document.getElementById('pcReset');
+    if (reset) {
+        reset.addEventListener('click', () => {
+            pcState.search = '';
+            pcState.rarity = '';
+            pcState.animated = false;
+            pcState.rated = '';
+            pcState.sort = 'number';
+            if (recherche) recherche.value = '';
+            if (rarete) rarete.value = '';
+            if (tri) tri.value = 'number';
+            if (animees) {
+                animees.setAttribute('aria-pressed', 'false');
+                animees.classList.remove('is-on');
+            }
+            if (groupe) {
+                Array.from(groupe.querySelectorAll('.pc-seg-btn')).forEach(autre => {
+                    const actif = (autre.dataset.rated || '') === '';
+                    autre.classList.toggle('is-on', actif);
+                    autre.setAttribute('aria-pressed', String(actif));
+                });
+            }
+            loadAdminPostcards(true);
+        });
+    }
+
+    const prev = document.getElementById('pcPrev');
+    if (prev) {
+        prev.addEventListener('click', () => {
+            if (pcState.page > 1) {
+                pcState.page -= 1;
+                loadAdminPostcards(false);
+            }
+        });
+    }
+
+    const next = document.getElementById('pcNext');
+    if (next) {
+        next.addEventListener('click', () => {
+            if (pcState.page < pcState.totalPages) {
+                pcState.page += 1;
+                loadAdminPostcards(false);
+            }
+        });
+    }
+}
+
+pcBindFilters();
+if (document.getElementById('tab-postcards')?.classList.contains('active')) {
+    loadAdminPostcards(true);
 }
 
 // Real-time updates

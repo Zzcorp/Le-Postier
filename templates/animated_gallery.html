@@ -205,8 +205,8 @@
                 
                 <!-- Video selector for multiple videos -->
                 <div class="video-selector" id="videoSelector" style="display:none;">
-                    <span>Vidéos disponibles:</span>
-                    <div class="video-tabs" id="videoTabs"></div>
+                    <span id="videoSelectorLabel">Vidéos disponibles :</span>
+                    <div class="video-tabs" id="videoTabs" role="group" aria-labelledby="videoSelectorLabel"></div>
                 </div>
             </div>
             
@@ -233,32 +233,48 @@
                     </button>
                 </div>
 
-                <!-- Notes de l'animation : créateur (lecture seule) + vote public -->
-                <div class="modal-ratings" id="modalRatings">
+                {% comment %} Notes de l'animation — TOUJOURS celles de la vidéo
+                   affichée : une carte peut porter plusieurs vidéos, notées
+                   séparément (créateur ET public). Le changement de vidéo
+                   repeint tout ce bloc depuis le tableau « videos » de
+                   /api/postcard/<id>/. {% endcomment %}
+                <div class="modal-ratings" id="modalRatings" hidden>
+                    <div class="ratings-head">
+                        <h3 class="ratings-title">Notes de l'animation</h3>
+                        <span class="ratings-video-context" id="ratingsVideoContext" hidden></span>
+                    </div>
+
                     <div class="rating-row" id="creatorRatingRow" hidden>
                         <span class="rating-label">Note du créateur</span>
                         <span class="rating-stars" id="creatorRatingStars" role="img"></span>
                     </div>
-                    <div class="rating-row">
-                        <span class="rating-label">Votre note</span>
-                        <div class="rating-vote" id="publicRatingVote" role="radiogroup" aria-label="Noter cette animation de 1 à 5">
-                            <button type="button" class="rate-star" data-value="1" aria-pressed="false" aria-label="Noter 1 sur 5">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+
+                    <div class="rating-row" id="publicRatingRow">
+                        <span class="rating-label">Note du public</span>
+                        <span class="rating-stars" id="publicRatingStars" role="img" hidden></span>
+                        <span class="rating-summary" id="publicRatingSummary"></span>
+                    </div>
+
+                    <div class="rating-row rating-row--vote">
+                        <span class="rating-label" id="voteRatingLabel">Votre note</span>
+                        <div class="rating-vote" id="publicRatingVote" role="radiogroup" aria-label="Noter cette vidéo de 1 à 5 étoiles">
+                            <button type="button" class="rate-star" data-value="1" role="radio" aria-checked="false" aria-label="1 étoile sur 5" tabindex="0">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             </button>
-                            <button type="button" class="rate-star" data-value="2" aria-pressed="false" aria-label="Noter 2 sur 5">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            <button type="button" class="rate-star" data-value="2" role="radio" aria-checked="false" aria-label="2 étoiles sur 5" tabindex="-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             </button>
-                            <button type="button" class="rate-star" data-value="3" aria-pressed="false" aria-label="Noter 3 sur 5">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            <button type="button" class="rate-star" data-value="3" role="radio" aria-checked="false" aria-label="3 étoiles sur 5" tabindex="-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             </button>
-                            <button type="button" class="rate-star" data-value="4" aria-pressed="false" aria-label="Noter 4 sur 5">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            <button type="button" class="rate-star" data-value="4" role="radio" aria-checked="false" aria-label="4 étoiles sur 5" tabindex="-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             </button>
-                            <button type="button" class="rate-star" data-value="5" aria-pressed="false" aria-label="Noter 5 sur 5">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            <button type="button" class="rate-star" data-value="5" role="radio" aria-checked="false" aria-label="5 étoiles sur 5" tabindex="-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             </button>
                         </div>
-                        <span class="rating-summary" id="publicRatingSummary"></span>
+                        <span class="rating-feedback" id="ratingFeedback" role="status" aria-live="polite"></span>
                     </div>
                 </div>
 
@@ -306,6 +322,10 @@ const csrfToken = '{{ csrf_token }}';
 let currentPostcardId = null;
 let currentAnimatedUrls = [];
 let currentVideoIndex = 0;
+// Notes PAR VIDÉO de la carte ouverte : tableau « videos » de
+// /api/postcard/<id>/ — [{index (1-based), url, generation_rating,
+// public_avg, public_count, user_rating}], dans l'ordre de animated_urls.
+let currentVideos = [];
 const totalCount = {{ total_count }};
 
 // ===========================================
@@ -600,7 +620,9 @@ async function openAnimatedModal(postcardId) {
     document.getElementById('modalLikeBtn').classList.toggle('liked', likeBtn && likeBtn.classList.contains('liked'));
     
     // Reset ratings display while fetching
-    setModalRatings({});
+    currentVideos = [];
+    currentVideoIndex = 0;
+    paintModalRatings();
 
     // Fetch full postcard data to get all video URLs
     try {
@@ -609,30 +631,37 @@ async function openAnimatedModal(postcardId) {
 
         currentAnimatedUrls = data.animated_urls || [];
         currentVideoIndex = 0;
+        // Notes par vidéo (créateur + public + vote du membre)
+        currentVideos = Array.isArray(data.videos) ? data.videos : [];
 
-        // Notes de l'animation (créateur + public) fournies par l'API
-        setModalRatings(data);
-        
         // If no animated URLs from API, use the card's data
         if (currentAnimatedUrls.length === 0 && card.dataset.videoUrl) {
             currentAnimatedUrls = [card.dataset.videoUrl];
         }
-        
+
+        // Notes de la vidéo affichée (la première à l'ouverture)
+        paintModalRatings();
+
         // Set up video selector for multiple videos
         const selector = document.getElementById('videoSelector');
         const tabs = document.getElementById('videoTabs');
-        
+
         if (currentAnimatedUrls.length > 1) {
+            const total = currentAnimatedUrls.length;
             selector.style.display = 'flex';
             tabs.innerHTML = currentAnimatedUrls.map((url, i) => `
-                <button class="video-tab ${i === 0 ? 'active' : ''}" onclick="switchVideo(${i})">
+                <button type="button" class="video-tab ${i === 0 ? 'active' : ''}"
+                        aria-pressed="${i === 0 ? 'true' : 'false'}"
+                        aria-label="Afficher la vidéo ${i + 1} sur ${total}"
+                        onclick="switchVideo(${i})">
                     Vidéo ${i + 1}
                 </button>
             `).join('');
         } else {
             selector.style.display = 'none';
+            tabs.innerHTML = '';
         }
-        
+
         // Load and play the first video
         if (currentAnimatedUrls.length > 0) {
             loadModalVideo(currentAnimatedUrls[0]);
@@ -640,11 +669,16 @@ async function openAnimatedModal(postcardId) {
             // No video available
             modalLoading.innerHTML = '<p>Aucune vidéo disponible</p>';
         }
-        
+
     } catch (error) {
         console.error('Error fetching postcard data:', error);
-        
-        // Fallback to card's video URL
+
+        // Fallback to card's video URL. Sans le tableau « videos » de l'API,
+        // les notes de la vidéo sont inconnues : le bloc reste masqué plutôt
+        // que d'afficher des valeurs fausses.
+        currentVideos = [];
+        paintModalRatings();
+
         const videoUrl = card.dataset.videoUrl;
         if (videoUrl) {
             currentAnimatedUrls = [videoUrl];
@@ -705,20 +739,26 @@ function loadModalVideo(videoUrl) {
 function switchVideo(index) {
     if (index >= 0 && index < currentAnimatedUrls.length) {
         currentVideoIndex = index;
-        
+
         // Update tab active state
         document.querySelectorAll('.video-tab').forEach((tab, i) => {
-            tab.classList.toggle('active', i === index);
+            const actif = i === index;
+            tab.classList.toggle('active', actif);
+            tab.setAttribute('aria-pressed', actif ? 'true' : 'false');
         });
-        
+
+        // Les notes affichées sont celles de CETTE vidéo : tout le bloc est
+        // repeint depuis le tableau « videos » chargé à l'ouverture.
+        paintModalRatings();
+
         // Show loading and load new video
         const modalLoading = document.getElementById('modalVideoLoading');
         const modalVideo = document.getElementById('modalVideo');
-        
+
         modalLoading.style.display = 'flex';
         modalLoading.innerHTML = '<div class="modal-spinner"></div><p>Chargement de la vidéo...</p>';
         modalVideo.style.display = 'none';
-        
+
         loadModalVideo(currentAnimatedUrls[index]);
     }
 }
@@ -727,11 +767,16 @@ function closeAnimatedModal() {
     const modalVideo = document.getElementById('modalVideo');
     modalVideo.pause();
     modalVideo.currentTime = 0;
-    
+
     document.getElementById('animatedModal').classList.remove('active');
     document.body.style.overflow = '';
     hideSuggestForm();
-    
+
+    // Notes de la carte précédente : remises à zéro pour la prochaine ouverture
+    currentVideos = [];
+    currentVideoIndex = 0;
+    paintModalRatings();
+
     // Reset loading state
     const modalLoading = document.getElementById('modalVideoLoading');
     modalLoading.innerHTML = '<div class="modal-spinner"></div><p>Chargement de la vidéo...</p>';
@@ -808,9 +853,18 @@ function showLoginNotice(message) {
 }
 
 // ===========================================
-// ANIMATION RATINGS (créateur + public)
+// NOTES DE L'ANIMATION — PAR VIDÉO (créateur + public)
+//
+// Une carte peut porter plusieurs vidéos ; chacune se note séparément.
+// Le bloc de notes reflète TOUJOURS la vidéo affichée dans la modale
+// (currentVideoIndex, 0-based) et le vote part avec son video_index
+// (1-based) vers /api/postcard/<id>/rate/.
 // ===========================================
 const RATE_STAR_POINTS = '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2';
+
+// Vote du membre pour la vidéo affichée (référence pour l'aperçu au survol)
+let currentUserRating = 0;
+let voteEnCours = false;
 
 function buildRatingStars(note, size) {
     let html = '';
@@ -821,48 +875,141 @@ function buildRatingStars(note, size) {
     return html;
 }
 
-function updatePublicRatingUI(avg, count, userRating) {
-    document.querySelectorAll('#publicRatingVote .rate-star').forEach((btn) => {
-        const value = parseInt(btn.dataset.value, 10);
-        const filled = userRating >= value;
-        btn.classList.toggle('filled', filled);
-        btn.setAttribute('aria-pressed', filled ? 'true' : 'false');
-        btn.querySelector('svg').setAttribute('fill', filled ? 'currentColor' : 'none');
-    });
-
-    const summary = document.getElementById('publicRatingSummary');
-    if (count > 0) {
-        const moyenne = Number(avg).toFixed(1).replace('.', ',');
-        summary.textContent = `Moyenne ${moyenne}/5 (${count} vote${count > 1 ? 's' : ''})`;
-    } else {
-        summary.textContent = "Aucune note pour l'instant";
-    }
+function voteStarButtons() {
+    return Array.from(document.querySelectorAll('#publicRatingVote .rate-star'));
 }
 
-function setModalRatings(data) {
-    // Note du créateur (lecture seule), affichée seulement si notée (>= 1)
-    const row = document.getElementById('creatorRatingRow');
-    const stars = document.getElementById('creatorRatingStars');
-    const note = data.generation_rating || 0;
-    if (note >= 1) {
-        stars.innerHTML = buildRatingStars(note, 14);
-        stars.setAttribute('aria-label', `Note du créateur : ${note} sur 5`);
-        row.hidden = false;
-    } else {
-        row.hidden = true;
-        stars.innerHTML = '';
+// Notes de la vidéo actuellement affichée (null si l'API ne les a pas fournies)
+function currentVideoNotes() {
+    return currentVideos[currentVideoIndex] || null;
+}
+
+// Nombre de vidéos de la carte ouverte
+function currentVideoTotal() {
+    return currentAnimatedUrls.length || currentVideos.length;
+}
+
+// Peint les 5 étoiles du sélecteur. « apercu » (0 = aucun) colore les
+// étoiles survolées ou focalisées sans toucher au vote réellement enregistré.
+function renderVoteStars(valeur, apercu) {
+    const affichee = apercu || valeur;
+    voteStarButtons().forEach((btn) => {
+        const v = parseInt(btn.dataset.value, 10);
+        const rempli = affichee >= v;
+        btn.classList.toggle('filled', rempli);
+        btn.classList.toggle('preview', Boolean(apercu) && rempli && valeur < v);
+        btn.querySelector('svg').setAttribute('fill', rempli ? 'currentColor' : 'none');
+        btn.setAttribute('aria-checked', valeur === v ? 'true' : 'false');
+        // Tabulation « roving » : une seule étoile dans l'ordre de tabulation
+        btn.tabIndex = (valeur ? valeur === v : v === 1) ? 0 : -1;
+    });
+}
+
+// Repeint TOUT le bloc de notes depuis les données de la vidéo affichée.
+function paintModalRatings() {
+    const bloc = document.getElementById('modalRatings');
+    if (!bloc) return;
+
+    const notes = currentVideoNotes();
+    const feedback = document.getElementById('ratingFeedback');
+    if (feedback) {
+        feedback.textContent = '';
+        feedback.classList.remove('rating-feedback--erreur');
     }
 
-    // Vote public : moyenne, nombre de votes et vote du membre
-    updatePublicRatingUI(data.public_avg || 0, data.public_count || 0, data.user_rating || 0);
+    // Sans données par vidéo (carte réservée, carte sans animation, erreur
+    // réseau), rien à noter : le bloc entier disparaît.
+    if (!notes) {
+        bloc.hidden = true;
+        currentUserRating = 0;
+        renderVoteStars(0, 0);
+        return;
+    }
+    bloc.hidden = false;
+
+    const total = currentVideoTotal();
+    const rang = currentVideoIndex + 1;
+    const plusieurs = total > 1;
+    const suffixe = plusieurs ? ` de la vidéo ${rang} sur ${total}` : '';
+
+    // Contexte « Vidéo k/n » — affiché seulement si la carte en a plusieurs
+    const contexte = document.getElementById('ratingsVideoContext');
+    if (contexte) {
+        if (plusieurs) {
+            contexte.textContent = `Vidéo ${rang}/${total}`;
+            contexte.setAttribute('aria-label', `Notes de la vidéo ${rang} sur ${total}`);
+            contexte.hidden = false;
+        } else {
+            contexte.hidden = true;
+            contexte.removeAttribute('aria-label');
+        }
+    }
+
+    // Note du créateur (lecture seule), affichée seulement si notée (>= 1)
+    const ligneCreateur = document.getElementById('creatorRatingRow');
+    const etoilesCreateur = document.getElementById('creatorRatingStars');
+    const noteCreateur = notes.generation_rating || 0;
+    if (noteCreateur >= 1) {
+        etoilesCreateur.innerHTML = buildRatingStars(noteCreateur, 16);
+        etoilesCreateur.setAttribute('aria-label', `Note du créateur${suffixe} : ${noteCreateur} sur 5`);
+        ligneCreateur.hidden = false;
+    } else {
+        ligneCreateur.hidden = true;
+        etoilesCreateur.innerHTML = '';
+    }
+
+    // Note du public : moyenne et nombre de votes DE CETTE VIDÉO
+    const etoilesPublic = document.getElementById('publicRatingStars');
+    const resume = document.getElementById('publicRatingSummary');
+    const nbVotes = notes.public_count || 0;
+    const moyenneBrute = Number(notes.public_avg || 0);
+    if (nbVotes > 0) {
+        const moyenne = moyenneBrute.toFixed(1).replace('.', ',');
+        etoilesPublic.innerHTML = buildRatingStars(Math.round(moyenneBrute), 16);
+        etoilesPublic.setAttribute('aria-label', `Note du public${suffixe} : ${moyenne} sur 5`);
+        etoilesPublic.hidden = false;
+        resume.textContent = `${moyenne}/5 — ${nbVotes} vote${nbVotes > 1 ? 's' : ''}`;
+    } else {
+        etoilesPublic.hidden = true;
+        etoilesPublic.innerHTML = '';
+        etoilesPublic.removeAttribute('aria-label');
+        resume.textContent = plusieurs
+            ? "Aucune note pour cette vidéo"
+            : "Aucune note pour l'instant";
+    }
+
+    // Vote du membre pour CETTE vidéo
+    const libelleVote = document.getElementById('voteRatingLabel');
+    if (libelleVote) {
+        libelleVote.textContent = plusieurs ? 'Votre note pour cette vidéo' : 'Votre note';
+    }
+    const groupe = document.getElementById('publicRatingVote');
+    if (groupe) {
+        groupe.setAttribute(
+            'aria-label',
+            plusieurs
+                ? `Noter la vidéo ${rang} sur ${total} de 1 à 5 étoiles`
+                : 'Noter cette vidéo de 1 à 5 étoiles'
+        );
+    }
+    currentUserRating = notes.user_rating || 0;
+    renderVoteStars(currentUserRating, 0);
 }
 
 async function rateAnimation(value) {
-    if (!currentPostcardId) return;
+    if (!currentPostcardId || voteEnCours) return;
+
+    const notes = currentVideoNotes();
+    if (!notes) return;
+
+    // Index 1-based attendu par l'API (ordre de get_animated_urls())
+    const videoIndex = notes.index || (currentVideoIndex + 1);
+    voteEnCours = true;
 
     try {
         const formData = new FormData();
         formData.append('rating', value);
+        formData.append('video_index', videoIndex);
 
         const response = await fetch(`/api/postcard/${currentPostcardId}/rate/`, {
             method: 'POST',
@@ -878,16 +1025,86 @@ async function rateAnimation(value) {
         }
 
         if (data.success) {
-            updatePublicRatingUI(data.avg, data.count, data.user_rating);
+            // Mémorisation locale : revenir sur cette vidéo réaffiche la note
+            const cible = currentVideos.find((v) => v.index === data.video_index);
+            if (cible) {
+                cible.public_avg = data.avg;
+                cible.public_count = data.count;
+                cible.user_rating = data.user_rating;
+            }
+            // Repeindre seulement si la vidéo affichée est bien celle notée
+            // (le membre a pu changer de vidéo pendant la requête).
+            const affichee = currentVideoNotes();
+            if (affichee && affichee.index === data.video_index) {
+                paintModalRatings();
+                const feedback = document.getElementById('ratingFeedback');
+                if (feedback) {
+                    feedback.classList.remove('rating-feedback--erreur');
+                    feedback.textContent = `Merci, votre note de ${data.user_rating} sur 5 est enregistrée`;
+                }
+            }
+        } else if (data.error) {
+            // Erreur métier (index de vidéo, note hors bornes) : elle reste
+            // dans le bloc de notes — l'avis « connexion requise » est réservé
+            // au cas 401, avec son lien vers /connexion/.
+            const feedback = document.getElementById('ratingFeedback');
+            if (feedback) {
+                feedback.classList.add('rating-feedback--erreur');
+                feedback.textContent = data.error;
+            }
         }
     } catch (error) {
         console.error('Rating error:', error);
+    } finally {
+        voteEnCours = false;
     }
 }
 
-document.querySelectorAll('#publicRatingVote .rate-star').forEach((btn) => {
-    btn.addEventListener('click', () => rateAnimation(parseInt(btn.dataset.value, 10)));
-});
+// — Sélecteur d'étoiles : clic, aperçu au survol, clavier —
+// Le clic (et donc Entrée / Espace sur un <button>) enregistre la note ;
+// les flèches déplacent seulement le focus, qui affiche un aperçu — la
+// note n'est envoyée que sur validation explicite.
+(function initVoteStars() {
+    const groupe = document.getElementById('publicRatingVote');
+    if (!groupe) return;
+
+    groupe.addEventListener('click', (e) => {
+        const btn = e.target.closest('.rate-star');
+        if (!btn) return;
+        rateAnimation(parseInt(btn.dataset.value, 10));
+    });
+
+    groupe.addEventListener('mouseover', (e) => {
+        const btn = e.target.closest('.rate-star');
+        if (btn) renderVoteStars(currentUserRating, parseInt(btn.dataset.value, 10));
+    });
+
+    groupe.addEventListener('mouseleave', () => renderVoteStars(currentUserRating, 0));
+
+    groupe.addEventListener('focusin', (e) => {
+        const btn = e.target.closest('.rate-star');
+        if (btn) renderVoteStars(currentUserRating, parseInt(btn.dataset.value, 10));
+    });
+
+    groupe.addEventListener('focusout', (e) => {
+        if (!groupe.contains(e.relatedTarget)) renderVoteStars(currentUserRating, 0);
+    });
+
+    groupe.addEventListener('keydown', (e) => {
+        const btn = e.target.closest('.rate-star');
+        if (!btn) return;
+        const actuelle = parseInt(btn.dataset.value, 10);
+        let cible = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowUp') cible = Math.min(5, actuelle + 1);
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') cible = Math.max(1, actuelle - 1);
+        else if (e.key === 'Home') cible = 1;
+        else if (e.key === 'End') cible = 5;
+        else return;
+        e.preventDefault();
+        const suivant = voteStarButtons().find((b) => parseInt(b.dataset.value, 10) === cible);
+        if (suivant) suivant.focus();
+    });
+})();
 
 // ===========================================
 // SUGGESTION FUNCTIONALITY
@@ -1625,12 +1842,51 @@ footer {
     transform: translateY(-2px);
 }
 
-/* Notes de l'animation : créateur (lecture seule) + vote public */
+/* Notes de l'animation — celles de la VIDÉO affichée : créateur (lecture
+   seule), moyenne du public, puis vote du membre (sélecteur 5 étoiles) */
 .modal-ratings {
-    margin-top: 20px;
+    margin-top: 22px;
+    padding: 18px 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(181, 96, 11, 0.28);
+    border-radius: 12px;
+}
+
+.modal-ratings[hidden] {
+    display: none;
+}
+
+.ratings-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ratings-title {
+    color: #ffc168;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Pastille « Vidéo k/n » — seulement quand la carte a plusieurs vidéos */
+.ratings-video-context {
+    padding: 3px 11px;
+    background: rgba(181, 96, 11, 0.2);
+    border: 1px solid rgba(209, 135, 44, 0.45);
+    border-radius: 999px;
+    color: #d1872c;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ratings-video-context[hidden] {
+    display: none;
 }
 
 .rating-row {
@@ -1644,9 +1900,17 @@ footer {
     display: none;
 }
 
+.rating-row--vote {
+    margin-top: 2px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .rating-label {
     color: rgba(255, 255, 255, 0.8);
     font-size: 0.95rem;
+    flex: 0 0 auto;
+    min-width: 130px;
 }
 
 .rating-stars {
@@ -1656,37 +1920,77 @@ footer {
     color: #d1872c;
 }
 
+.rating-stars[hidden] {
+    display: none;
+}
+
 .rating-vote {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
 }
 
+/* Étoiles cliquables : 24px de pictogramme, cible >= 32px, pleine
+   réaction au survol, au focus et au clic */
 .rate-star {
     background: none;
     border: none;
-    padding: 6px;
+    padding: 4px;
     margin: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.4);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.rate-star svg {
+    width: 24px;
+    height: 24px;
 }
 
 .rate-star:hover {
-    color: #d1872c;
-    transform: scale(1.15);
+    transform: scale(1.12);
 }
 
+/* Étoile retenue par le vote enregistré */
 .rate-star.filled {
     color: #d1872c;
 }
 
+/* Aperçu (survol ou focus) : les étoiles au-delà du vote s'éclairent */
+.rate-star.preview {
+    color: #ffc168;
+}
+
+.rate-star:active {
+    transform: scale(0.94);
+}
+
 .rating-summary {
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+}
+
+/* Confirmation discrète après un vote (zone aria-live) */
+.rating-feedback {
+    color: #ffc168;
     font-size: 0.85rem;
+}
+
+.rating-feedback--erreur {
+    color: #ff9b8a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rate-star,
+    .rate-star:hover,
+    .rate-star:active {
+        transition: none;
+        transform: none;
+    }
 }
 
 /* Suggest Form */
@@ -2008,6 +2312,11 @@ footer {
     .suggest-form-container { padding: 16px; }
     .form-actions { flex-direction: column; }
     .cancel-btn, .submit-btn { width: 100%; }
+
+    /* Notes : libellé au-dessus des étoiles (colonne étroite) */
+    .modal-ratings { padding: 16px; }
+    .rating-label { min-width: 100%; }
+    .rating-row { gap: 8px; }
 
     .success-content { padding: 24px 20px; }
 }
