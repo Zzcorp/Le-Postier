@@ -32,6 +32,14 @@ def normalize_search_text(text):
 
 
 class CustomUser(AbstractUser):
+    CIVILITE_CHOICES = [
+        ('', '—'),
+        ('M.', 'M.'),
+        ('Mme', 'Mme'),
+        ('Dr', 'Dr'),
+        ('Pr', 'Pr'),
+        ('Me', 'Me'),
+    ]
     USER_CATEGORIES = [
         ('subscribed_unverified', 'Inscrit - Non vérifié'),
         ('subscribed_verified', 'Inscrit - Vérifié'),
@@ -43,6 +51,13 @@ class CustomUser(AbstractUser):
         choices=USER_CATEGORIES,
         default='subscribed_unverified',
         verbose_name="Catégorie"
+    )
+    civilite = models.CharField(
+        max_length=4,
+        choices=CIVILITE_CHOICES,
+        blank=True,
+        default='',
+        verbose_name="Civilité"
     )
     email_verified = models.BooleanField(default=False, verbose_name="Email vérifié")
     verification_token = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -81,6 +96,10 @@ class CustomUser(AbstractUser):
     show_activity = models.BooleanField(default=True, verbose_name="Afficher l'activité")
     show_connections = models.BooleanField(default=True, verbose_name="Afficher les connexions")
     allow_messages = models.BooleanField(default=True, verbose_name="Autoriser les messages")
+
+    def get_display_name(self):
+        """Nom affiché : civilité + nom d'utilisateur ('Mme Jeanne'), ou nom seul."""
+        return (self.civilite + ' ' + self.username).strip()
 
     def generate_new_verification_code(self):
         """Generate and save a new verification code"""

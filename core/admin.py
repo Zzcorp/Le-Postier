@@ -91,9 +91,14 @@ class PostcardAdmin(admin.ModelAdmin):
         return redirect('..')
 
 
+class CustomUserAdmin(admin.ModelAdmin):
+    list_display = ['username', 'civilite', 'email', 'category', 'email_verified', 'date_joined']
+    search_fields = ['username', 'email']
+
+
 # Register all models
 admin.site.register(Postcard, PostcardAdmin)
-admin.site.register(CustomUser)
+admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(PostcardLike)
 admin.site.register(AnimationSuggestion)
 admin.site.register(Theme)

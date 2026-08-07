@@ -18,7 +18,9 @@ import logging
 from django.db.models import Sum, Avg, F, Q, Count, Max, Min
 from django.db.models.functions import TruncDate, TruncHour, TruncMonth, ExtractHour
 from collections import defaultdict
+from django.core.files.base import ContentFile
 from .utils import get_client_ip, get_location_from_ip, parse_user_agent_string, get_country_flag_emoji, format_duration
+from .imaging import process_signature_image
 
 from .models import (
     CustomUser, Postcard, PostcardLike, AnimationSuggestion, AnimationRating,
@@ -896,6 +898,15 @@ def update_profile(request):
         user = request.user
         updated_fields = []
 
+        # Civilité (choix fermé — validée contre CIVILITE_CHOICES)
+        if 'civilite' in data:
+            civilite = data['civilite']
+            valid_civilites = [choice[0] for choice in CustomUser.CIVILITE_CHOICES]
+            if civilite not in valid_civilites:
+                return JsonResponse({'error': 'Civilité invalide'}, status=400)
+            user.civilite = civilite
+            updated_fields.append('civilite')
+
         # Text fields
         allowed_text_fields = ['bio', 'country', 'city', 'website']
         for field in allowed_text_fields:
@@ -941,7 +952,14 @@ def upload_signature(request):
         if not file.content_type.startswith('image/'):
             return JsonResponse({'error': 'Invalid file type'}, status=400)
 
-        request.user.signature_image = file
+        # Traitement Pillow : PNG transparent (encre seule), 600px max.
+        try:
+            png_bytes = process_signature_image(file)
+        except Exception:
+            return JsonResponse({'error': 'Image illisible — envoyez un fichier image valide'}, status=400)
+
+        stem = Path(file.name).stem or 'signature'
+        request.user.signature_image.save(f'{stem}.png', ContentFile(png_bytes), save=False)
         request.user.save(update_fields=['signature_image'])
 
         log_activity(request.user, 'profile_update', 'Signature mise à jour', request)
@@ -1219,10 +1237,12 @@ def home(request):
             note_publique_moy=Avg('animation_ratings__rating'),
             note_publique_nb=Count('animation_ratings'),
         )
-        animated_cards = sorted(
-            animated_cards,
-            key=lambda p: (-p.likes_count, _cle_numero(p))
-        )
+        # Ordre MÉLANGÉ à chaque chargement (demande du propriétaire : ne pas
+        # revoir toujours les mêmes vidéos en premier). Les vidéos d'une même
+        # carte restent consécutives : on mélange les cartes, pas les fichiers.
+        import random as _random
+        animated_cards = list(animated_cards)
+        _random.shuffle(animated_cards)
 
         # Une entrée par FICHIER vidéo (les vidéos d'une même carte restent
         # consécutives, indexées 1..n), avec les deux notes : celle du
@@ -1915,6 +1935,7 @@ def get_postcard_message(request, postcard_id):
             'message': sent_postcard.message,
             'stamp_type': sent_postcard.stamp_type,
             'sender_username': sent_postcard.sender.username,
+            'sender_display': sent_postcard.sender.get_display_name(),
             'sender_signature_url': sent_postcard.get_sender_signature_url(),
             'created_at': sent_postcard.created_at.strftime('%d/%m/%Y %H:%M'),
             'is_animated': sent_postcard.is_animated,
@@ -1947,17 +1968,19 @@ def get_user_postcards(request):
     if tab == 'received':
         postcards = SentPostcard.objects.filter(
             recipient=request.user
-        ).select_related('sender', 'postcard')
+        ).select_related('sender', 'recipient', 'postcard')
     else:
         postcards = SentPostcard.objects.filter(
             sender=request.user
-        ).select_related('recipient', 'postcard')
+        ).select_related('sender', 'recipient', 'postcard')
 
     data = [{
         'id': p.id,
         'sender': p.sender.username,
+        'sender_display': p.sender.get_display_name(),
         'sender_signature': p.sender.signature_image.url if p.sender.signature_image else None,
         'recipient': p.recipient.username if p.recipient else None,
+        'recipient_display': p.recipient.get_display_name() if p.recipient else None,
         'message': p.message,
         'image_url': p.get_image_url(),
         'postcard_title': p.postcard.title if p.postcard else None,
@@ -1981,6 +2004,7 @@ def get_public_postcards(request):
     data = [{
         'id': p.id,
         'sender': p.sender.username,
+        'sender_display': p.sender.get_display_name(),
         'sender_signature': p.sender.signature_image.url if p.sender.signature_image else None,
         'message': p.message,
         'image_url': p.get_image_url(),
@@ -2052,9 +2076,13 @@ def search_users(request):
         username__icontains=query
     ).exclude(
         id=request.user.id
-    ).values('username', 'category')[:10]
+    ).only('username', 'category', 'civilite')[:10]
 
-    return JsonResponse({'users': list(users)})
+    return JsonResponse({'users': [{
+        'username': u.username,
+        'category': u.category,
+        'display': u.get_display_name(),
+    } for u in users]})
 
 
 # ============================================
